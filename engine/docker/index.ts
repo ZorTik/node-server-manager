@@ -1,7 +1,20 @@
-import {ServiceEngine} from "../index";
-import {DatabaseManager} from "../../app";
+import {BuildOptions, ServiceEngine} from "../engine";
 
-export default async function (db: DatabaseManager): Promise<ServiceEngine> {
+
+export default async function (): Promise<ServiceEngine> {
     // TODO
-    return {  }
+    return {
+        create(options: BuildOptions): Promise<string> {
+
+        },
+        resume(id: string, options: BuildOptions): Promise<string | undefined> {
+
+        },
+        stop(id: string): Promise<boolean> {
+
+        },
+        delete(id: string): Promise<boolean> {
+
+        }
+    }
 }

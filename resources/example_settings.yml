@@ -1,0 +1,8 @@
+name: ''
+description: ''
+defaults:
+  ram: 1024 # MB
+  cpu: 2 # cores
+# Optional ENV vars, and their default values
+env:
+  STARTUP_FILE: 'server.jar'

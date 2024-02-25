@@ -8,7 +8,7 @@ import createServiceManager from './engine';
 // Passed context to the routes
 export type AppContext = {
     router: Router;
-    manager: ServiceManager;
+    engine: ServiceManager;
     database: DatabaseManager;
 }
 
@@ -19,7 +19,7 @@ export default async function (router: Express) {
     // Service (virtualization) layer
     const manager = await createServiceManager(database);
     // Load HTTP routes
-    await loadAppRoutes({ router, manager, database });
+    await loadAppRoutes({ router, engine: manager, database });
 }
 
 export { DatabaseManager, ServiceManager }
