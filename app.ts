@@ -1,9 +1,9 @@
 import {Express, Router} from 'express';
 import {DatabaseManager} from "./database";
-import {ServiceManager} from "./manager";
+import {ServiceManager} from "./engine";
 import loadAppRoutes from './router';
 import createDbManager from './database';
-import createServiceManager from './manager';
+import createServiceManager from './engine';
 
 // Passed context to the routes
 export type AppContext = {
