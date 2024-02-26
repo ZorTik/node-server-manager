@@ -1,5 +1,6 @@
 import {ServiceEngine} from "../engine";
 import DockerClient from 'dockerode';
+import * as path from "path";
 
 function initClient() {
     let client: DockerClient;
@@ -21,13 +22,53 @@ export default async function (): Promise<ServiceEngine> {
     const client = initClient();
     return {
         async build(buildDir, volumeDir, {ram, cpu, port, ports, env}) {
-            // TODO
+            const stream = await client.buildImage({
+                context: buildDir,
+                src: ['Dockerfile', 'settings.yml'],
+            }, {t: path.basename(buildDir) + ':latest'});
+            await new Promise((resolve, reject) => {
+                client.modem.followProgress(stream, (err, res) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(res);
+                    }
+                })
+            });
+            const container = await client.createContainer({
+                Image: path.basename(buildDir) + ':latest',
+                HostConfig: {
+                    Memory: ram,
+                    CpuShares: cpu,
+                    PortBindings: {
+                        [port]: [{HostPort: port}]
+                    }
+                },
+                Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
+                ExposedPorts: {
+                    [port]: {}
+                }
+            });
+            await container.start();
+            return container.id;
         },
         async stop(id) {
-            // TODO
+            try {
+                await client.getContainer(id).stop();
+                return true;
+            } catch (e) {
+                console.log(e);
+                return false;
+            }
         },
         async delete(id) {
-            // TODO
+            try {
+                await client.getContainer(id).remove({force: true});
+                return true;
+            } catch (e) {
+                console.log(e);
+                return false;
+            }
         }
     }
 }
