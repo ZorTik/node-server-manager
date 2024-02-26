@@ -2,6 +2,7 @@ import {DatabaseManager} from "../app";
 import createEngine from "./engine";
 import YAML from "yaml";
 import * as fs from "fs";
+import uuid from "uuid";
 
 type ServiceOptions = {
     ram?: number,
@@ -21,6 +22,9 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
     const buildDir = (template: string) => {
         return `${process.cwd()}/templates/${template}/settings.yml`;
     }
+    const volumeDir = (id: string) => {
+        return `${process.cwd()}/volumes/${id}`;
+    }
     const settings = (template: string) => {
         return YAML.parse(fs.readFileSync(buildDir(template), 'utf8'));
     }
@@ -36,22 +40,26 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
             env
         }) {
             const { defaults } = settings(template);
+            const port = randomPort();
+            const serviceId = uuid.v4(); // Create new unique service id
             // Container id
-            const id = await engine.create(
+            const containerId = await engine.build(
                 buildDir(template),
+                volumeDir(serviceId),
                 {
                     ram: ram ?? defaults.ram as number,
                     cpu: cpu ?? defaults.cpu as number,
                     env: env ?? defaults.env as {[key: string]: string},
-                    port: randomPort(),
+                    port: port,
                     ports: ports ?? []
                 }
             )
-            // TODO: Save to db
-            return id;
+            // TODO: Save service id, node id, container id, and port to db (current session info)
+            // TODO: Save service id, node id (permanent)
+            return serviceId;
         },
         async resumeService(id: string, options: ServiceOptions): Promise<boolean> {
-            // TODO
+            // TODO: Load session info from db, rebuild from volume using engine
         }
     }
 }

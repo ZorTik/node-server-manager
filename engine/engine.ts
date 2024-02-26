@@ -9,8 +9,7 @@ export type BuildOptions = {
 }
 
 export type ServiceEngine = {
-    create(buildDir: string, options: BuildOptions): Promise<string>; // Container ID (local)
-    resume(id: string, options: BuildOptions): Promise<string|undefined>;
+    build(buildDir: string, volumeDir: string, options: BuildOptions): Promise<string>; // Container ID (local)
     stop(id: string): Promise<boolean>;
     delete(id: string): Promise<boolean>;
 }
