@@ -5,6 +5,7 @@ import loadAppRoutes from './router';
 import createDbManager from './database';
 import createServiceManager from './engine';
 import loadAppConfig from "./configuration/appConfig";
+import * as r from "./configuration/resources";
 
 // Passed context to the routes
 export type AppContext = {
@@ -16,6 +17,7 @@ export type AppContext = {
 
 // App orchestration code
 export default async function (router: Express) {
+    r.prepareResources(); // Copy resources, etc.
     const appConfig = loadAppConfig();
     // Database connection layer
     const database = createDbManager();
