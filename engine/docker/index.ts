@@ -42,12 +42,13 @@ export default async function (): Promise<ServiceEngine> {
                     CpuShares: cpu,
                     PortBindings: {
                         [port]: [{HostPort: port}]
-                    }
+                    },
+                    Binds: [`${volumeDir}:/`] // Mount volume
                 },
                 Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
                 ExposedPorts: {
                     [port]: {}
-                }
+                },
             });
             await container.start();
             return container.id;
