@@ -1,0 +1,5 @@
+# All values here can be overwritten by environment variables
+# with CONFIG_<key> format.
+
+# ID of this node. Should be unique.
+node_id: 'main'

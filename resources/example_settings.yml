@@ -1,5 +1,8 @@
 name: ''
 description: ''
+port_range:
+  min: 25565
+  max: 35565
 defaults:
   ram: 1024 # MB
   cpu: 2 # cores

@@ -1,8 +1,9 @@
-import {DatabaseManager} from "../app";
+import {Database} from "../app";
 import createEngine from "./engine";
 import YAML from "yaml";
 import * as fs from "fs";
 import uuid from "uuid";
+import {randomPort as retrieveRandomPort} from "../util/port";
 
 type Options = {
     ram?: number,
@@ -13,15 +14,16 @@ type Options = {
 
 export type ServiceManager = {
     createService(template: string, options: Options): Promise<string>; // Service ID
-    resumeService(id: string, options: Options): Promise<boolean>;
+    resumeService(id: string): Promise<boolean>;
     stopService(id: string): Promise<boolean>;
     deleteService(id: string): Promise<boolean>;
-    isRunning(id: string): Promise<boolean>;
 }
 
-export default async function (db: DatabaseManager): Promise<ServiceManager> {
+// Impl
+
+export default async function (db: Database, appConfig: any): Promise<ServiceManager> {
     const engine = await createEngine();
-    const nodeId = ;
+    const nodeId = appConfig['node_id'] as string;
     const buildDir = (template: string) => {
         return `${process.cwd()}/templates/${template}/settings.yml`;
     }
@@ -31,19 +33,19 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
     const settings = (template: string) => {
         return YAML.parse(fs.readFileSync(buildDir(template), 'utf8'));
     }
-    const randomPort = () => {
-        // TODO
-    }
-
     return { // Manager
+
         async createService(template, {
             ram,
             cpu,
             ports,
             env
         }) {
-            const {defaults} = settings(template);
-            const port = randomPort();
+            const {defaults, port_range} = settings(template);
+            const port = await retrieveRandomPort(
+                port_range.min as number,
+                port_range.max as number
+            );
             const serviceId = uuid.v4(); // Create new unique service id
             // Container id
             const containerId = await engine.build(
@@ -57,9 +59,10 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
                     ports: ports ?? []
                 }
             )
+            const options = {ram, cpu, ports};
             let saved = true;
             // Save permanent info
-            if (!await db.savePerma({ serviceId, template, nodeId, port })) {
+            if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
                 saved = false;
             }
             // Save this session's info
@@ -71,15 +74,17 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
             }
             return serviceId;
         },
-        async resumeService(id, options) {
+
+        async resumeService(id) {
             const perma_ = await db.getPerma(id);
             if (!perma_) {
                 return false;
             }
-            const {template} = perma_;
+            const {template, options, env} = perma_;
             const {defaults} = settings(template);
             const session = await db.getSession(id);
-            if (!session) {
+            const perma = await db.getPerma(id);
+            if (!session || !perma) {
                 return false;
             }
             const containerId = await engine.build(
@@ -88,7 +93,7 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
                 {
                     ram: options.ram ?? defaults.ram as number,
                     cpu: options.cpu ?? defaults.cpu as number,
-                    env: options.env ?? defaults.env as {[key: string]: string},
+                    env: env ?? defaults.env as {[key: string]: string},
                     port: perma_.port,
                     ports: options.ports ?? []
                 }
@@ -101,6 +106,7 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
                 return false;
             }
         },
+
         async stopService(id) {
             const session = await db.getSession(id);
             if (!session) {
@@ -111,15 +117,10 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
             }
             return db.deleteSession(id);
         },
+
         async deleteService(id) {
-            if (this.isRunning(id) && !await this.stopService(id)) {
-                return false;
-            }
+            await this.stopService(id);
             return db.deletePerma(id);
         },
-        async isRunning(id) {
-            const session = await db.getSession(id);
-            return session && await engine.isRunning(session.containerId);
-        }
     }
 }
