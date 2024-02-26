@@ -12,6 +12,7 @@ export type ServiceEngine = {
     build(buildDir: string, volumeDir: string, options: BuildOptions): Promise<string>; // Container ID (local)
     stop(id: string): Promise<boolean>;
     delete(id: string): Promise<boolean>;
+    isRunning(id: string): Promise<boolean>;
 }
 
 export default async function (): Promise<ServiceEngine> {
