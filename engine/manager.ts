@@ -4,7 +4,7 @@ import YAML from "yaml";
 import * as fs from "fs";
 import uuid from "uuid";
 
-type ServiceOptions = {
+type Options = {
     ram?: number,
     cpu?: number,
     ports?: number[], // Optional ports to expose
@@ -12,8 +12,8 @@ type ServiceOptions = {
 }
 
 export type ServiceManager = {
-    createService(template: string, options: ServiceOptions): Promise<string>; // Service ID
-    resumeService(id: string, options: ServiceOptions): Promise<boolean>;
+    createService(template: string, options: Options): Promise<string>; // Service ID
+    resumeService(id: string, options: Options): Promise<boolean>;
     stopService(id: string): Promise<boolean>;
     deleteService(id: string): Promise<boolean>;
     isRunning(id: string): Promise<boolean>;
@@ -71,7 +71,7 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
             }
             return serviceId;
         },
-        async resumeService(id: string, options: ServiceOptions): Promise<boolean> {
+        async resumeService(id, options) {
             const perma_ = await db.getPerma(id);
             if (!perma_) {
                 return false;
@@ -101,7 +101,7 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
                 return false;
             }
         },
-        async stopService(id: string): Promise<boolean> {
+        async stopService(id) {
             const session = await db.getSession(id);
             if (!session) {
                 return false;
@@ -109,15 +109,15 @@ export default async function (db: DatabaseManager): Promise<ServiceManager> {
             if (!await engine.stop(session.containerId)) {
                 return false;
             }
-            return await db.deleteSession(id);
+            return db.deleteSession(id);
         },
-        async deleteService(id: string): Promise<boolean> {
+        async deleteService(id) {
             if (this.isRunning(id) && !await this.stopService(id)) {
                 return false;
             }
-            return await db.deletePerma(id);
+            return db.deletePerma(id);
         },
-        async isRunning(id: string): Promise<boolean> {
+        async isRunning(id) {
             const session = await db.getSession(id);
             return session && await engine.isRunning(session.containerId);
         }
