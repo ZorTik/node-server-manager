@@ -1,4 +1,4 @@
-import {ServiceEngine} from "../engine";
+import {ServiceEngine} from "../";
 import DockerClient from 'dockerode';
 import * as path from "path";
 
