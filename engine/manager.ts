@@ -1,11 +1,11 @@
 import {Database} from "../app";
-import createEngine from "./engine";
-import YAML from "yaml";
-import * as fs from "fs";
+import createEngine, {ServiceEngine} from "./engine";
+import loadTemplate, {Template} from "./template";
 import uuid from "uuid";
 import {randomPort as retrieveRandomPort} from "../util/port";
+import {loadYamlFile} from "../util/yaml";
 
-type Options = {
+export type Options = {
     /**
      * The amount of RAM that the service can allocate in MB.
      */
@@ -33,6 +33,8 @@ type Options = {
 }
 
 export type ServiceManager = {
+    engine: ServiceEngine;
+
     /**
      * Create a new service.
      *
@@ -62,6 +64,13 @@ export type ServiceManager = {
      * @returns Whether the service was deleted
      */
     deleteService(id: string): Promise<boolean>;
+    /**
+     * Get the template by ID.
+     *
+     * @param id The template ID
+     * @returns The template wrapper
+     */
+    getTemplate(id: string): Template;
 }
 
 // Implementation
@@ -79,9 +88,10 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     }
     // Returns the settings.yml file for the template
     const settings = (template: string) => {
-        return YAML.parse(fs.readFileSync(buildDir(template) + '/settings.yml', 'utf8'));
+        return loadYamlFile(buildDir(template) + '/settings.yml');
     }
     return { // Manager
+        engine,
 
         async createService(template, {
             ram,
@@ -174,5 +184,8 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             await this.stopService(id);
             return db.deletePerma(id);
         },
+        getTemplate(id: string): Template {
+            return loadTemplate(id);
+        }
     }
 }

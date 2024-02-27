@@ -1,5 +1,5 @@
 import {AppContext} from "../app";
-import {RequestHandler, Router} from "express";
+import {json, RequestHandler, Router} from "express";
 import v1Routes from "./v1";
 
 export type RouterHandler = {
@@ -12,6 +12,7 @@ type RouterInit = (context: AppContext) => Promise<RouterHandler>;
 // Load API by version
 async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
     const router = Router();
+    router.use(json());
     for (let init of routes) {
         // Create handler with changed router to the sub-router that will be
         // used specifically for this API version

@@ -4,6 +4,7 @@ import {ServiceManager} from "./engine";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import createServiceManager from './engine';
+import loadAddons from './addon';
 import loadAppConfig from "./configuration/appConfig";
 import * as r from "./configuration/resources";
 
@@ -23,8 +24,11 @@ export default async function (router: Express) {
     const database = createDbManager();
     // Service (virtualization) layer
     const engine = await createServiceManager(database, appConfig);
+    const ctx = { router, engine, database, appConfig };
+    await loadAddons({ ...ctx });
+    // TODO: Authorization (security module)
     // Load HTTP routes
-    await loadAppRoutes({ router, engine, database, appConfig });
+    await loadAppRoutes({ ...ctx });
 }
 
 export { Database, ServiceManager }

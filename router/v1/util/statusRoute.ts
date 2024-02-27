@@ -7,13 +7,17 @@ import {RouterHandler} from "../../index";
  *
  * @param context The app context
  */
-export default async function (context: AppContext): Promise<RouterHandler> {
-    // TODO: Init middleware
+export default async function ({engine, appConfig}: AppContext): Promise<RouterHandler> {
     return {
         url: '/status',
         routes: {
             get: async (req, res) => {
-                // TODO
+                const nodeId = appConfig['node_id'];
+                const { runningCount } = await engine.engine.info();
+                res.json({
+                    nodeId,
+                    runningCount
+                }).end();
             },
         },
     }

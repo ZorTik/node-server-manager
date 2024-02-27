@@ -1,8 +1,7 @@
-import YAML from 'yaml';
-import * as fs from "fs";
+import {loadYamlFile} from "../util/yaml";
 
 export default function loadAppConfig() {
-    const config = YAML.parse(fs.readFileSync(`${process.cwd()}/config.yml`, 'utf8'));
+    const config = loadYamlFile(`${process.cwd()}/config.yml`);
     for (let key in config) {
         // Overwrite with env variable if exists.
         const envKey = 'CONFIG_' + key.toUpperCase();
