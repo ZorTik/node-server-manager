@@ -2,7 +2,7 @@ import * as fs from "fs";
 
 // Read resource from resources dir
 export function readResource(name: string) {
-    return fs.readFileSync(process.cwd() + '/resources/' + name);
+    return fs.readFileSync(process.cwd() + '/resources/' + name, 'utf8');
 }
 
 // Copy resource to target dir

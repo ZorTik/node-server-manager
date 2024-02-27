@@ -1,0 +1,31 @@
+name: Jest
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Shutdown default MySQL
+        run: sudo service mysql stop
+      - name: Setup MySQL
+        uses: mirromutth/mysql-action@v1.1
+        with:
+          mysql database: 'test'
+          mysql user: 'test'
+          mysql password: 'test'
+          mysql port: 3306
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+      - name: Install dependencies
+        run: npm install
+      - name: Prisma generate
+        run: npx prisma generate
+      - name: Prisma migrate
+        run: npx prisma migrate dev --name init
+      - name: Run tests
+        run: npm test
