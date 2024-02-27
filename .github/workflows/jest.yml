@@ -1,11 +1,11 @@
 name: Jest
-on:
-  push:
-    branches: [main]
+on: [push, pull_request]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: 'mysql://test:test@localhost:3306/test'
     steps:
       - uses: actions/checkout@v2
       - name: Shutdown default MySQL
