@@ -16,7 +16,6 @@ jobs:
           mysql database: 'test'
           mysql user: 'test'
           mysql password: 'test'
-          mysql port: 3306
       - name: Use Node.js 14.x
         uses: actions/setup-node@v4
         with:
