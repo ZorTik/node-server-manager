@@ -9,15 +9,23 @@ import * as fs from "fs";
 export type Options = {
     /**
      * The amount of RAM that the service can allocate in MB.
+     * (optional)
      */
     ram?: number,
     /**
      * The amount of CPU cores that the service can use.
+     * (optional)
      */
     cpu?: number,
     /**
+     * The amount of disk space that the service can use in MB.
+     * (optional)
+     */
+    disk?: number,
+    /**
      * The additional ports to expose. (optional)
      * Main port will be chosen automatically.
+     * (optional)
      */
     ports?: number[], // Optional ports to expose
     /**
@@ -29,6 +37,7 @@ export type Options = {
      * in the settings.yml file of the template, and then they can be used
      * in the Dockerfile of template. Those variables can be listed by the
      * lookup and will be stored for later use when resuming the service.
+     * (optional)
      */
     env?: {[key: string]: string}, // Optional ENV, see example_settings.yml
 }
@@ -104,6 +113,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
         async createService(template, {
             ram,
             cpu,
+            disk,
             ports,
             env
         }) {
@@ -121,6 +131,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                 {
                     ram: ram ?? defaults.ram as number,
                     cpu: cpu ?? defaults.cpu as number,
+                    disk: disk ?? defaults.disk as number,
                     env: env ?? defaults.env as {[key: string]: string},
                     port: port,
                     ports: ports ?? []
@@ -162,6 +173,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                 {
                     ram: options.ram ?? defaults.ram as number,
                     cpu: options.cpu ?? defaults.cpu as number,
+                    disk: options.disk ?? defaults.disk as number,
                     env: env ?? defaults.env as {[key: string]: string},
                     port: perma_.port,
                     ports: options.ports ?? []

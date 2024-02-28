@@ -21,7 +21,7 @@ function initClient() {
 export default async function (): Promise<ServiceEngine> {
     const client = initClient();
     return {
-        async build(buildDir, volumeDir, {ram, cpu, port, ports, env}) {
+        async build(buildDir, volumeDir, {ram, cpu, disk, port, ports, env}) {
             const stream = await client.buildImage({
                 context: buildDir,
                 src: ['Dockerfile', 'settings.yml'],
@@ -43,9 +43,17 @@ export default async function (): Promise<ServiceEngine> {
                     PortBindings: {
                         [port]: [{HostPort: port}]
                     },
+                    DiskQuota: disk,
                     Binds: [`${volumeDir}:/`] // Mount volume
                 },
-                Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
+                Env: [
+                    ...Object.entries(env).map(([k, v]) => `${k}=${v}`),
+                    'SERVICE_PORT=' + port,
+                    'SERVICE_PORTS=' + ports.join(' '),
+                    'SERVICE_RAM=' + ram,
+                    'SERVICE_CPU=' + cpu,
+                    'SERVICE_DISK=' + disk,
+                ],
                 ExposedPorts: {
                     [port]: {}
                 },

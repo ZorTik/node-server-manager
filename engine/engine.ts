@@ -1,11 +1,11 @@
 import docker from "./docker";
-import {AppContext} from "../app";
 
 export type BuildOptions = {
     port: number;
     ports: number[];
     ram: number; // in MB
     cpu: number; // in cores
+    disk: number;
     env: {[key: string]: string};
 }
 
