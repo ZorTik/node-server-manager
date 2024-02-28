@@ -1,6 +1,9 @@
-import {EngineInfo, ServiceEngine} from "../";
+import {ServiceEngine} from "../";
 import DockerClient from 'dockerode';
 import * as path from "path";
+import tar from "tar";
+import * as fs from "fs";
+import {currentContext} from "../../app";
 
 function initClient() {
     let client: DockerClient;
@@ -22,38 +25,69 @@ export default async function (): Promise<ServiceEngine> {
     const client = initClient();
     return {
         async build(buildDir, volumeDir, {ram, cpu, disk, port, ports, env}) {
-            const stream = await client.buildImage({
-                context: buildDir,
-                src: ['Dockerfile', 'settings.yml'],
-            }, {t: path.basename(buildDir) + ':latest'});
-            await new Promise((resolve, reject) => {
-                client.modem.followProgress(stream, (err, res) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(res);
-                    }
-                })
+            if (!fs.existsSync(process.cwd() + '/archives')) {
+                fs.mkdirSync(process.cwd() + '/archives');
+            }
+            const archive = process.cwd() + '/archives/' + path.basename(buildDir) + '.tar';
+            if (fs.existsSync(archive)) {
+                fs.unlinkSync(archive);
+            }
+            await tar.c({
+                gzip: false,
+                file: archive,
+                cwd: buildDir
+            }, [...fs.readdirSync(buildDir)]);
+
+            // Populate env with built-in vars
+            env.SERVICE_PORT = port.toString();
+            env.SERVICE_PORTS = ports.join(' ');
+            env.SERVICE_RAM = ram.toString();
+            env.SERVICE_CPU = cpu.toString();
+            env.SERVICE_DISK = disk.toString();
+
+            const imageTag = path.basename(buildDir) + ':' + path.basename(volumeDir);
+
+            // Build image
+            const stream = await client.buildImage(archive, {
+                t: imageTag,
+                buildargs: env,
             });
+            try {
+                await new Promise((resolve, reject) => {
+                    client.modem.followProgress(stream, (err, res) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            for (const r of res) {
+                                if (r.errorDetail) {
+                                    reject(r.errorDetail.message);
+                                    return;
+                                } else {
+                                    currentContext.logger.info(r.stream?.trim());
+                                }
+                            }
+                            resolve(res);
+                        }
+                    })
+                });
+            } catch (e) {
+                currentContext.logger.error(e);
+                return null;
+            }
+            // fs.unlinkSync(archive);
+            // Create container
             const container = await client.createContainer({
-                Image: path.basename(buildDir) + ':latest',
+                Image: imageTag,
                 HostConfig: {
                     Memory: ram,
                     CpuShares: cpu,
                     PortBindings: {
-                        [port]: [{HostPort: port}]
+                        [port + '/tcp']: [{HostPort: `${port}`}]
                     },
                     DiskQuota: disk,
-                    Binds: [`${volumeDir}:/`] // Mount volume
+                    Binds: [`${volumeDir}:/service`] // Mount volume
                 },
-                Env: [
-                    ...Object.entries(env).map(([k, v]) => `${k}=${v}`),
-                    'SERVICE_PORT=' + port,
-                    'SERVICE_PORTS=' + ports.join(' '),
-                    'SERVICE_RAM=' + ram,
-                    'SERVICE_CPU=' + cpu,
-                    'SERVICE_DISK=' + disk,
-                ],
+                Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
                 ExposedPorts: {
                     [port]: {}
                 },
@@ -72,7 +106,10 @@ export default async function (): Promise<ServiceEngine> {
         },
         async delete(id) {
             try {
-                await client.getContainer(id).remove({force: true});
+                const c = client.getContainer(id);
+                await c.remove({force: true});
+                const inspect = await c.inspect()
+                await client.getImage(inspect.Image).remove({force: true});
                 return true;
             } catch (e) {
                 console.log(e);

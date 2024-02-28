@@ -1,7 +1,7 @@
 import {Database} from "../app";
 import createEngine, {ServiceEngine} from "./engine";
 import loadTemplate, {Template} from "./template";
-import uuid from "uuid";
+import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
@@ -80,7 +80,7 @@ export type ServiceManager = {
      * @param id The template ID
      * @returns The template wrapper
      */
-    getTemplate(id: string): Template;
+    getTemplate(id: string): Template|undefined;
     /**
      * List all available services.
      *
@@ -123,7 +123,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                 port_range.min as number,
                 port_range.max as number
             );
-            const serviceId = uuid.v4(); // Create new unique service id
+            const serviceId = crypto.randomUUID(); // Create new unique service id
             // Container id
             const containerId = await engine.build(
                 buildDir(template),
@@ -132,11 +132,14 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                     ram: ram ?? defaults.ram as number,
                     cpu: cpu ?? defaults.cpu as number,
                     disk: disk ?? defaults.disk as number,
-                    env: env ?? defaults.env as {[key: string]: string},
+                    env: env ?? {},
                     port: port,
                     ports: ports ?? []
                 }
-            )
+            );
+            if (!containerId) {
+                throw new Error('Failed to create container');
+            }
             const options = {ram, cpu, ports};
             let saved = true;
             // Save permanent info
@@ -204,7 +207,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             await this.stopService(id);
             return db.deletePerma(id);
         },
-        getTemplate(id: string): Template {
+        getTemplate(id: string): Template|undefined {
             return loadTemplate(id);
         },
         listServices(): Promise<string[]> {

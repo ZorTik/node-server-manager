@@ -38,39 +38,42 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                 }
                 const env = req.body.env ?? {};
                 // Load optional env (template options)
-                for (const key of template.settings.env) {
-                    if (env[key] && typeof env[key] == typeof template.settings.env[key]) {
+                for (const key of Object.keys(template.settings['env'])) {
+                    if (env[key] && typeof env[key] == typeof template.settings['env'][key]) {
                         // Keep the value
                         continue;
                     } else if (env[key]) {
                         res.status(400)
-                            .json({status: 400, message: 'Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings.env[key] + '.'})
+                            .json({status: 400, message: 'Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.'})
                             .end();
                         return;
-                    } else if (isRequiredOption(template.settings.env[key])) {
+                    } else if (isRequiredOption(template.settings['env'][key])) {
                         res.status(400)
                             .json({status: 400, message: 'Missing required option ' + key})
                             .end();
                         return;
                     } else {
                         // Set default
-                        env[key] = template.settings.env[key];
+                        env[key] = template.settings['env'][key];
                     }
                 }
-                // Create the service
+                // Build options
                 const options: Options = {};
-                for (const key of Object.keys(options)) {
-                    if (!body[key]) {
-                        continue;
-                    }
+                for (const key of Object.keys(body)) {
                     options[key] = body[key];
                 }
-                const serviceId = await engine.createService(template.id, options);
-                res.status(200).json({
-                    status: 200,
-                    serviceId,
-                    time: Date.now() - beginTime
-                }).end();
+                options.env = env;
+                // Create the service
+                try {
+                    const serviceId = await engine.createService(template.id, options);
+                    res.status(200).json({
+                        status: 200,
+                        serviceId,
+                        time: Date.now() - beginTime
+                    }).end();
+                } catch (e) {
+                    res.status(500).json({status: 500, message: e.message}).end();
+                }
             }
         },
     }

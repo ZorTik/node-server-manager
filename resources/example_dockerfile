@@ -1,14 +1,27 @@
-FROM openjdk:${JAVA_VERSION}
+# Optional arg JAVA_VERSION. This is here before FROM to dynamically change the base image.
+ARG JAVA_VERSION
 
-# ENV
-# SERVICE_PORTS
-# SERVICE_RAM
-# STARTUP_FLAGS
-# procesor???
-# disk size???
-# STARTUP_FILE
+# Use args down there.
+FROM openjdk:$JAVA_VERSION
+
+# Don't change this!
+WORKDIR /service
+COPY . .
+
+# Built-in args. Don't change.
+ARG SERVICE_PORT
+ARG SERVICE_PORTS
+ARG SERVICE_RAM
+ARG SERVICE_CPU
+ARG SERVICE_DISK
+
+# Optional ones. From settings.yml
+ARG VERSION
+ARG STARTUP_FILE
+
+ADD https://cdn.getbukkit.org/spigot/spigot-$VERSION.jar /$STARTUP_FILE
 
 # port1 port2 port3
-EXPOSE ${SERVICE_PORTS}
+EXPOSE $SERVICE_PORTS
 
-ENTRYPOINT [ "java", "-Xmx${SERVICE_RAM}M", "${STARTUP_FLAGS}", "-jar", "${STARTUP_FILE}", "--port=${SERVICE_PORT}" ]
+ENTRYPOINT [ "java", "-Xmx$SERVICE_RAM", "-jar", "$STARTUP_FILE", "--port=$SERVICE_PORT" ]

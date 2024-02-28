@@ -49,7 +49,9 @@ export async function deletePerma(serviceId: string): Promise<boolean> {
         await client.service.delete({ where: { serviceId } });
         return true;
     } catch (e) {
-        console.log(e);
+        if (e.code !== 'P2025') {
+            console.log(e);
+        }
         return false;
     }
 }

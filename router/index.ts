@@ -21,7 +21,10 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
         for (const method of ['get', 'post', 'put', 'delete']) {
             if (handler.routes[method]) {
                 // Register handler to express
-                router[method](handler.url, handler.routes[method]);
+                router[method](handler.url, (req, res, next) => {
+                    context.logger.info(`${method.toUpperCase()} ${req.url}`);
+                    next();
+                }, handler.routes[method]);
                 reg = true;
             }
         }

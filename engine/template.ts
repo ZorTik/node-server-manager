@@ -1,4 +1,5 @@
 import {loadYamlFile} from "../util/yaml";
+import * as fs from "fs";
 
 export type Template = {
     id: string,
@@ -9,11 +10,15 @@ export type Template = {
 
 const templateCache= {};
 
-export default function (id: string): Template {
+export default function (id: string) {
     if (templateCache[id]) {
         return templateCache[id];
     }
-    const settings = loadYamlFile(`${process.cwd()}/templates/${id}/settings.yml`);
+    const settingsPath = `${process.cwd()}/templates/${id}/settings.yml`;
+    if (!fs.existsSync(settingsPath)) {
+        return null;
+    }
+    const settings = loadYamlFile(settingsPath);
     const template = {
         id,
         name: settings.name,

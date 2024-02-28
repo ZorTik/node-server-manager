@@ -19,6 +19,8 @@ export type AppContext = {
     logger: winston.Logger;
 }
 
+let currentContext: AppContext;
+
 // App orchestration code
 export default async function (router: Express): Promise<number> {
     const logger = prepareLogger();
@@ -28,11 +30,11 @@ export default async function (router: Express): Promise<number> {
     const database = createDbManager();
     // Service (virtualization) layer
     const engine = await createServiceManager(database, appConfig);
-    const ctx = { router, engine, database, appConfig, logger };
-    await loadAddons({ ...ctx });
+    currentContext = { router, engine, database, appConfig, logger };
+    await loadAddons({ ...currentContext });
     // TODO: Authorization (security module)
     // Load HTTP routes
-    await loadAppRoutes({ ...ctx });
+    await loadAppRoutes({ ...currentContext });
 
     return new Promise((resolve) => {
         router.listen(appConfig.port, () => {
@@ -42,4 +44,4 @@ export default async function (router: Express): Promise<number> {
     });
 }
 
-export { Database, ServiceManager }
+export { Database, ServiceManager, currentContext }
