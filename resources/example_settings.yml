@@ -4,7 +4,7 @@ port_range:
   min: 25565
   max: 35565
 defaults:
-  ram: 1024000000 # MB
+  ram: 1024000000 # bytes
   cpu: 2 # cores
   disk: 2000000000 # bytes
 # Optional ENV vars, and their default values

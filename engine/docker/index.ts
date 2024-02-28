@@ -75,29 +75,39 @@ export default async function (): Promise<ServiceEngine> {
                 return null;
             }
             // fs.unlinkSync(archive);
-            // Create container
-            const container = await client.createContainer({
-                Image: imageTag,
-                HostConfig: {
-                    Memory: ram,
-                    CpuShares: cpu,
-                    PortBindings: {
-                        [port + '/tcp']: [{HostPort: `${port}`}]
+            let container: DockerClient.Container;
+            try {
+                // Create container
+                container = await client.createContainer({
+                    Image: imageTag,
+                    HostConfig: {
+                        Memory: ram,
+                        CpuShares: cpu,
+                        PortBindings: {
+                            [port + '/tcp']: [{HostPort: `${port}`}]
+                        },
+                        DiskQuota: disk,
+                        //Binds: [`${volumeDir}:/service`] // Mount volume
                     },
-                    DiskQuota: disk,
-                    Binds: [`${volumeDir}:/service`] // Mount volume
-                },
-                Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-                ExposedPorts: {
-                    [port]: {}
-                },
-            });
-            await container.start();
+                    Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
+                    ExposedPorts: {
+                        [port]: {}
+                    },
+                });
+                await container.start();
+            } catch (e) {
+                if (!container) {
+                    await client.getImage(imageTag).remove({ force: true });
+                }
+                throw e;
+            }
             return container.id;
         },
         async stop(id) {
             try {
-                await client.getContainer(id).stop();
+                if ((await client.listContainers()).map(c => c.Id).includes(id)) {
+                    await client.getContainer(id).stop();
+                }
                 return true;
             } catch (e) {
                 console.log(e);
@@ -106,6 +116,7 @@ export default async function (): Promise<ServiceEngine> {
         },
         async delete(id) {
             try {
+                this.stop(id);
                 const c = client.getContainer(id);
                 await c.remove({force: true});
                 const inspect = await c.inspect()

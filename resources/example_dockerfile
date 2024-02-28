@@ -19,9 +19,9 @@ ARG SERVICE_DISK
 ARG VERSION
 ARG STARTUP_FILE
 
-ADD https://cdn.getbukkit.org/spigot/spigot-$VERSION.jar /$STARTUP_FILE
+ADD https://cdn.getbukkit.org/spigot/spigot-$VERSION.jar $STARTUP_FILE
 
 # port1 port2 port3
 EXPOSE $SERVICE_PORTS
 
-ENTRYPOINT [ "java", "-Xmx$SERVICE_RAM", "-jar", "$STARTUP_FILE", "--port=$SERVICE_PORT" ]
+CMD /bin/sh -c "java -Xmx$SERVICE_RAM -Dcom.mojang.eula.agree=true -jar $STARTUP_FILE --port=$SERVICE_PORT"
