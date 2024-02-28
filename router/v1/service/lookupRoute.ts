@@ -9,6 +9,10 @@ export default async function ({database, engine}: AppContext): Promise<RouterHa
                 const id = req.params.id;
                 const service = await database.getPerma(id);
                 const session = await database.getSession(id);
+                if (!service) {
+                    res.status(404).json({status: 404, message: 'Invalid service ID.'}).end();
+                    return;
+                }
                 const template = engine.getTemplate(service.template);
                 // Build that info
                 res.json({
