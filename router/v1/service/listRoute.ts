@@ -5,7 +5,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
     return {
         url: '/servicelist',
         routes: {
-            post: async (req, res) => {
+            get: async (req, res) => {
                 res.status(200).json(await engine.listServices()).end();
             }
         },
