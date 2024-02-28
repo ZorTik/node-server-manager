@@ -79,3 +79,13 @@ export async function getPerma(serviceId: string): Promise<PermaModel|undefined>
         return undefined;
     }
 }
+
+export async function list(nodeId: string): Promise<string[]> {
+    try {
+        const services = await client.service.findMany({ where: { nodeId } });
+        return services.map(s => s.serviceId);
+    } catch (e) {
+        console.log(e);
+        return [];
+    }
+}

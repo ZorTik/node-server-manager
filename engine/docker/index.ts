@@ -1,4 +1,4 @@
-import {ServiceEngine} from "../";
+import {EngineInfo, ServiceEngine} from "../";
 import DockerClient from 'dockerode';
 import * as path from "path";
 
@@ -69,6 +69,15 @@ export default async function (): Promise<ServiceEngine> {
             } catch (e) {
                 console.log(e);
                 return false;
+            }
+        },
+        async listContainers(templates) {
+            try {
+                const containers = await client.listContainers();
+                return containers.filter(c => templates.includes(c.Image)).map(c => c.Id);
+            } catch (e) {
+                console.log(e);
+                return [];
             }
         }
     }

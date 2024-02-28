@@ -20,4 +20,5 @@ export type Database = {
     deletePerma(serviceId: string): Promise<boolean>;
     getSession(serviceId: string): Promise<SessionModel|undefined>;
     getPerma(serviceId: string): Promise<PermaModel|undefined>;
+    list(nodeId: string): Promise<string[]>;
 }

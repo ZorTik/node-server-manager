@@ -13,7 +13,7 @@ export default async function ({engine, appConfig}: AppContext): Promise<RouterH
         routes: {
             get: async (req, res) => {
                 const nodeId = appConfig['node_id'];
-                const { runningCount } = await engine.engine.info();
+                const runningCount = await engine.engine.listContainers(await engine.listTemplates());
                 res.json({
                     nodeId,
                     runningCount

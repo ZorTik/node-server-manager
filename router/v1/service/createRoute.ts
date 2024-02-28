@@ -3,6 +3,7 @@ import {RouterHandler} from "../../index";
 import {AppContext} from "../../../app";
 import {Options} from "../../../engine";
 
+// Defines if the value inside template settings.yml env represents required option.
 function isRequiredOption(value: any) {
     if (typeof value == "string" && value === "") {
         return true;
@@ -10,7 +11,6 @@ function isRequiredOption(value: any) {
     if (typeof value === "number" && value == -1) {
         return true;
     }
-    // TODO: More required value types
     return false;
 }
 
@@ -66,7 +66,11 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     options[key] = body[key];
                 }
                 const serviceId = await engine.createService(template.id, options);
-                res.status(200).json({status: 200, serviceId, time: Date.now() - beginTime}).end();
+                res.status(200).json({
+                    status: 200,
+                    serviceId,
+                    time: Date.now() - beginTime
+                }).end();
             }
         },
     }

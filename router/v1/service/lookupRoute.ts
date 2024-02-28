@@ -3,7 +3,7 @@ import {RouterHandler} from "../../index";
 
 export default async function ({database, engine}: AppContext): Promise<RouterHandler> {
     return {
-        url: '/service/lookup/:id',
+        url: '/service/:id',
         routes: {
             get: async (req, res) => {
                 const id = req.params.id;

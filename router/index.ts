@@ -17,16 +17,23 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
         // Create handler with changed router to the sub-router that will be
         // used specifically for this API version
         const handler = await init({ ...context, router });
+        let reg = false;
         for (const method of ['get', 'post', 'put', 'delete']) {
-            if (handler[method]) {
+            if (handler.routes[method]) {
                 // Register handler to express
-                router[method](handler.url, handler[method]);
+                router[method](handler.url, handler.routes[method]);
+                reg = true;
             }
+        }
+        if (reg) {
+            context.logger.info(`-- ${handler.url}`);
         }
     }
     context.router.use(`/${ver}`, router);
+    context.logger.info(`Loaded API version ${ver}`);
 }
 
 export default async function (context: AppContext) {
+    context.logger.info('Routes');
     await loadApi('v1', context, v1Routes); // v1
 }

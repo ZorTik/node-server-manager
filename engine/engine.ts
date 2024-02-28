@@ -1,4 +1,5 @@
 import docker from "./docker";
+import {AppContext} from "../app";
 
 export type BuildOptions = {
     port: number;
@@ -40,20 +41,21 @@ export type ServiceEngine = {
      */
     delete(id: string): Promise<boolean>;
     /**
-     * Build info about current engine.
+     * Lists container ids of containers by templates.
      *
-     * @return Engine info
+     * @param templates The templates
+     * @return List of container IDs
      */
-    info(): Promise<EngineInfo>;
+    listContainers(templates: string[]): Promise<string[]>;
 }
 
-export default async function (): Promise<ServiceEngine> {
-    let id = process.env.ENGINE;
+export default async function (appConfig: any): Promise<ServiceEngine> {
+    let id = appConfig.engine;
     let engine: ServiceEngine;
     if (id === 'docker') {
         engine = await docker();
     } else {
-        throw new Error('Unsupported engine type. Please one of: ' + ['docker'].join(', '));
+        throw new Error('Unsupported engine type. Please use one of: ' + ['docker'].join(', '));
     }
     return engine;
 }

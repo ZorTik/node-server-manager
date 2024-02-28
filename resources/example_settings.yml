@@ -9,3 +9,4 @@ defaults:
 # Optional ENV vars, and their default values
 env:
   STARTUP_FILE: 'server.jar'
+  # REQUIRED_OPTION: ''

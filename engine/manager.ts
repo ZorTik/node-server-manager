@@ -4,6 +4,7 @@ import loadTemplate, {Template} from "./template";
 import uuid from "uuid";
 import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
+import * as fs from "fs";
 
 export type Options = {
     /**
@@ -71,12 +72,19 @@ export type ServiceManager = {
      * @returns The template wrapper
      */
     getTemplate(id: string): Template;
+    /**
+     * List all available services.
+     *
+     * @returns The list of service IDs
+     */
+    listServices(): Promise<string[]>;
+    listTemplates(): Promise<string[]>;
 }
 
 // Implementation
 
 export default async function (db: Database, appConfig: any): Promise<ServiceManager> {
-    const engine = await createEngine();
+    const engine = await createEngine(appConfig);
     const nodeId = appConfig['node_id'] as string;
     // Returns the build directory for the template
     const buildDir = (template: string) => {
@@ -186,6 +194,20 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
         },
         getTemplate(id: string): Template {
             return loadTemplate(id);
+        },
+        listServices(): Promise<string[]> {
+            return db.list(nodeId);
+        },
+        listTemplates(): Promise<string[]> {
+            return new Promise((resolve, reject) => {
+                fs.readdir(`${process.cwd()}/templates`, (err, files) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(files);
+                    }
+                });
+            });
         }
     }
 }

@@ -7,6 +7,9 @@ import createServiceManager from './engine';
 import loadAddons from './addon';
 import loadAppConfig from "./configuration/appConfig";
 import * as r from "./configuration/resources";
+import winston from 'winston';
+
+const { combine, timestamp, label, printf } = winston.format;
 
 // Passed context to the routes
 export type AppContext = {
@@ -14,21 +17,47 @@ export type AppContext = {
     engine: ServiceManager;
     database: Database;
     appConfig: any;
+    logger: winston.Logger;
+}
+
+function prepareLogger() {
+    return winston.createLogger({
+        level: 'info',
+        format: combine(
+            label({ label: 'NSM' }),
+            timestamp(),
+            printf(({ level, message, label, timestamp }) => {
+                return `${timestamp} [${label}] ${level}: ${message}`;
+            })
+        ),
+        transports: [
+            new winston.transports.Console(),
+            new winston.transports.File({dirname: 'logs'})
+        ]
+    });
 }
 
 // App orchestration code
-export default async function (router: Express) {
+export default async function (router: Express): Promise<number> {
+    const logger = prepareLogger();
     r.prepareResources(); // Copy resources, etc.
     const appConfig = loadAppConfig();
     // Database connection layer
     const database = createDbManager();
     // Service (virtualization) layer
     const engine = await createServiceManager(database, appConfig);
-    const ctx = { router, engine, database, appConfig };
+    const ctx = { router, engine, database, appConfig, logger };
     await loadAddons({ ...ctx });
     // TODO: Authorization (security module)
     // Load HTTP routes
     await loadAppRoutes({ ...ctx });
+
+    return new Promise((resolve) => {
+        router.listen(appConfig.port, () => {
+            logger.info(`Server started on port ${appConfig.port}`);
+            resolve(appConfig.port);
+        });
+    });
 }
 
 export { Database, ServiceManager }

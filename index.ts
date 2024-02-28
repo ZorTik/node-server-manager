@@ -8,6 +8,5 @@ const server = express();
 server.use(cors());
 
 // Start the server
-app(server).then(() => {
-    console.log('Started');
+app(server).then(port => {
 });

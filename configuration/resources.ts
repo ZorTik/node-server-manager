@@ -6,16 +6,17 @@ export function readResource(name: string) {
 }
 
 // Copy resource to target dir
-export function saveResource(name: string, dir: string) {
-    fs.writeFileSync(dir + '/' + name, readResource(name));
+export function saveResource(name: string, target: string) {
+    fs.writeFileSync(target, readResource(name));
 }
 
 export function prepareResources() {
     const cwd = process.cwd();
     if (!fs.existsSync(cwd + '/templates')) {
+        fs.mkdirSync(cwd + '/templates');
         fs.mkdirSync(cwd + '/templates/example');
         // Copy resources to example template
-        saveResource('example_settings.yml', cwd + '/templates/example');
-        saveResource('example_dockerfile', cwd + '/templates/example');
+        saveResource('example_settings.yml', cwd + '/templates/example/settings.yml');
+        saveResource('example_dockerfile', cwd + '/templates/example/Dockerfile');
     }
 }
