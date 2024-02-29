@@ -1,0 +1,269 @@
+openapi: "3.0.0"
+info:
+  title: "node-server-manager"
+  description: "A new service control engine, built on docker."
+  contact:
+    name: "ZorTik"
+    url: "https://zortik.vercel.app"
+  version: "0.0.1"
+
+components:
+  schemas:
+    Status:
+      type: "object"
+      properties:
+        nodeId:
+          type: "string"
+        runningCount:
+          type: "integer"
+          format: "int32"
+          minimum: 0
+    Result:
+      type: "object"
+      properties:
+        status:
+          type: "integer"
+          format: "int32"
+        message:
+          type: "string"
+    SessionInfo:
+      type: "object"
+      description: "The session information about a running service, if running"
+      properties:
+        serviceId:
+          type: "string"
+        nodeId:
+          type: "string"
+        containerId:
+          type: "string"
+    TemplateLookup:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          description: "The template ID (often folder name)"
+        name:
+          type: "string"
+          description: "The template name, from settings.yml"
+        description:
+          type: "string"
+          description: "The template description, from settings.yml"
+        settings:
+          type: "object"
+          description: "The settings from settings.yml"
+    ServiceLookup:
+      type: "object"
+      properties:
+        id:
+          type: "string"
+          description: "The service UID in the system"
+        template:
+          $ref: "#/components/schemas/TemplateLookup"
+        node:
+          type: "string"
+          description: "The node ID where the service is located"
+        port:
+          type: "integer"
+          format: "int32"
+          description: "The main port number od the service"
+        options:
+          type: "object"
+          description: "The options values used to create the service, or defaults from settings.yml apply"
+        env:
+          type: "object"
+          description: "The custom variables mapped to values whose definitions are in settings.yml in template under 'env'"
+        session:
+          $ref: "#/components/schemas/SessionInfo"
+
+paths:
+  /v1/status:
+    get:
+      description: "Get status of the engine"
+      responses:
+        "200":
+          description: "The status"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+  /v1/servicelist:
+    get:
+      description: "Get list of services"
+      responses:
+        "200":
+          description: "List of service IDs"
+          content:
+            application/json:
+              schema:
+                type: "array"
+                items:
+                  type: "string"
+  /v1/service/create:
+    post:
+      description: "Create a new service"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: "object"
+              properties:
+                template:
+                  type: string
+                  required: true
+                  description: "The template ID"
+                ram:
+                  type: integer
+                  format: int32
+                  required: false
+                  description: "RAM limit, in bytes"
+                cpu:
+                  type: integer
+                  format: int32
+                  required: false
+                  description: "CPU limit, in cores"
+                disk:
+                  type: integer
+                  format: int32
+                  required: false
+                  description: "Disk limit, in bytes"
+                env:
+                  type: object
+                  required: false
+                  description: "A map of custom variables mapped to values whose definitions are in settings.yml in template under 'env'."
+      responses:
+        "200":
+          description: "Successfully created and started service."
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  status:
+                    type: "integer"
+                    format: "int32"
+                  serviceId:
+                    type: "string"
+                    description: "The service UID in the system"
+                  time:
+                    type: "integer"
+                    format: "int32"
+                    description: "The time taken to create and start the service, in milliseconds"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}:
+    get:
+      description: "Get service details"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The service details"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceLookup"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/resume:
+    post:
+      description: "Resume a service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Successfully resumed service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/stop:
+    post:
+      description: "Stop a service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Successfully resumed service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/delete:
+    post:
+      description: "Delete a service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Successfully resumed service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"

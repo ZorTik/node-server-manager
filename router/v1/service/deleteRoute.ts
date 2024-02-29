@@ -4,7 +4,7 @@ import {RouterHandler} from "../../index";
 export default async function ({engine}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/delete',
-        routes: { // TODO: Nedeletuje se ani kontejner, ani image. Jen se vypne.
+        routes: {
             post: async (req, res) => {
                 const id = req.params.id;
                 if (!id) {
