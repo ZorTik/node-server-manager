@@ -118,9 +118,9 @@ export default async function (): Promise<ServiceEngine> {
             try {
                 this.stop(id);
                 const c = client.getContainer(id);
+                const { Image } = await c.inspect();
                 await c.remove({force: true});
-                const inspect = await c.inspect()
-                await client.getImage(inspect.Image).remove({force: true});
+                await client.getImage(Image).remove({force: true});
                 return true;
             } catch (e) {
                 console.log(e);

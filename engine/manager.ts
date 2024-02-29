@@ -140,18 +140,19 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             if (!containerId) {
                 throw new Error('Failed to create container');
             }
+            const rollback = async () => {
+                await engine.delete(containerId);
+            }
             const options = {ram, cpu, ports};
-            let saved = true;
             // Save permanent info
             if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
-                saved = false;
+                await rollback();
+                throw new Error('Failed to save perma info to database');
             }
             // Save this session's info
             if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-                saved = false;
-            }
-            if (!saved) {
-                throw new Error('Failed to save session or perma info to database');
+                await rollback();
+                throw new Error('Failed to save session info to database');
             }
             return serviceId;
         },
@@ -197,7 +198,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             if (!session) {
                 return false;
             }
-            if (!await engine.stop(session.containerId)) {
+            if (!await engine.delete(session.containerId)) {
                 return false;
             }
             return db.deleteSession(id);
@@ -207,12 +208,15 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             await this.stopService(id);
             return db.deletePerma(id);
         },
+
         getTemplate(id: string): Template|undefined {
             return loadTemplate(id);
         },
+
         listServices(): Promise<string[]> {
             return db.list(nodeId);
         },
+
         listTemplates(): Promise<string[]> {
             return new Promise((resolve, reject) => {
                 fs.readdir(`${process.cwd()}/templates`, (err, files) => {

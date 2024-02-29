@@ -18,7 +18,7 @@ export type AppContext = {
     appConfig: any;
     logger: winston.Logger;
 }
-
+// TODO: Změnit hledání portu podle toho, aby nebyl zabraný jiným kontejnerem.
 let currentContext: AppContext;
 
 // App orchestration code
