@@ -4,6 +4,7 @@ import * as path from "path";
 import tar from "tar";
 import * as fs from "fs";
 import {currentContext} from "../../app";
+import ignore from "ignore";
 
 function initClient() {
     let client: DockerClient;
@@ -32,11 +33,16 @@ export default async function (): Promise<ServiceEngine> {
             if (fs.existsSync(archive)) {
                 fs.unlinkSync(archive);
             }
+            let nsmignore = fs.readdirSync(buildDir);
+            if (fs.existsSync(buildDir + '/.nsmignore')) {
+                const ig = ignore().add(fs.readFileSync(buildDir + '/.nsmignore', 'utf8').split('\n'));
+                nsmignore = ig.filter(nsmignore);
+            }
             await tar.c({
                 gzip: false,
                 file: archive,
                 cwd: buildDir
-            }, [...fs.readdirSync(buildDir)]);
+            }, [...nsmignore]);
 
             // Populate env with built-in vars
             env.SERVICE_PORT = port.toString();
@@ -74,7 +80,7 @@ export default async function (): Promise<ServiceEngine> {
                 currentContext.logger.error(e);
                 return null;
             }
-            // fs.unlinkSync(archive);
+            fs.unlinkSync(archive);
             let container: DockerClient.Container;
             try {
                 // Create container

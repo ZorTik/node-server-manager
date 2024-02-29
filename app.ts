@@ -6,6 +6,7 @@ import createDbManager from './database';
 import createServiceManager from './engine';
 import loadAddons from './addon';
 import loadAppConfig from "./configuration/appConfig";
+import loadSecurity from "./security";
 import * as r from "./configuration/resources";
 import {prepareLogger} from "./configuration/logger";
 import winston from "winston";
@@ -19,6 +20,7 @@ export type AppContext = {
     logger: winston.Logger;
 }
 // TODO: Změnit hledání portu podle toho, aby nebyl zabraný jiným kontejnerem.
+// TODO: Clearnout zdroje vypnutých služeb při startu
 let currentContext: AppContext;
 
 // App orchestration code
@@ -31,8 +33,10 @@ export default async function (router: Express): Promise<number> {
     // Service (virtualization) layer
     const engine = await createServiceManager(database, appConfig);
     currentContext = { router, engine, database, appConfig, logger };
+    // Load security
+    await loadSecurity({ ...currentContext });
+    // Load addons
     await loadAddons({ ...currentContext });
-    // TODO: Authorization (security module)
     // Load HTTP routes
     await loadAppRoutes({ ...currentContext });
 

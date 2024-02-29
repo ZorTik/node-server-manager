@@ -87,6 +87,11 @@ export type ServiceManager = {
      * @returns The list of service IDs
      */
     listServices(): Promise<string[]>;
+    /**
+     * List all available templates.
+     *
+     * @returns The list of template IDs
+     */
     listTemplates(): Promise<string[]>;
 }
 
@@ -164,9 +169,8 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             }
             const {template, options, env} = perma_;
             const {defaults} = settings(template);
-            const session = await db.getSession(id);
             const perma = await db.getPerma(id);
-            if (!session || !perma) {
+            if (!perma) {
                 return false;
             }
             // Rebuild container using existing volume directory,

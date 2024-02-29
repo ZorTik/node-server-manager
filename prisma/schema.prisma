@@ -28,3 +28,12 @@ model Service {
   options   Json
   env       Json
 }
+
+// Persistent key-value storage for system-wide attributes.
+model Meta {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -13,7 +13,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                 }
                 const result = await engine.resumeService(id);
                 if (result) {
-                    res.status(200).json({status: 200, message: 'Service stopped.'});
+                    res.status(200).json({status: 200, message: 'Service resumed.'});
                 } else {
                     res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});
                 }

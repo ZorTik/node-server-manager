@@ -7,3 +7,7 @@ node_id: 'main'
 engine: 'docker'
 # Listen port.
 port: 3000
+
+# Security
+# Supported types: 'none', 'auth_token'
+auth: 'auth_token'

@@ -82,6 +82,19 @@ export async function getPerma(serviceId: string): Promise<PermaModel|undefined>
     }
 }
 
+export async function getMetaVal(key: string, defaultVal: string): Promise<string> {
+    try {
+        let meta = await client.meta.findUnique({ where: { key } });
+        if (!meta) {
+            meta = await client.meta.create({ data: { key, value: defaultVal } });
+        }
+        return meta.value;
+    } catch (e) {
+        console.log(e);
+        return '';
+    }
+}
+
 export async function list(nodeId: string): Promise<string[]> {
     try {
         const services = await client.service.findMany({ where: { nodeId } });

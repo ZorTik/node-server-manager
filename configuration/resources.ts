@@ -14,9 +14,10 @@ export function prepareResources() {
     const cwd = process.cwd();
     if (!fs.existsSync(cwd + '/templates')) {
         fs.mkdirSync(cwd + '/templates');
-        fs.mkdirSync(cwd + '/templates/example');
+        fs.mkdirSync(cwd + '/templates/example_minecraft');
         // Copy resources to example template
-        saveResource('example_settings.yml', cwd + '/templates/example/settings.yml');
-        saveResource('example_dockerfile', cwd + '/templates/example/Dockerfile');
+        saveResource('example_settings.yml', cwd + '/templates/example_minecraft/settings.yml');
+        saveResource('example_dockerfile', cwd + '/templates/example_minecraft/Dockerfile');
+        saveResource('example_nsmignore', cwd + '/templates/example_minecraft/.nsmignore');
     }
 }

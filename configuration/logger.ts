@@ -1,8 +1,15 @@
 import winston from "winston";
+import * as fs from "fs";
 
 const { combine, timestamp, label, printf } = winston.format;
 
 export function prepareLogger() {
+    if (fs.existsSync(process.cwd() + '/logs/latest.log')) {
+        const date = new Date(Date.now()).toJSON().slice(2, 10) + '.'
+            + new Date(Date.now()).getHours() + '.'
+            + new Date(Date.now()).getMinutes();
+        fs.renameSync(process.cwd() + '/logs/latest.log', process.cwd() + '/logs/' + date + '.log');
+    }
     return winston.createLogger({
         level: 'info',
         format: combine(
@@ -14,7 +21,7 @@ export function prepareLogger() {
         ),
         transports: [
             new winston.transports.Console(),
-            new winston.transports.File({dirname: 'logs'})
+            new winston.transports.File({dirname: 'logs', filename: 'latest.log'})
         ]
     });
 }
