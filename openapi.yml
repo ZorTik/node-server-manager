@@ -26,6 +26,9 @@ components:
           format: "int32"
         message:
           type: "string"
+        statusPath:
+          type: "string"
+          description: "The PATH to check the status of the service. (Optional)"
     SessionInfo:
       type: "object"
       description: "The session information about a running service, if running"
@@ -74,7 +77,32 @@ components:
           description: "The custom variables mapped to values whose definitions are in settings.yml in template under 'env'"
         session:
           $ref: "#/components/schemas/SessionInfo"
-
+    ServiceCreateOptions:
+      type: "object"
+      properties:
+        template:
+          type: string
+          required: true
+          description: "The template ID"
+        ram:
+          type: integer
+          format: int32
+          required: false
+          description: "RAM limit, in bytes"
+        cpu:
+          type: integer
+          format: int32
+          required: false
+          description: "CPU limit, in cores"
+        disk:
+          type: integer
+          format: int32
+          required: false
+          description: "Disk limit, in bytes"
+        env:
+          type: object
+          required: false
+          description: "A map of custom variables mapped to values whose definitions are in settings.yml in template under 'env'."
 paths:
   /v1/status:
     get:
@@ -106,31 +134,7 @@ paths:
         content:
           application/json:
             schema:
-              type: "object"
-              properties:
-                template:
-                  type: string
-                  required: true
-                  description: "The template ID"
-                ram:
-                  type: integer
-                  format: int32
-                  required: false
-                  description: "RAM limit, in bytes"
-                cpu:
-                  type: integer
-                  format: int32
-                  required: false
-                  description: "CPU limit, in cores"
-                disk:
-                  type: integer
-                  format: int32
-                  required: false
-                  description: "Disk limit, in bytes"
-                env:
-                  type: object
-                  required: false
-                  description: "A map of custom variables mapped to values whose definitions are in settings.yml in template under 'env'."
+              $ref: "#/components/schemas/ServiceCreateOptions"
       responses:
         "200":
           description: "Successfully created and started service."
@@ -142,9 +146,14 @@ paths:
                   status:
                     type: "integer"
                     format: "int32"
+                  message:
+                    type: "string"
                   serviceId:
                     type: "string"
                     description: "The service UID in the system"
+                  statusPath:
+                    type: "string"
+                    description: "The PATH to check the status of the service"
                   time:
                     type: "integer"
                     format: "int32"
@@ -211,6 +220,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Result"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
   /v1/service/{serviceId}/stop:
     post:
       description: "Stop a service"
@@ -239,6 +254,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Result"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
   /v1/service/{serviceId}/delete:
     post:
       description: "Delete a service"
@@ -251,6 +272,106 @@ paths:
       responses:
         "200":
           description: "Successfully resumed service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/reboot:
+    post:
+      description: "Reboot a service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Successfully rebooted service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/powerstatus:
+    get:
+      description: "Get power status (state) of a pending service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "The power status"
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  id:
+                    type: "string"
+                    description: "The service UID in the system"
+                  status:
+                    type: "string"
+                    description: "The power status. One of: 'IDLE', 'PENDING', 'ERROR'."
+                  error:
+                    type: "string"
+                    description: "The error message, if status is 'ERROR'."
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/options:
+    post:
+      description: "Update build options of a service"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCreateOptions"
+      responses:
+        "200":
+          description: "Successfully updated options."
           content:
             application/json:
               schema:

@@ -21,6 +21,9 @@ export type AppContext = {
 }
 // TODO: Změnit hledání portu podle toho, aby nebyl zabraný jiným kontejnerem.
 // TODO: Clearnout zdroje vypnutých služeb při startu
+// TODO: Možnost změnit options pro službu
+// TODO: Přidat možnost bin IP adresy do options
+// TODO: Opravit volumes
 let currentContext: AppContext;
 
 // App orchestration code

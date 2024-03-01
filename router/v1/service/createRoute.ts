@@ -18,12 +18,6 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/create',
         routes: {
-            /*
-            {
-                "template": string,
-                "env": map
-            }
-             */
             post: async (req, res) => {
                 const beginTime = Date.now();
                 const body = req.body;
@@ -68,7 +62,9 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     const serviceId = await engine.createService(template.id, options);
                     res.status(200).json({
                         status: 200,
+                        message: 'Service create action successfully registered to be completed in a moment.',
                         serviceId,
+                        statusPath: '/v1/service/' + serviceId + '/powerstatus',
                         time: Date.now() - beginTime
                     }).end();
                 } catch (e) {

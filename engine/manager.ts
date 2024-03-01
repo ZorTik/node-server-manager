@@ -1,10 +1,12 @@
-import {Database} from "../app";
+import {currentContext, Database} from "../app";
 import createEngine, {ServiceEngine} from "./engine";
 import loadTemplate, {Template} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
+import {PermaModel} from "../database";
+import {asyncServiceRun, isServicePending} from "./asyncp";
 
 export type Options = {
     /**
@@ -75,12 +77,31 @@ export type ServiceManager = {
      */
     deleteService(id: string): Promise<boolean>;
     /**
+     * Update the options of a service.
+     *
+     * @param id The service ID
+     * @param options The new options
+     */
+    updateOptions(id: string, options: Options): Promise<boolean>;
+    /**
      * Get the template by ID.
      *
      * @param id The template ID
      * @returns The template wrapper
      */
     getTemplate(id: string): Template|undefined;
+    /**
+     * Get the service by ID.
+     *
+     * @param id The service ID
+     */
+    getService(id: string): Promise<PermaModel|undefined>;
+    /**
+     * Get the last power error of a service.
+     *
+     * @param id The service ID
+     */
+    getLastPowerError(id: string): Error|undefined;
     /**
      * List all available services.
      *
@@ -93,6 +114,14 @@ export type ServiceManager = {
      * @returns The list of template IDs
      */
     listTemplates(): Promise<string[]>;
+}
+
+// Utils
+
+function reqNoPending(id: string) {
+    if (isServicePending(id)) {
+        throw new Error('Service is pending another action.');
+    }
 }
 
 // Implementation
@@ -112,6 +141,9 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     const settings = (template: string) => {
         return loadYamlFile(buildDir(template) + '/settings.yml');
     }
+    // Save errors somewhere else?
+    // Could it be a memory leak if there are tons of them??
+    const errors = {};
     return { // Manager
         engine,
 
@@ -129,40 +161,47 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                 port_range.max as number
             );
             const serviceId = crypto.randomUUID(); // Create new unique service id
-            // Container id
-            const containerId = await engine.build(
-                buildDir(template),
-                volumeDir(serviceId),
-                {
-                    ram: ram ?? defaults.ram as number,
-                    cpu: cpu ?? defaults.cpu as number,
-                    disk: disk ?? defaults.disk as number,
-                    env: env ?? {},
-                    port: port,
-                    ports: ports ?? []
+            asyncServiceRun(serviceId, async () => {
+                // Container id
+                const containerId = await engine.build(
+                    buildDir(template),
+                    volumeDir(serviceId),
+                    {
+                        ram: ram ?? defaults.ram as number,
+                        cpu: cpu ?? defaults.cpu as number,
+                        disk: disk ?? defaults.disk as number,
+                        env: env ?? {},
+                        port: port,
+                        ports: ports ?? []
+                    }
+                );
+                if (!containerId) {
+                    throw new Error('Failed to create container');
                 }
-            );
-            if (!containerId) {
-                throw new Error('Failed to create container');
-            }
-            const rollback = async () => {
-                await engine.delete(containerId);
-            }
-            const options = {ram, cpu, ports};
-            // Save permanent info
-            if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
-                await rollback();
-                throw new Error('Failed to save perma info to database');
-            }
-            // Save this session's info
-            if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-                await rollback();
-                throw new Error('Failed to save session info to database');
-            }
+                const rollback = async () => {
+                    await engine.delete(containerId);
+                }
+                const options = {ram, cpu, ports};
+                // Save permanent info
+                if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
+                    await rollback();
+                    throw new Error('Failed to save perma info to database');
+                }
+                // Save this session's info
+                if (!await db.saveSession({ serviceId, nodeId, containerId })) {
+                    await rollback();
+                    throw new Error('Failed to save session info to database');
+                }
+            }).catch(e => {
+                // Save to be later retrieved
+                errors[serviceId] = e;
+                currentContext.logger.error(e.message);
+            });
             return serviceId;
         },
 
         async resumeService(id) {
+            reqNoPending(id);
             const perma_ = await db.getPerma(id);
             if (!perma_) {
                 return false;
@@ -173,31 +212,39 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             if (!perma) {
                 return false;
             }
-            // Rebuild container using existing volume directory,
-            // stored options and custom env variables.
-            const containerId = await engine.build(
-                buildDir(template),
-                volumeDir(id),
-                {
-                    ram: options.ram ?? defaults.ram as number,
-                    cpu: options.cpu ?? defaults.cpu as number,
-                    disk: options.disk ?? defaults.disk as number,
-                    env: env ?? defaults.env as {[key: string]: string},
-                    port: perma_.port,
-                    ports: options.ports ?? []
+            asyncServiceRun(id, async () => {
+                // Rebuild container using existing volume directory,
+                // stored options and custom env variables.
+                const containerId = await engine.build(
+                    buildDir(template),
+                    volumeDir(id),
+                    {
+                        ram: options.ram ?? defaults.ram as number,
+                        cpu: options.cpu ?? defaults.cpu as number,
+                        disk: options.disk ?? defaults.disk as number,
+                        env: env ?? defaults.env as {[key: string]: string},
+                        port: perma_.port,
+                        ports: options.ports ?? []
+                    }
+                )
+                // Save new session info
+                if (await db.saveSession({ serviceId: id, nodeId, containerId })) {
+                    return true;
+                } else {
+                    // Cleanup if err with db
+                    await engine.stop(containerId);
+                    return false;
                 }
-            )
-            // Save new session info
-            if (await db.saveSession({ serviceId: id, nodeId, containerId })) {
-                return true;
-            } else {
-                // Cleanup if err with db
-                await engine.stop(containerId);
-                return false;
-            }
+            }).then(success => {
+                if (!success) {
+                    errors[id] = new Error('Failed to resume service');
+                }
+            });
+            return true;
         },
 
         async stopService(id) {
+            reqNoPending(id);
             const session = await db.getSession(id);
             if (!session) {
                 return false;
@@ -213,8 +260,30 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             return db.deletePerma(id);
         },
 
+        async updateOptions(id: string, options: Options): Promise<boolean> {
+            reqNoPending(id);
+            const perma = await db.getPerma(id);
+            const data: PermaModel = {
+                ...perma,
+                ...options,
+                env: {
+                    ...perma.env,
+                    ...options.env
+                }
+            };
+            return db.savePerma(data);
+        },
+
         getTemplate(id: string): Template|undefined {
             return loadTemplate(id);
+        },
+
+        async getService(id: string): Promise<PermaModel | undefined> {
+            return db.getPerma(id);
+        },
+
+        getLastPowerError(id: string): Error | undefined {
+            return errors[id];
         },
 
         listServices(): Promise<string[]> {
