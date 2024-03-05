@@ -1,6 +1,13 @@
 import net from 'net';
+import {ServiceEngine} from "../engine";
 
-export async function isPortAvailable(port: number) {
+export async function isPortAvailable(engine: ServiceEngine, port: number, a_ports: number[] = undefined) {
+    if (a_ports === undefined) {
+        a_ports = await engine.listAttachedPorts();
+    }
+    if (a_ports.includes(port)) {
+        return false;
+    }
     const server = net.createServer();
     return new Promise<boolean>(resolve => {
         server.once('error', () => {
@@ -14,19 +21,20 @@ export async function isPortAvailable(port: number) {
     });
 }
 
-export async function randomPort(from: number, to: number) {
-    const checkedPorts = [];
+export async function randomPort(engine: ServiceEngine, from: number, to: number) {
+    const checked = [];
+    const all = await engine.listAttachedPorts();
     while (true) {
         const port = Math.floor(Math.random() * (to - from) + from);
-        if (checkedPorts.includes(port)) {
+        if (checked.includes(port)) {
             continue;
         }
-        if (await isPortAvailable(port)) {
+        if (await isPortAvailable(engine, port, all)) {
             return port;
         }
-        if (checkedPorts.length === to - from) {
+        if (checked.length === to - from) {
             throw new Error('No available ports');
         }
-        checkedPorts.push(port);
+        checked.push(port);
     }
 }

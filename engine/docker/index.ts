@@ -124,9 +124,9 @@ export default async function (): Promise<ServiceEngine> {
             try {
                 this.stop(id);
                 const c = client.getContainer(id);
-                const { Image } = await c.inspect();
-                await c.remove({force: true});
-                await client.getImage(Image).remove({force: true});
+                const {Image} = await c.inspect();
+                await c.remove({ force: true });
+                await client.getImage(Image).remove({ force: true });
                 return true;
             } catch (e) {
                 console.log(e);
@@ -135,8 +135,19 @@ export default async function (): Promise<ServiceEngine> {
         },
         async listContainers(templates) {
             try {
-                const containers = await client.listContainers();
-                return containers.filter(c => templates.includes(c.Image)).map(c => c.Id);
+                return (await client.listContainers())
+                    .filter(c => templates.includes(c.Image))
+                    .map(c => c.Id);
+            } catch (e) {
+                console.log(e);
+                return [];
+            }
+        },
+        async listAttachedPorts() {
+            try {
+                return (await client.listContainers())
+                    .map(c => c.Ports.map(p => p.PublicPort))
+                    .flat();
             } catch (e) {
                 console.log(e);
                 return [];

@@ -47,6 +47,7 @@ export type ServiceEngine = {
      * @return List of container IDs
      */
     listContainers(templates: string[]): Promise<string[]>;
+    listAttachedPorts(): Promise<number[]>;
 }
 
 export default async function (appConfig: any): Promise<ServiceEngine> {

@@ -4,7 +4,6 @@ import {ServiceManager} from "./engine";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import createServiceManager from './engine';
-import loadAddons from './addon';
 import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
 import * as r from "./configuration/resources";
@@ -21,7 +20,6 @@ export type AppContext = {
 }
 // TODO: Změnit hledání portu podle toho, aby nebyl zabraný jiným kontejnerem.
 // TODO: Clearnout zdroje vypnutých služeb při startu
-// TODO: Možnost změnit options pro službu
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Opravit volumes
 let currentContext: AppContext;
@@ -38,8 +36,6 @@ export default async function (router: Express): Promise<number> {
     currentContext = { router, engine, database, appConfig, logger };
     // Load security
     await loadSecurity({ ...currentContext });
-    // Load addons
-    await loadAddons({ ...currentContext });
     // Load HTTP routes
     await loadAppRoutes({ ...currentContext });
 

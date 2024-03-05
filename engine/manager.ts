@@ -46,6 +46,7 @@ export type Options = {
 
 export type ServiceManager = {
     engine: ServiceEngine;
+    nodeId: string;
 
     /**
      * Create a new service.
@@ -105,9 +106,11 @@ export type ServiceManager = {
     /**
      * List all available services.
      *
+     * @param page The page number (index)
+     * @param pageSize The page size
      * @returns The list of service IDs
      */
-    listServices(): Promise<string[]>;
+    listServices(page: number, pageSize: number): Promise<string[]>;
     /**
      * List all available templates.
      *
@@ -146,6 +149,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     const errors = {};
     return { // Manager
         engine,
+        nodeId,
 
         async createService(template, {
             ram,
@@ -157,6 +161,7 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             const {defaults, port_range} = settings(template);
             // Pick random main port from the range specified in settings.yml
             const port = await retrieveRandomPort(
+                engine,
                 port_range.min as number,
                 port_range.max as number
             );
@@ -286,8 +291,8 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             return errors[id];
         },
 
-        listServices(): Promise<string[]> {
-            return db.list(nodeId);
+        async listServices(page: number, pageSize: number): Promise<string[]> {
+            return db.list(nodeId, page, pageSize);
         },
 
         listTemplates(): Promise<string[]> {

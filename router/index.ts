@@ -11,6 +11,7 @@ type RouterInit = (context: AppContext) => Promise<RouterHandler>;
 
 // Load API by version
 async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
+    context.logger.info(`API ${ver} routes`);
     const router = Router();
     router.use(json());
     for (let init of routes) {
@@ -33,10 +34,8 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
         }
     }
     context.router.use(`/${ver}`, router);
-    context.logger.info(`Loaded API version ${ver}`);
 }
 
 export default async function (context: AppContext) {
-    context.logger.info('Routes');
     await loadApi('v1', context, v1Routes); // v1
 }

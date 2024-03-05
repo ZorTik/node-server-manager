@@ -95,12 +95,25 @@ export async function getMetaVal(key: string, defaultVal: string): Promise<strin
     }
 }
 
-export async function list(nodeId: string): Promise<string[]> {
+export async function list(nodeId: string, page: number, pageSize: number): Promise<string[]> {
     try {
-        const services = await client.service.findMany({ where: { nodeId } });
+        const services = await client.service.findMany({
+            where: { nodeId },
+            skip: page * pageSize,
+            take: pageSize,
+        });
         return services.map(s => s.serviceId);
     } catch (e) {
         console.log(e);
         return [];
+    }
+}
+
+export async function count(nodeId: string): Promise<number> {
+    try {
+        return await client.service.count({ where: { nodeId } });
+    } catch (e) {
+        console.log(e);
+        return -1;
     }
 }
