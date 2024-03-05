@@ -1,5 +1,5 @@
 # node-server-manager
-A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol.
+A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol. This is useful for creating game servers dynamically from templates.
 
 ## Installation
 There are several steps you need to do before you can start using NSM.
