@@ -1,9 +1,6 @@
 # node-server-manager
 A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol. This is useful for creating game servers dynamically from templates.
 
-# Installation
-There are several steps you need to do before you can start using NSM.
-
 ## Installation on Linux
 1. Fill up .env file from template at `.env.example`.
 2. Run `setup.sh` to install all dependencies and sync database schema.
@@ -17,7 +14,6 @@ There are several steps you need to do before you can start using NSM.
 ## Running NSM
 Run `npm start` to start the server.
 
-# Usage
 ## Creating a template
 TODO
 ## Using the NSM API for managing services
