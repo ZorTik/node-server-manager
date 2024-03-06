@@ -17,7 +17,7 @@ export default async function ({engine, database}: AppContext): Promise<RouterHa
                     meta: {
                         page,
                         pageSize,
-                        all: await database.count(engine.nodeId),
+                        total: await database.count(engine.nodeId),
                     }
                 }).end();
             }
