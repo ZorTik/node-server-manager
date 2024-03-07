@@ -54,7 +54,7 @@ export default async function (appConfig: any): Promise<ServiceEngine> {
     let id = appConfig.engine;
     let engine: ServiceEngine;
     if (id === 'docker') {
-        engine = await docker();
+        engine = await docker(appConfig);
     } else {
         throw new Error('Unsupported engine type. Please use one of: ' + ['docker'].join(', '));
     }

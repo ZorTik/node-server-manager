@@ -8,5 +8,10 @@ const server = express();
 server.use(cors());
 
 // Start the server
-app(server).then(port => {
+app(server).then(({engine, logger}) => {
+    // On SIGINT, stop all running services
+    process.once('SIGINT', async () => {
+        logger.info('Stopping running services...');
+        await engine.stopRunning();
+    });
 });

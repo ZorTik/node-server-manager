@@ -6,24 +6,27 @@ import * as fs from "fs";
 import {currentContext} from "../../app";
 import ignore from "ignore";
 
-function initClient() {
+function initClient(appConfig: { docker_host: string }) {
     let client: DockerClient;
-    if (process.env.DOCKER_HOST) {
+    if (appConfig.docker_host && (
+            appConfig.docker_host.endsWith('.sock') ||
+            appConfig.docker_host.startsWith('\\\\.\\pipe')
+    )) {
+        client = new DockerClient({socketPath: appConfig.docker_host});
+    } else if (appConfig.docker_host) {
         // http(s)://host:port
-        let host = process.env.DOCKER_HOST;
+        let host = appConfig.docker_host;
         host = host.substring(host.lastIndexOf(':'));
-        let port = parseInt(process.env.DOCKER_HOST.replace(host, ''));
+        let port = parseInt(appConfig.docker_host.replace(host, ''));
         client = new DockerClient({host, port});
-    } else if (process.env.DOCKER_SOCK) {
-        client = new DockerClient({socketPath: process.env.DOCKER_SOCK});
     } else {
-        throw new Error('Docker engine configuration env variables not found! Please set either DOCKER_HOST or DOCKER_SOCK variables.');
+        throw new Error('Docker engine configuration variable not found! Please set docker_host in config.yml or override using env.');
     }
     return client;
 }
 
-export default async function (): Promise<ServiceEngine> {
-    const client = initClient();
+export default async function (appConfig: any): Promise<ServiceEngine> {
+    const client = initClient(appConfig);
     return {
         async build(buildDir, volumeDir, {ram, cpu, disk, port, ports, env}) {
             if (!fs.existsSync(process.cwd() + '/archives')) {
@@ -136,7 +139,7 @@ export default async function (): Promise<ServiceEngine> {
         async listContainers(templates) {
             try {
                 return (await client.listContainers())
-                    .filter(c => templates.includes(c.Image))
+                    .filter(c => templates.includes(c.Image)) // TODO: c.Image není název templatu??? otestovat
                     .map(c => c.Id);
             } catch (e) {
                 console.log(e);

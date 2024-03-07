@@ -117,6 +117,7 @@ export type ServiceManager = {
      * @returns The list of template IDs
      */
     listTemplates(): Promise<string[]>;
+    stopRunning(): Promise<void>;
 }
 
 // Utils
@@ -147,6 +148,8 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     // Save errors somewhere else?
     // Could it be a memory leak if there are tons of them??
     const errors = {};
+    // Service IDs that are currently running
+    const started = [];
     return { // Manager
         engine,
         nodeId,
@@ -201,7 +204,9 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                 // Save to be later retrieved
                 errors[serviceId] = e;
                 currentContext.logger.error(e.message);
+                started.splice(started.indexOf(serviceId), 1);
             });
+            started.push(serviceId);
             return serviceId;
         },
 
@@ -243,8 +248,10 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             }).then(success => {
                 if (!success) {
                     errors[id] = new Error('Failed to resume service');
+                    started.splice(started.indexOf(id), 1);
                 }
             });
+            started.push(id);
             return true;
         },
 
@@ -305,6 +312,15 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
                     }
                 });
             });
+        },
+        async stopRunning() {
+            for (let id of started) {
+                try {
+                    await this.stopService(id);
+                } catch (e) {
+                    currentContext.logger.error(e.message);
+                }
+            }
         }
     }
 }

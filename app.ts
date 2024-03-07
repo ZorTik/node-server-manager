@@ -1,6 +1,7 @@
 import {Express, Router} from 'express';
 import {Database} from "./database";
 import {ServiceManager} from "./engine";
+import loadAddons from "./addon";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import createServiceManager from './engine';
@@ -18,31 +19,43 @@ export type AppContext = {
     appConfig: any;
     logger: winston.Logger;
 }
-// TODO: Změnit hledání portu podle toho, aby nebyl zabraný jiným kontejnerem.
 // TODO: Clearnout zdroje vypnutých služeb při startu
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Opravit volumes
 let currentContext: AppContext;
 
 // App orchestration code
-export default async function (router: Express): Promise<number> {
+export default async function (router: Express): Promise<AppContext> {
     const logger = prepareLogger();
     r.prepareResources(); // Copy resources, etc.
+
+    // Load addon steps
+    const steps = await loadAddons(logger);
+
+    steps('BEFORE_CONFIG').forEach((f) => f({ logger }));
     const appConfig = loadAppConfig();
+
     // Database connection layer
+    steps('BEFORE_DB').forEach((f) => f({ logger, appConfig }));
     const database = createDbManager();
+
     // Service (virtualization) layer
+    steps('BEFORE_ENGINE').forEach((f) => f({ logger, appConfig, database }));
     const engine = await createServiceManager(database, appConfig);
     currentContext = { router, engine, database, appConfig, logger };
+
     // Load security
+    steps('BEFORE_SECURITY').forEach((f) => f({ ...currentContext }));
     await loadSecurity({ ...currentContext });
+
     // Load HTTP routes
+    steps('BEFORE_ROUTES').forEach((f) => f({ ...currentContext }));
     await loadAppRoutes({ ...currentContext });
 
     return new Promise((resolve) => {
         router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
-            resolve(appConfig.port);
+            resolve(currentContext);
         });
     });
 }
