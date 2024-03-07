@@ -27,8 +27,10 @@ export type Addon = {
 // Load addons
 export default async function (logger: winston.Logger) {
     const addons: Addon[] = [];
-    fs.readdirSync(process.cwd() + '/addons').forEach((file) => {
-        const addon = require(process.cwd() + '/addons/' + file).default as Addon;
+    fs.readdirSync(__dirname + '/addons')
+    .filter((file) => file.endsWith('.js'))
+    .forEach((file) => {
+        const addon = require(__dirname + '/addons/' + file).default as Addon;
         if (!addon.disabled) {
             addons.push(addon);
 
