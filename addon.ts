@@ -38,10 +38,10 @@ export default async function (logger: winston.Logger) {
 
             logger.info(`Discovered addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
         }
-    });
+    }
     return <T extends keyof FunctionTypes>(step: T): FunctionTypes[T][] => {
-        return addons.map(function (a) {
-            return a.steps[step];
-        });
+        return addons
+            .filter((a) => a.steps[step])
+            .map((a) => a.steps[step]);
     }
 }
