@@ -1,4 +1,4 @@
-import {Addon} from "../addon";
+import {Addon} from "../../addon";
 import winston from "winston";
 
 async function initAfterLogger(ctx: { logger: winston.Logger }) {
@@ -7,7 +7,7 @@ async function initAfterLogger(ctx: { logger: winston.Logger }) {
 
 export default {
     name: 'example_addon',
-    disabled: true,
+    disabled: false,
     steps: {
         BEFORE_CONFIG: initAfterLogger,
     }

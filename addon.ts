@@ -28,16 +28,17 @@ export type Addon = {
 export default async function (logger: winston.Logger) {
     const addons: Addon[] = [];
     fs.readdirSync(__dirname + '/addons')
-    .filter((file) => file.endsWith('.js'))
-    .forEach((file) => {
-        const addon = require(__dirname + '/addons/' + file).default as Addon;
-        if (!addon.disabled) {
-            addons.push(addon);
+        .map((dir) => __dirname + '/addons/' + dir + '/index.js')
+        .filter((file) => fs.existsSync(file))
+        .forEach((file) => {
+            const addon = require(file).default as Addon;
+            if (!addon.disabled) {
+                addons.push(addon);
 
-            const { name, author, version } = addon;
+                const { name, author, version } = addon;
 
-            logger.info(`Discovered addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
-        }
+                logger.info(`Discovered addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
+            }
     });
     return <T extends keyof FunctionTypes>(step: T): FunctionTypes[T][] => {
         return addons

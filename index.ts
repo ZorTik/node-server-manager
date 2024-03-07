@@ -13,5 +13,6 @@ app(server).then(({engine, logger}) => {
     process.once('SIGINT', async () => {
         logger.info('Stopping running services...');
         await engine.stopRunning();
+        process.exit(0);
     });
 });
