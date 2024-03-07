@@ -27,8 +27,8 @@ export type Addon = {
 // Load addons
 export default async function (logger: winston.Logger) {
     const addons: Addon[] = [];
-    fs.readdirSync(process.cwd() + '/addons').forEach((file) => {
-        const addon = require(process.cwd() + '/addons/' + file).default as Addon;
+    for (let file of fs.readdirSync(process.cwd() + '/addons')) {
+        const addon = (await import(process.cwd() + '/addons/' + file)).default as Addon;
         if (!addon.disabled) {
             addons.push(addon);
 
@@ -36,10 +36,10 @@ export default async function (logger: winston.Logger) {
 
             logger.info(`Discovered addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
         }
-    });
+    }
     return <T extends keyof FunctionTypes>(step: T): FunctionTypes[T][] => {
-        return addons.map(function (a) {
-            return a.steps[step];
-        });
+        return addons
+            .filter((a) => a.steps[step])
+            .map((a) => a.steps[step]);
     }
 }
