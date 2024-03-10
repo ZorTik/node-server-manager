@@ -15,9 +15,9 @@ components:
         nodeId:
           type: "string"
         running:
-          type: "integer"
-          format: "int32"
-          minimum: 0
+          type: "array"
+          items:
+            type: "string"
         all:
           type: "integer"
           format: "int32"
@@ -66,9 +66,6 @@ components:
           description: "The service UID in the system"
         template:
           $ref: "#/components/schemas/TemplateLookup"
-        node:
-          type: "string"
-          description: "The node ID where the service is located"
         port:
           type: "integer"
           format: "int32"

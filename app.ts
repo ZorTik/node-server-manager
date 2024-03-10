@@ -19,7 +19,6 @@ export type AppContext = {
     appConfig: any;
     logger: winston.Logger;
 }
-// TODO: Clearnout zdroje vypnutých služeb při startu
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Opravit volumes
 let currentContext: AppContext;

@@ -119,6 +119,15 @@ export async function list(nodeId: string, page: number, pageSize: number): Prom
     }
 }
 
+export async function listSessions(nodeId: string): Promise<SessionModel[]> {
+    try {
+        return await client.session.findMany({ where: { nodeId } });
+    } catch (e) {
+        console.log(e);
+        return [];
+    }
+}
+
 export async function count(nodeId: string): Promise<number> {
     try {
         return await client.service.count({ where: { nodeId } });

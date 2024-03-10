@@ -130,7 +130,7 @@ function reqNoPending(id: string) {
 
 // Implementation
 
-export default async function (db: Database, appConfig: any): Promise<ServiceManager> {
+async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     const engine = await createEngine(appConfig);
     const nodeId = appConfig['node_id'] as string;
     // Returns the build directory for the template
@@ -145,9 +145,6 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     const settings = (template: string) => {
         return loadYamlFile(buildDir(template) + '/settings.yml');
     }
-
-    // Cleanup, all containers that belong to NSM have been already stopped
-    await db.deleteSessions(nodeId);
 
     // Save errors somewhere else?
     // Could it be a memory leak if there are tons of them??
@@ -327,4 +324,14 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
             }
         }
     }
+}
+
+export default async function (db: Database, appConfig: any): Promise<ServiceManager> {
+    const nodeId = appConfig['node_id'] as string;
+    const unclearedSessions = await db.listSessions(nodeId);
+    const manager = await init(db, appConfig);
+    for (let session of unclearedSessions) {
+        await manager.stopService(session.serviceId);
+    }
+    return manager;
 }

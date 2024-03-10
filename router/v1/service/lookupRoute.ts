@@ -21,7 +21,6 @@ export default async function ({database, engine}: AppContext): Promise<RouterHa
                         id: service.template,
                         ...template
                     },
-                    node: service.nodeId,
                     port: service.port,
                     options: service.options,
                     env: service.env,

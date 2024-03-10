@@ -4,7 +4,7 @@ import * as path from "path";
 import tar from "tar";
 import * as fs from "fs";
 import {currentContext} from "../../app";
-import ignore from "ignore";
+import ignore from "../ignore";
 
 export default function (client: DockerClient): ServiceEngine {
     return {
@@ -12,18 +12,15 @@ export default function (client: DockerClient): ServiceEngine {
             if (!fs.existsSync(process.cwd() + '/archives')) {
                 fs.mkdirSync(process.cwd() + '/archives');
             }
-            let nsmignore = fs.readdirSync(buildDir);
-            if (fs.existsSync(buildDir + '/.nsmignore')) {
-                const ig = ignore().add(fs.readFileSync(buildDir + '/.nsmignore', 'utf8').split('\n'));
-                nsmignore = ig.filter(nsmignore);
-            }
             const archive = process.cwd() + '/archives/' + path.basename(buildDir) + '.tar';
-            fs.unlinkSync(archive);
+            if (fs.existsSync(archive)) {
+                fs.unlinkSync(archive);
+            }
             await tar.c({
                 gzip: false,
                 file: archive,
                 cwd: buildDir
-            }, [...nsmignore]);
+            }, [...ignore(buildDir)]);
 
             // Populate env with built-in vars
             env.SERVICE_PORT = port.toString();
@@ -98,7 +95,8 @@ export default function (client: DockerClient): ServiceEngine {
         },
         async stop(id) {
             try {
-                if ((await client.listContainers()).map(c => c.Id).includes(id)) {
+                const list = await client.listContainers();
+                if (list.map(c => c.Id).includes(id)) {
                     await client.getContainer(id).stop();
                 }
                 return true;
@@ -116,6 +114,10 @@ export default function (client: DockerClient): ServiceEngine {
                 await client.getImage(Image).remove({ force: true });
                 return true;
             } catch (e) {
+                if (e.message.includes('No such container:')) {
+                    currentContext?.logger.warn('Container not found, ignoring...');
+                    return true;
+                }
                 console.log(e);
                 return false;
             }
@@ -123,7 +125,9 @@ export default function (client: DockerClient): ServiceEngine {
         async listContainers(templates) {
             try {
                 return (await client.listContainers())
-                    .filter(c => templates.includes(c.Image)) // TODO: c.Image není název templatu??? otestovat
+                    .filter(c => templates.some(function (t) {
+                        return c.Image.startsWith(t + ':');
+                    }))
                     .map(c => c.Id);
             } catch (e) {
                 console.log(e);

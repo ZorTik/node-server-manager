@@ -7,7 +7,7 @@ async function initAfterLogger(ctx: { logger: winston.Logger }) {
 
 export default {
     name: 'example_addon',
-    disabled: false,
+    disabled: true,
     steps: {
         BEFORE_CONFIG: initAfterLogger,
     }
