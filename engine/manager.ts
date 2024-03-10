@@ -145,6 +145,10 @@ export default async function (db: Database, appConfig: any): Promise<ServiceMan
     const settings = (template: string) => {
         return loadYamlFile(buildDir(template) + '/settings.yml');
     }
+
+    // Cleanup, all containers that belong to NSM have been already stopped
+    await db.deleteSessions(nodeId);
+
     // Save errors somewhere else?
     // Could it be a memory leak if there are tons of them??
     const errors = {};

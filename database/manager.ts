@@ -1,7 +1,7 @@
 import {PrismaClient} from "@prisma/client";
 import {PermaModel, SessionModel} from "./models";
 
-const client = new PrismaClient();
+export const client = new PrismaClient();
 
 // Database manager implementation
 
@@ -37,6 +37,16 @@ export async function savePerma(data: PermaModel): Promise<boolean> {
 export async function deleteSession(serviceId: string): Promise<boolean> {
     try {
         await client.session.delete({ where: { serviceId } });
+        return true;
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
+}
+
+export async function deleteSessions(nodeId: string): Promise<boolean> {
+    try {
+        await client.session.deleteMany({ where: { nodeId } });
         return true;
     } catch (e) {
         console.log(e);

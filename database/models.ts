@@ -1,3 +1,5 @@
+import {PrismaClient} from "@prisma/client";
+
 export type SessionModel = {
     serviceId: string,
     nodeId: string,
@@ -14,9 +16,12 @@ export type PermaModel = {
 }
 
 export type Database = {
+    client: PrismaClient;
+
     saveSession(info: SessionModel): Promise<boolean>;
     savePerma(info: PermaModel): Promise<boolean>;
     deleteSession(serviceId: string): Promise<boolean>;
+    deleteSessions(nodeId: string): Promise<boolean>;
     deletePerma(serviceId: string): Promise<boolean>;
     getSession(serviceId: string): Promise<SessionModel|undefined>;
     getPerma(serviceId: string): Promise<PermaModel|undefined>;
