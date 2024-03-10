@@ -40,7 +40,7 @@ export default async function (router: Express): Promise<AppContext> {
 
     // Service (virtualization) layer
     steps('BEFORE_ENGINE').forEach((f) => f({ logger, appConfig, database }));
-    const engine = await createServiceManager(database, appConfig);
+    const engine = await createServiceManager({ db: database, appConfig, logger });
     currentContext = { router, engine, database, appConfig, logger };
 
     // Load security

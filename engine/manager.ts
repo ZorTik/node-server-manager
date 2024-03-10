@@ -7,6 +7,7 @@ import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel} from "../database";
 import {asyncServiceRun, isServicePending} from "./asyncp";
+import winston from "winston";
 
 export type Options = {
     /**
@@ -326,8 +327,13 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     }
 }
 
-export default async function (db: Database, appConfig: any): Promise<ServiceManager> {
+export default async function ({db, appConfig, logger}: {
+    db: Database,
+    appConfig: any,
+    logger: winston.Logger
+}): Promise<ServiceManager> {
     const nodeId = appConfig['node_id'] as string;
+    logger.info(`Initializing service manager for node ${nodeId}...`)
     const unclearedSessions = await db.listSessions(nodeId);
     const manager = await init(db, appConfig);
     for (let session of unclearedSessions) {

@@ -1,6 +1,12 @@
 import {ServiceEngine} from "../";
 import DockerClient from 'dockerode';
-import buildEngine from "./engine";
+
+import build from './build';
+import stop from './stop';
+import deleteFunc from './delete';
+import attach from './attach';
+import listContainers from './listc';
+import listAttachedPorts from './listp';
 
 function initClient(appConfig: { docker_host: string }) {
     let client: DockerClient;
@@ -33,7 +39,14 @@ async function synchronizeContainers(client: DockerClient, engine: ServiceEngine
 
 export default async function (appConfig: any): Promise<ServiceEngine> {
     const client = initClient(appConfig);
-    const engine = buildEngine(client);
+    const engine: ServiceEngine = {
+        build: build(client),
+        stop: stop(client),
+        delete: deleteFunc(client),
+        attach: attach(client),
+        listContainers: listContainers(client),
+        listAttachedPorts: listAttachedPorts(client)
+    };
     await synchronizeContainers(client, engine);
     return engine;
 }

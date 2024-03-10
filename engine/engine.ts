@@ -9,13 +9,6 @@ export type BuildOptions = {
     env: {[key: string]: string};
 }
 
-export type EngineInfo = {
-    /**
-     * Amount of running services on this node.
-     */
-    runningCount: number;
-}
-
 export type ServiceEngine = {
     /**
      * (Re)builds a container from provided build dir and volume dir.
@@ -40,6 +33,7 @@ export type ServiceEngine = {
      * @return Success state
      */
     delete(id: string): Promise<boolean>;
+    attach(id: string, strIn: ReadableStream, strOut: WritableStream, keepAliveFunc: () => boolean): Promise<void>;
     /**
      * Lists container ids of containers by templates.
      *
