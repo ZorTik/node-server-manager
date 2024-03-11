@@ -3,8 +3,6 @@
 
 # ID of this node. Should be unique.
 node_id: 'main'
-# Engine used. Default is 'docker'.
-engine: 'docker'
 # Listen port.
 port: 3000
 

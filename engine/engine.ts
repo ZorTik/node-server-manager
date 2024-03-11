@@ -1,4 +1,5 @@
 import docker from "./docker";
+import DockerClient from "dockerode";
 
 export type BuildOptions = {
     port: number;
@@ -10,6 +11,8 @@ export type BuildOptions = {
 }
 
 export type ServiceEngine = {
+    client: DockerClient;
+
     /**
      * (Re)builds a container from provided build dir and volume dir.
      *
@@ -33,7 +36,6 @@ export type ServiceEngine = {
      * @return Success state
      */
     delete(id: string): Promise<boolean>;
-    attach(id: string, strIn: ReadableStream, strOut: WritableStream, keepAliveFunc: () => boolean): Promise<void>;
     /**
      * Lists container ids of containers by templates.
      *
@@ -44,13 +46,4 @@ export type ServiceEngine = {
     listAttachedPorts(): Promise<number[]>;
 }
 
-export default async function (appConfig: any): Promise<ServiceEngine> {
-    let id = appConfig.engine;
-    let engine: ServiceEngine;
-    if (id === 'docker') {
-        engine = await docker(appConfig);
-    } else {
-        throw new Error('Unsupported engine type. Please use one of: ' + ['docker'].join(', '));
-    }
-    return engine;
-}
+export default docker;

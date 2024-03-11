@@ -133,3 +133,8 @@ dist
 # Other
 templates
 volumes
+
+# Exclude all addons except the example one
+addons/*
+!addons/example_addon
+!addons/example_addon/*
