@@ -2,10 +2,14 @@ import DockerClient from "dockerode";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 
-export default function (client: DockerClient): ServiceEngine['delete'] {
+export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['delete'] {
     return async (id) => {
         try {
-            this.stop(id);
+            if (self) {
+                // del func is called on startup,
+                // this prevents it from accessing undefined 'self' stop.
+                await self.stop(id);
+            }
             const c = client.getContainer(id);
             const {Image} = await c.inspect();
             await c.remove({ force: true });

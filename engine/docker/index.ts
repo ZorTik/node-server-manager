@@ -38,14 +38,13 @@ async function synchronizeContainers(client: DockerClient, engine: ServiceEngine
 
 export default async function (appConfig: any): Promise<ServiceEngine> {
     const client = initClient(appConfig);
-    const engine: ServiceEngine = {
-        client,
-        build: build(client),
-        stop: stop(client),
-        delete: deleteFunc(client),
-        listContainers: listContainers(client),
-        listAttachedPorts: listAttachedPorts(client)
-    };
+    let engine: ServiceEngine = {} as ServiceEngine;
+    engine.client = client;
+    engine.build = build(engine, client);
+    engine.stop = stop(engine, client);
+    engine.delete = deleteFunc(engine, client);
+    engine.listContainers = listContainers(engine, client);
+    engine.listAttachedPorts = listAttachedPorts(engine, client);
     await synchronizeContainers(client, engine);
     return engine;
 }

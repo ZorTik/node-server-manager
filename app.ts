@@ -1,4 +1,4 @@
-import {Express, Router} from 'express';
+import {Router} from 'express';
 import {Database} from "./database";
 import {ServiceManager} from "./engine";
 import loadAddons from "./addon";
@@ -10,6 +10,7 @@ import loadSecurity from "./security";
 import * as r from "./configuration/resources";
 import {prepareLogger} from "./configuration/logger";
 import winston from "winston";
+import {Application} from "express-ws";
 
 // Passed context to the routes
 export type AppContext = {
@@ -24,7 +25,7 @@ export type AppContext = {
 let currentContext: AppContext;
 
 // App orchestration code
-export default async function (router: Express): Promise<AppContext> {
+export default async function (router: Application): Promise<AppContext> {
     const logger = prepareLogger();
     r.prepareResources(); // Copy resources, etc.
 
@@ -51,6 +52,8 @@ export default async function (router: Express): Promise<AppContext> {
     steps('BEFORE_ROUTES').forEach((f) => f({ ...currentContext }));
     await loadAppRoutes({ ...currentContext });
 
+    // Start the server
+    steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
     return new Promise((resolve) => {
         router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);

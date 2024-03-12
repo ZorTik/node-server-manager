@@ -6,7 +6,7 @@ import ignore from "../ignore";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 
-export default function (client: DockerClient): ServiceEngine['build'] {
+export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
     return async (buildDir, volumeDir, {ram, cpu, disk, port, ports, env}) => {
         if (!fs.existsSync(process.cwd() + '/archives')) {
             fs.mkdirSync(process.cwd() + '/archives');

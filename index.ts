@@ -1,8 +1,9 @@
 import app from "./app";
 import express from "express";
 import cors from "cors";
+import ws from "express-ws";
 
-const server = express();
+const server = ws(express()).app;
 
 // Configure server
 server.use(cors());
