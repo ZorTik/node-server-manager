@@ -1,4 +1,4 @@
-import DockerClient from "dockerode";
+import DockerClient, {Volume} from "dockerode";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
@@ -6,20 +6,36 @@ import ignore from "../ignore";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 
+function buildArchive(buildDir: string) {
+    const arDir = process.cwd() + '/archives';
+    if (!fs.existsSync(arDir)) {
+        fs.mkdirSync(arDir);
+    }
+    const archive = arDir + '/' + path.basename(buildDir) + '.tar';
+    if (fs.existsSync(archive)) {
+        fs.unlinkSync(archive);
+    }
+    return archive;
+}
+
+async function prepareVol(client: DockerClient, id: string) {
+    try {
+        await client.getVolume(id).inspect();
+    } catch (e) {
+        if (e.message.includes('No such')) {
+            await client.createVolume({ Name: id });
+        }
+    }
+    return client.getVolume(id);
+}
+
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
-    return async (buildDir, volumeDir,
+    return async (buildDir, volumeId,
                   {ram, cpu, disk, port, ports, env},
                   onclose?: () => Promise<void>|void
     ) => {
         const ctx = currentContext;
-        const arDir = process.cwd() + '/archives';
-        if (!fs.existsSync(arDir)) {
-            fs.mkdirSync(arDir);
-        }
-        const archive = arDir + '/' + path.basename(buildDir) + '.tar';
-        if (fs.existsSync(archive)) {
-            fs.unlinkSync(archive);
-        }
+        const archive = buildArchive(buildDir);
         await tar.c({
             gzip: false,
             file: archive,
@@ -33,7 +49,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         env.SERVICE_CPU = cpu.toString();
         env.SERVICE_DISK = disk.toString();
 
-        const imageTag = path.basename(buildDir) + ':' + path.basename(volumeDir);
+        const imageTag = path.basename(buildDir) + ':' + volumeId;
 
         // Build image
         const stream = await client.buildImage(archive, {
@@ -72,14 +88,21 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     'nsm': 'true',
                     'nsm.id': path.basename(buildDir),
                     'nsm.buildDir': buildDir,
-                    'nsm.volumeDir': volumeDir,
+                    'nsm.volumeId': volumeId,
                 },
                 HostConfig: {
                     Memory: ram,
                     CpuShares: cpu,
                     PortBindings: { [port + '/tcp']: [{HostPort: `${port}`}] },
                     DiskQuota: disk,
-                    //Binds: [`${volumeDir}:/service`] // Mount volume
+                    Mounts: [
+                        {
+                            Type: 'volume',
+                            Source: (await prepareVol(client, volumeId)).name,
+                            Target: '/data',
+                            ReadOnly: false,
+                        }
+                    ],
                 },
                 Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
                 ExposedPorts: { [port]: {} },

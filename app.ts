@@ -21,7 +21,6 @@ export type AppContext = {
     logger: winston.Logger;
 }
 // TODO: Přidat možnost bin IP adresy do options
-// TODO: Opravit volumes
 let currentContext: AppContext;
 
 // App orchestration code

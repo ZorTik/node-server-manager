@@ -14,6 +14,11 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             const {Image} = await c.inspect();
             await c.remove({ force: true });
             await client.getImage(Image).remove({ force: true });
+            try {
+                await client.getVolume(id).remove();
+            } catch (e) {
+                currentContext.logger.error(e);
+            }
             return true;
         } catch (e) {
             if (e.message.includes('No such container:')) {

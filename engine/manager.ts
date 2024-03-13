@@ -138,10 +138,6 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     const buildDir = (template: string) => {
         return `${process.cwd()}/templates/${template}`;
     }
-    // Returns the volume directory for the service
-    const volumeDir = (id: string) => {
-        return `${process.cwd()}/volumes/${id}`;
-    }
     // Returns the settings.yml file for the template
     const settings = (template: string) => {
         return loadYamlFile(buildDir(template) + '/settings.yml');
@@ -176,7 +172,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 // Container id
                 const containerId = await engine.build(
                     buildDir(template),
-                    volumeDir(serviceId),
+                    serviceId,
                     {
                         ram: ram ?? defaults.ram as number,
                         cpu: cpu ?? defaults.cpu as number,
@@ -236,7 +232,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 // stored options and custom env variables.
                 const containerId = await engine.build(
                     buildDir(template),
-                    volumeDir(id),
+                    id,
                     {
                         ram: options.ram ?? defaults.ram as number,
                         cpu: options.cpu ?? defaults.cpu as number,

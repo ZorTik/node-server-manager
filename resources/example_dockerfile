@@ -5,7 +5,7 @@ ARG JAVA_VERSION
 FROM openjdk:$JAVA_VERSION
 
 # Don't change this!
-WORKDIR /service
+WORKDIR /data
 COPY . .
 
 # Built-in args. Don't change.

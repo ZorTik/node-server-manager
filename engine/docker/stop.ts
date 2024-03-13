@@ -10,7 +10,9 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             }
             return true;
         } catch (e) {
-            console.log(e);
+            if (!e.message.includes('container already stopped')) {
+                console.log(e);
+            }
             return false;
         }
     }
