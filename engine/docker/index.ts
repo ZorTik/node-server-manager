@@ -13,7 +13,7 @@ function initClient(appConfig: { docker_host: string }) {
             appConfig.docker_host.endsWith('.sock') ||
             appConfig.docker_host.startsWith('\\\\.\\pipe')
     )) {
-        client = new DockerClient({socketPath: appConfig.docker_host});
+        client = new DockerClient({ socketPath: appConfig.docker_host });
     } else if (appConfig.docker_host) {
         // http(s)://host:port
         let host = appConfig.docker_host;
@@ -38,7 +38,7 @@ async function synchronizeContainers(client: DockerClient, engine: ServiceEngine
 
 export default async function (appConfig: any): Promise<ServiceEngine> {
     const client = initClient(appConfig);
-    let engine: ServiceEngine = {} as ServiceEngine;
+    const engine: ServiceEngine = {} as ServiceEngine;
     engine.client = client;
     engine.build = build(engine, client);
     engine.stop = stop(engine, client);

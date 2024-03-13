@@ -7,11 +7,16 @@ import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
-    return async (buildDir, volumeDir, {ram, cpu, disk, port, ports, env}) => {
-        if (!fs.existsSync(process.cwd() + '/archives')) {
-            fs.mkdirSync(process.cwd() + '/archives');
+    return async (buildDir, volumeDir,
+                  {ram, cpu, disk, port, ports, env},
+                  onclose?: () => Promise<void>|void
+    ) => {
+        const ctx = currentContext;
+        const arDir = process.cwd() + '/archives';
+        if (!fs.existsSync(arDir)) {
+            fs.mkdirSync(arDir);
         }
-        const archive = process.cwd() + '/archives/' + path.basename(buildDir) + '.tar';
+        const archive = arDir + '/' + path.basename(buildDir) + '.tar';
         if (fs.existsSync(archive)) {
             fs.unlinkSync(archive);
         }
@@ -46,7 +51,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                                 reject(r.errorDetail.message);
                                 return;
                             } else {
-                                currentContext.logger.info(r.stream?.trim());
+                                ctx.logger.info(r.stream?.trim());
                             }
                         }
                         resolve(res);
@@ -54,7 +59,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 })
             });
         } catch (e) {
-            currentContext.logger.error(e);
+            ctx.logger.error(e);
             return null;
         }
         fs.unlinkSync(archive);
@@ -72,18 +77,24 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 HostConfig: {
                     Memory: ram,
                     CpuShares: cpu,
-                    PortBindings: {
-                        [port + '/tcp']: [{HostPort: `${port}`}]
-                    },
+                    PortBindings: { [port + '/tcp']: [{HostPort: `${port}`}] },
                     DiskQuota: disk,
                     //Binds: [`${volumeDir}:/service`] // Mount volume
                 },
                 Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-                ExposedPorts: {
-                    [port]: {}
-                },
+                ExposedPorts: { [port]: {} },
+                AttachStdin: true,
+                OpenStdin: true,
             });
             await container.start();
+            // Watcher
+            setTimeout(async () => {
+                const rws = await client.getContainer(container.id).attach({ stream: true, stdout: true, hijack: true });
+                rws.on('data', () => {}); // no-op, keepalive
+                rws.on('end', async () => {
+                    await onclose();
+                });
+            }, 500);
         } catch (e) {
             if (!container) {
                 await client.getImage(imageTag).remove({ force: true });

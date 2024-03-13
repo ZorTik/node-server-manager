@@ -19,9 +19,10 @@ export type ServiceEngine = {
      * @param buildDir The image build dir
      * @param volumeDir The volume dir
      * @param options Build options
+     * @param onclose Function on internal container close
      * @return ID of created container
      */
-    build(buildDir: string, volumeDir: string, options: BuildOptions): Promise<string>; // Container ID (local)
+    build(buildDir: string, volumeDir: string, options: BuildOptions, onclose?: () => Promise<void>|void): Promise<string>; // Container ID (local)
     /**
      * Stops a container.
      *

@@ -171,6 +171,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 port_range.max as number
             );
             const serviceId = crypto.randomUUID(); // Create new unique service id
+            const self = this;
             asyncServiceRun(serviceId, async () => {
                 // Container id
                 const containerId = await engine.build(
@@ -183,6 +184,9 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                         env: env ?? {},
                         port: port,
                         ports: ports ?? []
+                    },
+                    async () => {
+                        await self.stopService(serviceId);
                     }
                 );
                 if (!containerId) {
@@ -224,6 +228,9 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             if (!perma) {
                 return false;
             }
+
+            const self = this;
+
             asyncServiceRun(id, async () => {
                 // Rebuild container using existing volume directory,
                 // stored options and custom env variables.
@@ -237,6 +244,9 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                         env: env ?? defaults.env as {[key: string]: string},
                         port: perma_.port,
                         ports: options.ports ?? []
+                    },
+                    async () => {
+                        await self.stopService(id);
                     }
                 )
                 // Save new session info
