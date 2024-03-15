@@ -133,6 +133,10 @@ paths:
                   type: "integer"
                   format: "int32"
                   description: "The page size"
+                all:
+                  type: "boolean"
+                  description: "Whether or not we should include services from other nodes."
+                  required: false
       responses:
         "200":
           description: "List of service IDs"

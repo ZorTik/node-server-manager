@@ -110,9 +110,10 @@ export type ServiceManager = {
      *
      * @param page The page number (index)
      * @param pageSize The page size
+     * @param all Include services from other nodes, default false
      * @returns The list of service IDs
      */
-    listServices(page: number, pageSize: number): Promise<string[]>;
+    listServices(page: number, pageSize: number, all?: boolean): Promise<string[]>;
     /**
      * List all available templates.
      *
@@ -334,8 +335,8 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             return errors[id];
         },
 
-        async listServices(page: number, pageSize: number): Promise<string[]> {
-            return db.list(nodeId, page, pageSize);
+        async listServices(page: number, pageSize: number, all?: boolean): Promise<string[]> {
+            return db.list((all ?? false) ? undefined : nodeId, page, pageSize);
         },
 
         listTemplates(): Promise<string[]> {
@@ -349,6 +350,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 });
             });
         },
+
         async stopRunning() {
             for (let id of started) {
                 try {

@@ -109,10 +109,10 @@ export async function getMetaVal(key: string, defaultVal: string): Promise<strin
     }
 }
 
-export async function list(nodeId: string, page: number, pageSize: number): Promise<string[]> {
+export async function list(nodeId: string|undefined, page: number, pageSize: number): Promise<string[]> {
     try {
         const services = await client.service.findMany({
-            where: { nodeId },
+            ...nodeId ? { where: { nodeId } } : {},
             skip: page * pageSize,
             take: pageSize,
         });
