@@ -5,7 +5,7 @@ import ws from "express-ws";
 
 const server = ws(express()).app;
 
-let status = "running";
+export let status = "running";
 
 // Configure server
 server.use(cors());
@@ -20,5 +20,3 @@ app(server).then(({engine, logger}) => {
         process.exit(0);
     });
 });
-
-export { status }

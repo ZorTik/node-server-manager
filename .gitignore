@@ -139,5 +139,7 @@ addons/*
 !addons/example_addon
 !addons/example_addon/*
 
+package-lock.json
+
 # prisma
 /prisma/migrations/

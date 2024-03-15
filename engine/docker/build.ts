@@ -6,7 +6,7 @@ import ignore from "../ignore";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 
-function buildArchive(buildDir: string) {
+function buildArch(buildDir: string) {
     const arDir = process.cwd() + '/archives';
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
@@ -35,7 +35,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                   onclose?: () => Promise<void>|void
     ) => {
         const ctx = currentContext;
-        const archive = buildArchive(buildDir);
+        const archive = buildArch(buildDir);
         await tar.c({
             gzip: false,
             file: archive,
