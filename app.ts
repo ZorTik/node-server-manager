@@ -21,6 +21,7 @@ export type AppContext = {
     logger: winston.Logger;
 }
 // TODO: Přidat možnost bin IP adresy do options
+// TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
 let currentContext: AppContext;
 
 // App orchestration code

@@ -8,6 +8,7 @@ import * as fs from "fs";
 import {PermaModel} from "../database";
 import {asyncServiceRun, isServicePending} from "./asyncp";
 import winston from "winston";
+import {status} from "../index";
 
 export type Options = {
     /**
@@ -124,6 +125,10 @@ export type ServiceManager = {
 // Utils
 
 function reqNoPending(id: string) {
+    if (status === "stopping") {
+        // If the NSM engine is in stopping state, ignore this
+        return;
+    }
     if (isServicePending(id)) {
         throw new Error('Service is pending another action.');
     }
@@ -220,8 +225,12 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             }
             const {template, options, env} = perma_;
             const {defaults} = settings(template);
-            const perma = await db.getPerma(id);
-            if (!perma) {
+            // Service is already running
+            if (await db.getSession(id)) {
+                return false;
+            }
+            // Service does not exist
+            if (!await db.getPerma(id)) {
                 return false;
             }
 
@@ -269,10 +278,14 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             if (!session) {
                 return false;
             }
-            if (!await engine.delete(session.containerId)) {
+
+            await engine.stop(id);
+
+            if (await engine.delete(session.containerId)) {
+                return db.deleteSession(id);
+            } else {
                 return false;
             }
-            return db.deleteSession(id);
         },
 
         async deleteService(id) {

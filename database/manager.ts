@@ -39,7 +39,9 @@ export async function deleteSession(serviceId: string): Promise<boolean> {
         await client.session.delete({ where: { serviceId } });
         return true;
     } catch (e) {
-        console.log(e);
+        if (!e.message.includes('does not exist')) {
+            console.log(e);
+        }
         return false;
     }
 }
@@ -49,7 +51,9 @@ export async function deleteSessions(nodeId: string): Promise<boolean> {
         await client.session.deleteMany({ where: { nodeId } });
         return true;
     } catch (e) {
-        console.log(e);
+        if (!e.message.includes('does not exist')) {
+            console.log(e);
+        }
         return false;
     }
 }

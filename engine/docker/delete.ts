@@ -21,8 +21,8 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             }
             return true;
         } catch (e) {
-            if (e.message.includes('No such container:')) {
-                currentContext?.logger.warn('Container not found, ignoring...');
+            if (e.message.includes('No such container:') || e.message.includes('removal of container')) {
+                currentContext?.logger.warn('Ignoring error: ' + e.message);
                 return true;
             }
             console.log(e);

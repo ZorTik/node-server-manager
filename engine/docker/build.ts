@@ -18,7 +18,7 @@ function buildArchive(buildDir: string) {
     return archive;
 }
 
-async function prepareVol(client: DockerClient, id: string) {
+async function prepVol(client: DockerClient, id: string) {
     try {
         await client.getVolume(id).inspect();
     } catch (e) {
@@ -62,14 +62,14 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     if (err) {
                         reject(err);
                     } else {
-                        for (const r of res) {
+                        res.forEach(r => {
                             if (r.errorDetail) {
                                 reject(r.errorDetail.message);
                                 return;
                             } else {
                                 ctx.logger.info(r.stream?.trim());
                             }
-                        }
+                        });
                         resolve(res);
                     }
                 })
@@ -98,7 +98,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     Mounts: [
                         {
                             Type: 'volume',
-                            Source: (await prepareVol(client, volumeId)).name,
+                            Source: (await prepVol(client, volumeId)).name,
                             Target: '/data',
                             ReadOnly: false,
                         }

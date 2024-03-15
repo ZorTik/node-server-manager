@@ -10,6 +10,8 @@ export type BuildOptions = {
     env: {[key: string]: string};
 }
 
+export type SigType = 'SIGINT';
+
 export type ServiceEngine = {
     client: DockerClient;
 
