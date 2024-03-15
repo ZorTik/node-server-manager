@@ -140,3 +140,6 @@ addons/*
 !addons/example_addon/*
 
 package-lock.json
+
+# prisma
+/prisma/migrations/
