@@ -27,7 +27,8 @@ function initClient(appConfig: { docker_host: string }) {
 }
 
 async function synchronizeContainers(client: DockerClient, engine: ServiceEngine) {
-    const list = await client.listContainers({ all: true, filters: { 'label': ['nsm=true'] } });
+    const options: DockerClient.ContainerListOptions = { all: true, filters: JSON.stringify({ 'label': ['nsm=true'] }) };
+    const list = await client.listContainers(options);
     for (const c of list) {
         if (c.State !== 'running') {
             continue;
