@@ -39,6 +39,7 @@ export type ServiceEngine = {
      * @return Success state
      */
     delete(id: string): Promise<boolean>;
+    deleteVolume(id: string): Promise<boolean>;
     /**
      * Lists container ids of containers by templates.
      *

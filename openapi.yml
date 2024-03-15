@@ -251,6 +251,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Result"
+        "409":
+          description: "Conflict, service is already running"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
         "500":
           description: "Internal server error"
           content:
@@ -281,6 +287,12 @@ paths:
                 $ref: "#/components/schemas/Result"
         "404":
           description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "409":
+          description: "Conflict, service is not running"
           content:
             application/json:
               schema:

@@ -122,6 +122,17 @@ export type ServiceManager = {
     stopRunning(): Promise<void>;
 }
 
+// 1 = unknown, 2 = conflict, 3 = not found
+export type StatusCode = 1 | 2 | 3;
+
+class _InternalError extends Error {
+    readonly code: StatusCode;
+    constructor(msg: string, code?: StatusCode) {
+        super(msg);
+        this.code = code ?? 1;
+    }
+}
+
 // Utils
 
 function reqNoPending(id: string) {
@@ -191,7 +202,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                     }
                 );
                 if (!containerId) {
-                    throw new Error('Failed to create container');
+                    throw new _InternalError('Failed to create container');
                 }
                 const rollback = async () => {
                     await engine.delete(containerId);
@@ -200,39 +211,41 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 // Save permanent info
                 if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
                     await rollback();
-                    throw new Error('Failed to save perma info to database');
+                    throw new _InternalError('Failed to save perma info to database');
                 }
                 // Save this session's info
                 if (!await db.saveSession({ serviceId, nodeId, containerId })) {
                     await rollback();
-                    throw new Error('Failed to save session info to database');
+                    throw new _InternalError('Failed to save session info to database');
                 }
+                started.push(serviceId);
             }).catch(e => {
                 // Save to be later retrieved
                 errors[serviceId] = e;
                 currentContext.logger.error(e.message);
                 started.splice(started.indexOf(serviceId), 1);
             });
-            started.push(serviceId);
+            const e = errors[serviceId];
+            if (e) {
+                throw e;
+            }
             return serviceId;
         },
 
         async resumeService(id) {
             reqNoPending(id);
             const perma_ = await db.getPerma(id);
+            // Service does not exist
             if (!perma_) {
-                return false;
+                throw new _InternalError('Not found.', 3);
             }
-            const {template, options, env} = perma_;
-            const {defaults} = settings(template);
             // Service is already running
             if (await db.getSession(id)) {
-                return false;
+                throw new _InternalError('Already running.', 2);
             }
-            // Service does not exist
-            if (!await db.getPerma(id)) {
-                return false;
-            }
+
+            const {template, options, env} = perma_;
+            const {defaults} = settings(template);
 
             const self = this;
 
@@ -256,6 +269,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 )
                 // Save new session info
                 if (await db.saveSession({ serviceId: id, nodeId, containerId })) {
+                    started.push(id);
                     return true;
                 } else {
                     // Cleanup if err with db
@@ -268,7 +282,6 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                     started.splice(started.indexOf(id), 1);
                 }
             });
-            started.push(id);
             return true;
         },
 
@@ -276,13 +289,14 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             reqNoPending(id);
             const session = await db.getSession(id);
             if (!session) {
-                return false;
+                throw new _InternalError("This service is not running.", 2);
             }
 
             await engine.stop(id);
 
-            if (await engine.delete(session.containerId)) {
-                return db.deleteSession(id);
+            if (await engine.delete(session.containerId) && await db.deleteSession(id)) {
+                started.splice(started.indexOf(id), 1);
+                return true;
             } else {
                 return false;
             }
@@ -290,6 +304,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
 
         async deleteService(id) {
             await this.stopService(id);
+            await engine.deleteVolume(id);
             return db.deletePerma(id);
         },
 

@@ -1,5 +1,6 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
+import {handleErr} from "../../../util/routes";
 
 export default async function ({engine}: AppContext): Promise<RouterHandler> {
     return {
@@ -26,7 +27,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                         });
                     }
                 } catch (e) {
-                    res.status(500).json({status: 500, message: e.message});
+                    handleErr(e, res);
                 }
             }
         },

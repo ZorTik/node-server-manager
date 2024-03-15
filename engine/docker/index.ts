@@ -4,6 +4,7 @@ import DockerClient from 'dockerode';
 import build from './build';
 import stop from './stop';
 import deleteFunc from './delete';
+import deleteVolume from './deletev';
 import listContainers from './listc';
 import listAttachedPorts from './listp';
 
@@ -44,6 +45,7 @@ export default async function (appConfig: any): Promise<ServiceEngine> {
     engine.build = build(engine, client);
     engine.stop = stop(engine, client);
     engine.delete = deleteFunc(engine, client);
+    engine.deleteVolume = deleteVolume(engine, client);
     engine.listContainers = listContainers(engine, client);
     engine.listAttachedPorts = listAttachedPorts(engine, client);
     await synchronizeContainers(client, engine);
