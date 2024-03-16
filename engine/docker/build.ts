@@ -50,6 +50,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         env.SERVICE_DISK = disk.toString();
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
+        console.log(process.cwd() + '/mounts/' + volumeId);
 
         // Build image
         const stream = await client.buildImage(archive, {
@@ -97,8 +98,8 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     DiskQuota: disk,
                     Mounts: [
                         {
-                            Type: 'volume',
-                            Source: (await prepVol(client, volumeId)).name,
+                            Type: 'bind',
+                            Source: process.cwd() + '/volumes/' + volumeId,
                             Target: '/data',
                             ReadOnly: false,
                         }

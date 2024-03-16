@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 export default async function ({database, router, logger}: AppContext) {
     const token_new = crypto.randomBytes(30).toString('hex');
-    const token = await database.getMetaVal('auth_basic_token', token_new);
+    const token = await database.getMetaVal('auth:basic_token', token_new);
     router.use((req, res, next) => {
         if (!req.header('Authorization') || req.header('Authorization') != token) {
             res.status(401).json({ status: 401, message: 'Unauthorized. Invalid \'Authorization\' header.' });

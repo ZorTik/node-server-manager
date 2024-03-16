@@ -22,7 +22,6 @@ export type AppContext = {
 }
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
-// TODO: Rozlišovat chybové stavy u endpointů
 // TODO: Transfer mezi nody
 let currentContext: AppContext;
 

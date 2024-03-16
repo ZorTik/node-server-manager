@@ -96,10 +96,13 @@ export async function getPerma(serviceId: string): Promise<PermaModel|undefined>
     }
 }
 
-export async function getMetaVal(key: string, defaultVal: string): Promise<string> {
+export async function getMetaVal(key: string, defaultVal?: string): Promise<string> {
     try {
         let meta = await client.meta.findUnique({ where: { key } });
         if (!meta) {
+            if (!defaultVal) {
+                return defaultVal;
+            }
             meta = await client.meta.create({ data: { key, value: defaultVal } });
         }
         return meta.value;

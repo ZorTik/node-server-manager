@@ -49,6 +49,7 @@ export type Options = {
 export type ServiceManager = {
     engine: ServiceEngine;
     nodeId: string;
+    volumesDir: string;
 
     /**
      * Create a new service.
@@ -151,6 +152,7 @@ function reqNoPending(id: string) {
 async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     const engine = await createEngine(appConfig);
     const nodeId = appConfig['node_id'] as string;
+    const volumesDir = process.cwd() + '/volumes';
     // Returns the build directory for the template
     const buildDir = (template: string) => {
         return `${process.cwd()}/templates/${template}`;
@@ -168,6 +170,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     return { // Manager
         engine,
         nodeId,
+        volumesDir,
 
         async createService(template, {
             ram,
