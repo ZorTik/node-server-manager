@@ -79,7 +79,10 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             ctx.logger.error(e);
             return null;
         }
+
         fs.unlinkSync(archive);
+        fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
+
         let container: DockerClient.Container;
         try {
             // Create container
