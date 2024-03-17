@@ -129,6 +129,7 @@ export type StatusCode = 1 | 2 | 3;
 
 class _InternalError extends Error {
     readonly code: StatusCode;
+
     constructor(msg: string, code?: StatusCode) {
         super(msg);
         this.code = code ?? 1;
@@ -167,6 +168,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
     const errors = {};
     // Service IDs that are currently running
     const started = [];
+
     return { // Manager
         engine,
         nodeId,
@@ -281,7 +283,9 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                     return false;
                 }
             }).then(success => {
-                if (!success) {
+                if (success) {
+                    // TODO
+                } else {
                     errors[id] = new Error('Failed to resume service');
                     started.splice(started.indexOf(id), 1);
                 }
@@ -372,7 +376,9 @@ export default async function ({db, appConfig, logger}: {
     logger: winston.Logger
 }): Promise<ServiceManager> {
     const nodeId = appConfig['node_id'] as string;
+
     logger.info(`Initializing service manager for node ${nodeId}...`)
+
     const unclearedSessions = await db.listSessions(nodeId);
     const manager = await init(db, appConfig);
     for (let session of unclearedSessions) {

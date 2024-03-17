@@ -11,6 +11,7 @@ type FunctionTypes = {
     'BEFORE_SECURITY': (ctx: AppContext) => Promise<void>;
     'BEFORE_ROUTES': (ctx: AppContext) => Promise<void>;
     'BEFORE_SERVER': (ctx: AppContext) => Promise<void>;
+    'EXIT': (ctx: AppContext) => Promise<void>;
 }
 
 export type Moment = keyof FunctionTypes;

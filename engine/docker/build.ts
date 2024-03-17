@@ -50,7 +50,6 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         env.SERVICE_DISK = disk.toString();
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
-        console.log(process.cwd() + '/mounts/' + volumeId);
 
         // Build image
         const stream = await client.buildImage(archive, {

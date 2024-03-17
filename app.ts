@@ -12,6 +12,8 @@ import {prepareLogger} from "./configuration/logger";
 import winston from "winston";
 import {Application} from "express-ws";
 
+export type AppBootContext = AppContext & { steps: any };
+
 // Passed context to the routes
 export type AppContext = {
     router: Router;
@@ -19,7 +21,7 @@ export type AppContext = {
     database: Database;
     appConfig: any;
     logger: winston.Logger;
-}
+};
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
 // TODO: Opravit mounts
@@ -27,7 +29,7 @@ export type AppContext = {
 let currentContext: AppContext;
 
 // App orchestration code
-export default async function (router: Application): Promise<AppContext> {
+export default async function (router: Application): Promise<AppBootContext> {
     const logger = prepareLogger();
     r.prepareResources(); // Copy resources, etc.
 
@@ -59,7 +61,7 @@ export default async function (router: Application): Promise<AppContext> {
     return new Promise((resolve) => {
         router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
-            resolve(currentContext);
+            resolve({ ...currentContext, steps });
         });
     });
 }
