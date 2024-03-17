@@ -4,7 +4,7 @@
   "description": "A new service control engine, built on docker.",
   "main": "index.js",
   "scripts": {
-    "start": "tsc && tscp && node dist/index.js",
+    "start": "node installTempDeps.js && tsc && tscp && node dist/index.js",
     "test": "jest"
   },
   "keywords": [],
@@ -16,6 +16,7 @@
     "@babel/preset-typescript": "^7.23.3",
     "@jest/globals": "^29.7.0",
     "babel-jest": "^29.7.0",
+    "check-disk-space": "^3.4.0",
     "express-ws": "^5.0.2",
     "prisma": "^5.10.2",
     "typescript": "^5.3.3",
@@ -32,6 +33,7 @@
     "@types/uuid": "^9.0.8",
     "@types/winston": "^2.4.4",
     "@types/yaml": "^1.9.7",
+    "basic-ftp": "^5.0.5",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dockerode": "^4.0.2",

@@ -8,10 +8,10 @@ import {ServiceEngine} from "../engine";
 
 function buildArch(buildDir: string) {
     const arDir = process.cwd() + '/archives';
+    const archive = arDir + '/' + path.basename(buildDir) + '.tar';
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
     }
-    const archive = arDir + '/' + path.basename(buildDir) + '.tar';
     if (fs.existsSync(archive)) {
         fs.unlinkSync(archive);
     }
@@ -101,8 +101,8 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     DiskQuota: disk,
                     Mounts: [
                         {
-                            Type: 'bind',
-                            Source: process.cwd() + '/volumes/' + volumeId,
+                            Type: 'volume',
+                            Source: (await prepVol(client, volumeId)).name,
                             Target: '/data',
                             ReadOnly: false,
                         }

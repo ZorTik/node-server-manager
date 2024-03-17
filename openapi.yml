@@ -22,6 +22,21 @@ components:
           type: "integer"
           format: "int32"
           minimum: 0
+        system:
+          type: "object"
+          properties:
+            totalmem:
+              type: "number"
+              format: "int32"
+            freemem:
+              type: "number"
+              format: "int32"
+            totaldisk:
+              type: "number"
+              format: "int32"
+            freedisk:
+              type: "number"
+              format: "int32"
     Result:
       type: "object"
       properties:

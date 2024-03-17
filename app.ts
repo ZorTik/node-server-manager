@@ -22,7 +22,8 @@ export type AppContext = {
 }
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
-// TODO: Transfer mezi nody
+// TODO: Opravit mounts
+// TODO: Install temporary libs from libraries.txt on build
 let currentContext: AppContext;
 
 // App orchestration code
