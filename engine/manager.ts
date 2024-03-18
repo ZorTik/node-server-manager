@@ -6,7 +6,7 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel} from "../database";
-import {asyncServiceRun, isServicePending} from "./asyncp";
+import {asyncServiceRun, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
 import winston from "winston";
 import {status} from "../index";
 
@@ -190,7 +190,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
             );
             const serviceId = crypto.randomUUID(); // Create new unique service id
             const self = this;
-            asyncServiceRun(serviceId, async () => {
+            asyncServiceRun(serviceId, 'create', async () => {
                 // Container id
                 const containerId = await engine.build(
                     buildDir(template),
@@ -255,7 +255,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
 
             const self = this;
 
-            asyncServiceRun(id, async () => {
+            asyncServiceRun(id, 'resume', async () => {
                 // Rebuild container using existing volume directory,
                 // stored options and custom env variables.
                 const containerId = await engine.build(
@@ -300,13 +300,22 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                 throw new _InternalError("This service is not running.", 2);
             }
 
-            await engine.stop(id);
+            lckStatusTp(session.containerId, 'stop');
 
-            if (await engine.delete(session.containerId) && await db.deleteSession(id)) {
-                started.splice(started.indexOf(id), 1);
-                return true;
-            } else {
-                return false;
+            try {
+                await engine.stop(session.containerId);
+
+                const one = await engine.delete(session.containerId);
+                const two = await db.deleteSession(id);
+
+                if (one && two) {
+                    started.splice(started.indexOf(id), 1);
+                    return true;
+                } else {
+                    return false;
+                }
+            } finally {
+                ulckStatusTp(session.containerId);
             }
         },
 

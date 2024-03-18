@@ -5,6 +5,7 @@ import tar from "tar";
 import ignore from "../ignore";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
+import {getActionType} from "../asyncp";
 
 function buildArch(buildDir: string) {
     const arDir = process.cwd() + '/archives';
@@ -118,7 +119,11 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 const rws = await client.getContainer(container.id).attach({ stream: true, stdout: true, hijack: true });
                 rws.on('data', () => {}); // no-op, keepalive
                 rws.on('end', async () => {
-                    await onclose();
+                    // I only want to trigger close when the container is not being
+                    // stopped by nsm to prevent loops.
+                    if (getActionType(container.id) != 'stop') {
+                        await onclose();
+                    }
                 });
             }, 500);
         } catch (e) {
