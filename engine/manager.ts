@@ -311,7 +311,14 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
         },
 
         async deleteService(id) {
-            await this.stopService(id);
+            try {
+                await this.stopService(id);
+            } catch (e) {
+                // Skip not running error
+                if (!(e.code && e.code == 2)) {
+                    throw e;
+                }
+            }
             await engine.deleteVolume(id);
             return db.deletePerma(id);
         },
