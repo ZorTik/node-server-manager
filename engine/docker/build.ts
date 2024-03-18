@@ -7,18 +7,6 @@ import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
 
-function buildArch(buildDir: string) {
-    const arDir = process.cwd() + '/archives';
-    const archive = arDir + '/' + path.basename(buildDir) + '.tar';
-    if (!fs.existsSync(arDir)) {
-        fs.mkdirSync(arDir);
-    }
-    if (fs.existsSync(archive)) {
-        fs.unlinkSync(archive);
-    }
-    return archive;
-}
-
 async function prepVol(client: DockerClient, id: string) {
     try {
         await client.getVolume(id).inspect();
@@ -31,12 +19,23 @@ async function prepVol(client: DockerClient, id: string) {
 }
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
+    const arDir = process.cwd() + '/archives';
+    if (!fs.existsSync(arDir)) {
+        fs.mkdirSync(arDir);
+    }
     return async (buildDir, volumeId,
                   {ram, cpu, disk, port, ports, env},
                   onclose?: () => Promise<void>|void
     ) => {
         const ctx = currentContext;
-        const archive = buildArch(buildDir);
+        const archive = arDir + '/' + path.basename(buildDir) + '.tar';
+        try {
+            fs.unlinkSync(archive);
+        } catch (e) {
+            if (!e.message.includes('ENOENT')) {
+                throw e;
+            }
+        }
         await tar.c({
             gzip: false,
             file: archive,
