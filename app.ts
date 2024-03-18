@@ -57,10 +57,11 @@ export default async function (router: Application): Promise<AppBootContext> {
     // Start the server
     steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
     return new Promise((resolve) => {
-        router.listen(appConfig.port, () => {
+        const srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
             resolve({ ...currentContext, steps });
         });
+        steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
     });
 }
 

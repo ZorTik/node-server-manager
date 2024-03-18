@@ -1,1 +1,5 @@
-{}
+{
+   "ignored_files": ['node_modules', '.idea'],
+   "compiled_files": ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+   "use_ts_exclude": true
+}
