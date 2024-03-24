@@ -11,7 +11,7 @@ To prepare NSM for production, go to the directory where you want to have NSM in
 3. Edit default configuration in `config.yml` or override it using env variables (More info in config.yml)
 4. Run `npm install`
 5. Run `npx prisma generate` to generate Prisma client
-6. Run `npx prisma migrate dev --name init` to sync database schema
+6. Run `npx prisma migrate dev --name <choose_migration_name>` to sync database schema
 7. Run `npm run build` to build the project
 
 ## Running NSM
@@ -20,7 +20,7 @@ Run `npm start` to start the server.
 ## Integrating addons
 To integrate new addon, you need to either create your own one from template at `addons/example_addon` or download one and put it in the `addons` folder.
 Then, follow these steps:
-1. Download or create an addon in `addons/<youraddonidhere>` directory
+1. Download or create an addon in `addons/<your_addon_id_here>` directory
 2. Run `npm run build` to rebuild the project
 
 ## Creating a template
