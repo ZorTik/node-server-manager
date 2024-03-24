@@ -2,6 +2,7 @@ import app from "./app";
 import express from "express";
 import cors from "cors";
 import ws from "express-ws";
+import temp from "temp";
 
 const server = ws(express()).app;
 
@@ -9,6 +10,10 @@ export let status = "running";
 
 // Configure server
 server.use(cors());
+
+// Track temporary files and make sure
+// they are cleaned up
+temp.track();
 
 // Start the server
 app(server).then((ctx) => {
