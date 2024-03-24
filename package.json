@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
-    "start": "node dist/index.js",
+    "start": "node installTempDeps.js && node dist/index.js",
     "test": "jest"
   },
   "keywords": [],
