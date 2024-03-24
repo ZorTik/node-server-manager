@@ -1,5 +1,8 @@
-<h1 style="text-align: center;">Node Server Manager (NSM)</h1>
+<div align="center">
+
+# Node Server Manager (NSM)
 A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol. This is useful for creating game servers dynamically from templates.
+</div>
 
 ## Installation on Windows
 To prepare NSM for production, go to the directory where you want to have NSM installed and do the following:
