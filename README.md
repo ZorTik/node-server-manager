@@ -4,7 +4,7 @@
 A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol. This is useful for creating game servers dynamically from templates.
 </div>
 
-## Installation on Windows
+## Installation
 To prepare NSM for production, go to the directory where you want to have NSM installed and do the following:
 1. Clone NSM using `git clone https://github.com/ZorTik/node-server-manager` or **download latest release** from this page and **extract** it
 2. Fill up .env file from template at `.env.example`
