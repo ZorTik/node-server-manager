@@ -1,0 +1,12 @@
+services:
+  nsm:
+    build: .
+    ports:
+      - '3000:3000'
+  docker:
+    image: docker:18.09.0-dind
+    privileged: true
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
