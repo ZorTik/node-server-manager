@@ -115,13 +115,21 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             await container.start();
             // Watcher
             setTimeout(async () => {
-                const rws = await client.getContainer(container.id).attach({ stream: true, stdout: true, hijack: true });
-                rws.on('data', () => {}); // no-op, keepalive
+                const attachOptions = { stream: true, stdout: true, hijack: true };
+                const rws = await client.getContainer(container.id).attach(attachOptions);
+                rws.on('data', (data) => {
+                    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
+                    const log_path = process.cwd() + '/service_logs/' + volumeId + '.log';
+                    fs.appendFileSync(log_path, data.toString());
+                }); // no-op, keepalive
                 rws.on('end', async () => {
                     // I only want to trigger close when the container is not being
                     // stopped by nsm to prevent loops.
                     if (getActionType(container.id) != 'stop') {
+                        currentContext.logger.info('Container ' + container.id + ' stopped from the inside.');
                         await onclose();
+                    } else {
+                        currentContext.logger.info('Container ' + container.id + ' stopped by NSM.');
                     }
                 });
             }, 500);

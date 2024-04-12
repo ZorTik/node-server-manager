@@ -11,3 +11,5 @@ port: 3000
 auth: 'none'
 
 docker_host: 'unix:///var/run/docker.sock'
+
+service_logs: false

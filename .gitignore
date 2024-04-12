@@ -143,3 +143,6 @@ package-lock.json
 
 # prisma
 /prisma/migrations/
+
+service_logs
+service_logs/*

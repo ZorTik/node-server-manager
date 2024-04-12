@@ -11,6 +11,7 @@ import * as r from "./configuration/resources";
 import {prepareLogger} from "./configuration/logger";
 import winston from "winston";
 import {Application} from "express-ws";
+import fs from "fs";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -24,7 +25,18 @@ export type AppContext = {
 };
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
+// TODO: Logování ze služeb
 let currentContext: AppContext;
+
+function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
+    if (appConfig.service_logs === true) {
+        logger.info('Service logs are enabled');
+        const path = process.cwd() + '/service_logs';
+        if (!fs.existsSync(path)) {
+            fs.mkdirSync(path);
+        }
+    }
+}
 
 // App orchestration code
 export default async function (router: Application): Promise<AppBootContext> {
@@ -36,6 +48,8 @@ export default async function (router: Application): Promise<AppBootContext> {
 
     steps('BEFORE_CONFIG').forEach((f) => f({ logger }));
     const appConfig = loadAppConfig();
+
+    prepareServiceLogs(appConfig, logger);
 
     // Database connection layer
     steps('BEFORE_DB').forEach((f) => f({ logger, appConfig }));
