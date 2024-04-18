@@ -10,6 +10,20 @@ export type BuildOptions = {
     env: {[key: string]: string};
 }
 
+export type ContainerStat = {
+    id: string,
+    memory: {
+        used: number,
+        total: number,
+        percent: number
+    },
+    cpu: {
+        used: number,
+        total: number,
+        percent: number
+    },
+}
+
 export type SigType = 'SIGINT';
 
 export type ServiceEngine = {
@@ -46,8 +60,10 @@ export type ServiceEngine = {
      * @param templates The templates
      * @return List of container IDs
      */
-    listContainers(templates: string[]): Promise<string[]>;
+    listContainers(templates?: string[]): Promise<string[]>;
     listAttachedPorts(): Promise<number[]>;
+    stat(id: string): Promise<ContainerStat|null>; // TODO: Implement
+    statAll(): Promise<ContainerStat[]>; // TODO: Implement
 }
 
 export default docker;

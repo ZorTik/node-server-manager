@@ -58,6 +58,29 @@ components:
           type: "string"
         containerId:
           type: "string"
+        stats:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            memory:
+              type: "object"
+              properties:
+                used:
+                  type: "number"
+                total:
+                  type: "number"
+                percent:
+                  type: "number"
+            cpu:
+              type: "object"
+              properties:
+                used:
+                  type: "number"
+                total:
+                  type: "number"
+                percent:
+                  type: "number"
     TemplateLookup:
       type: "object"
       properties:
@@ -229,6 +252,11 @@ paths:
           required: true
           schema:
             type: "string"
+        - name: "stats"
+          in: "query"
+          description: "Whether or not to include momentary resource stats. Default: false"
+          schema:
+            type: "boolean"
       responses:
         "200":
           description: "The service details"

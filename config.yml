@@ -12,4 +12,4 @@ auth: 'none'
 
 docker_host: 'unix:///var/run/docker.sock'
 
-service_logs: false
+service_logs: true

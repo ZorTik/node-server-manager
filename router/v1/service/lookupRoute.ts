@@ -8,10 +8,16 @@ export default async function ({database, engine}: AppContext): Promise<RouterHa
             get: async (req, res) => {
                 const id = req.params.id;
                 const service = await database.getPerma(id);
-                const session = await database.getSession(id);
                 if (!service) {
                     res.status(404).json({status: 404, message: 'Invalid service ID.'}).end();
                     return;
+                }
+                const session = await database.getSession(id);
+                let stats: any;
+                if (session && req.query.stats === 'true') {
+                    stats = await engine.engine.stat(session.containerId);
+                } else {
+                    stats = null;
                 }
                 const template = engine.getTemplate(service.template);
                 // Build that info
@@ -24,7 +30,12 @@ export default async function ({database, engine}: AppContext): Promise<RouterHa
                     port: service.port,
                     options: service.options,
                     env: service.env,
-                    session
+                    ...(session ? {
+                        session: {
+                            ...session,
+                            ...stats,
+                        }
+                    } : {})
                 }).end();
             },
         },

@@ -7,6 +7,8 @@ import deleteFunc from './delete';
 import deleteVolume from './deletev';
 import listContainers from './listc';
 import listAttachedPorts from './listp';
+import stat from "./stat";
+import statall from "./statall";
 
 function initClient(appConfig: { docker_host: string }) {
     let client: DockerClient;
@@ -48,6 +50,8 @@ export default async function (appConfig: any): Promise<ServiceEngine> {
     engine.deleteVolume = deleteVolume(engine, client);
     engine.listContainers = listContainers(engine, client);
     engine.listAttachedPorts = listAttachedPorts(engine, client);
+    engine.stat = stat(engine, client);
+    engine.statAll = statall(engine, client);
     await synchronizeContainers(client, engine);
     return engine;
 }
