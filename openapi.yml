@@ -37,6 +37,28 @@ components:
             freedisk:
               type: "number"
               format: "int32"
+        stats:
+          type: "object"
+          description: "The momentary resource stats collected from NSM services ONLY. If ?stats=true, default is false."
+          properties:
+            memory:
+              type: "object"
+              properties:
+                used:
+                  type: "number"
+                total:
+                  type: "number"
+                percent:
+                  type: "number"
+            cpu:
+              type: "object"
+              properties:
+                used:
+                  type: "number"
+                total:
+                  type: "number"
+                percent:
+                  type: "number"
     Result:
       type: "object"
       properties:
