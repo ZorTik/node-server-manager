@@ -168,6 +168,12 @@ paths:
   /v1/status:
     get:
       description: "Get status of the engine"
+      parameters:
+        - name: "stats"
+          in: "query"
+          description: "Whether or not to include momentary resource stats. Default: false"
+          schema:
+            type: "boolean"
       responses:
         "200":
           description: "The status"
