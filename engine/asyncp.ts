@@ -2,6 +2,14 @@ const statuses = {};
 const status_types = {};
 const locks = [];
 
+/**
+ * Lock a service behind a pending operation lock.
+ *
+ * @param id The service ID
+ * @param tp The type of action
+ * @param f The function to run
+ * @returns The result of the function
+ */
 export async function asyncServiceRun<T>(id: string, tp: string, f: () => Promise<T>): Promise<T> {
     let e_ = null;
     try {

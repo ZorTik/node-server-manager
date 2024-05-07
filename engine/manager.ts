@@ -199,7 +199,10 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                         ram: ram ?? defaults.ram as number,
                         cpu: cpu ?? defaults.cpu as number,
                         disk: disk ?? defaults.disk as number,
-                        env: env ?? {},
+                        env: {
+                            ...(env ?? {}),
+                            SERVICE_ID: serviceId
+                        },
                         port: port,
                         ports: ports ?? []
                     },
