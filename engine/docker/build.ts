@@ -28,7 +28,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                   onclose?: () => Promise<void>|void
     ) => {
         const ctx = currentContext;
-        const archive = arDir + '/' + path.basename(buildDir) + '.tar';
+        const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
         try {
             fs.unlinkSync(archive);
         } catch (e) {

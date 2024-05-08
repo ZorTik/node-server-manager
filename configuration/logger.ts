@@ -3,7 +3,7 @@ import * as fs from "fs";
 
 const { combine, timestamp, label, printf } = winston.format;
 
-export function prepareLogger() {
+export function prepareLogger(debug: boolean) {
     if (fs.existsSync(process.cwd() + '/logs/latest.log')) {
         const date = new Date(Date.now()).toJSON().slice(2, 10) + '.'
             + new Date(Date.now()).getHours() + '.'
@@ -11,7 +11,7 @@ export function prepareLogger() {
         fs.renameSync(process.cwd() + '/logs/latest.log', process.cwd() + '/logs/' + date + '.log');
     }
     return winston.createLogger({
-        level: 'info',
+        level: debug ? 'debug' : 'info',
         format: combine(
             label({ label: 'NSM' }),
             timestamp(),

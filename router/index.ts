@@ -1,4 +1,4 @@
-import {AppContext} from "../app";
+import {AppContext, currentContext} from "../app";
 import {json, RequestHandler, Router} from "express";
 import v1Routes from "./v1";
 
@@ -14,6 +14,16 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
     context.logger.info(`API ${ver} routes`);
     const router = Router();
     router.use(json());
+    if (currentContext.debug) {
+        router.use((req, res, next) => {
+            if (req.body) {
+                currentContext.logger.debug(`Body: ${JSON.stringify(req.body)}`);
+            } else {
+                currentContext.logger.debug('No body');
+            }
+            next();
+        });
+    }
     for (let init of routes) {
         // Create handler with changed router to the sub-router that will be
         // used specifically for this API version

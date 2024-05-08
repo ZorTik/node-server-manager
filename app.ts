@@ -22,6 +22,7 @@ export type AppContext = {
     database: Database;
     appConfig: any;
     logger: winston.Logger;
+    debug: boolean;
 };
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
@@ -40,7 +41,7 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 
 // App orchestration code
 export default async function (router: Application): Promise<AppBootContext> {
-    const logger = prepareLogger();
+    const logger = prepareLogger(process.env.DEBUG === 'true');
     r.prepareResources(); // Copy resources, etc.
 
     // Load addon steps
@@ -58,7 +59,7 @@ export default async function (router: Application): Promise<AppBootContext> {
     // Service (virtualization) layer
     steps('BEFORE_ENGINE').forEach((f) => f({ logger, appConfig, database }));
     const engine = await createServiceManager({ db: database, appConfig, logger });
-    currentContext = { router, engine, database, appConfig, logger };
+    currentContext = { router, engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Load security
     steps('BEFORE_SECURITY').forEach((f) => f({ ...currentContext }));

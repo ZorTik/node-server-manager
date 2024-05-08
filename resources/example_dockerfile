@@ -9,6 +9,7 @@ WORKDIR /data
 COPY . .
 
 # Built-in args. Don't change.
+ARG SERVICE_ID
 ARG SERVICE_PORT
 ARG SERVICE_PORTS
 ARG SERVICE_RAM
