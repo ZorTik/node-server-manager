@@ -211,7 +211,7 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                     }
                 );
                 if (!containerId) {
-                    throw new _InternalError('Failed to create container');
+                    throw new _InternalError('Failed to create container. Service: ' + serviceId);
                 }
                 const rollback = async () => {
                     await engine.delete(containerId);
@@ -275,7 +275,11 @@ async function init(db: Database, appConfig: any): Promise<ServiceManager> {
                     async () => {
                         await self.stopService(id);
                     }
-                )
+                );
+                if (!containerId) {
+                    currentContext.logger.error('Failed to create container. Service: ' + id);
+                    return false;
+                }
                 // Save new session info
                 if (await db.saveSession({ serviceId: id, nodeId, containerId })) {
                     started.push(id);
