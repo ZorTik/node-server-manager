@@ -4,10 +4,11 @@ import {ServiceManager} from "./engine";
 import loadAddons from "./addon";
 import loadAppRoutes from './router';
 import createDbManager from './database';
-import createServiceManager from './engine';
+import initServiceManager from './engine';
 import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
 import * as r from "./configuration/resources";
+import * as engine from "./engine";
 import {prepareLogger} from "./configuration/logger";
 import winston from "winston";
 import {Application} from "express-ws";
@@ -58,7 +59,7 @@ export default async function (router: Application): Promise<AppBootContext> {
 
     // Service (virtualization) layer
     steps('BEFORE_ENGINE').forEach((f) => f({ logger, appConfig, database }));
-    const engine = await createServiceManager({ db: database, appConfig, logger });
+    await initServiceManager({ db: database, appConfig, logger });
     currentContext = { router, engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Load security

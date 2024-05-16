@@ -18,6 +18,18 @@ async function prepVol(client: DockerClient, id: string) {
     return client.getVolume(id);
 }
 
+async function imageExists(dc: DockerClient, tag: string) {
+    try {
+        await dc.getImage(tag).inspect();
+        return true;
+    } catch (e) {
+        if (!e.message.includes('No such')) {
+            currentContext.logger.info('Image ' + tag + ' does not exist.');
+            return false;
+        }
+    }
+}
+
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
     const arDir = process.cwd() + '/archives';
     if (!fs.existsSync(arDir)) {
@@ -51,32 +63,34 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
 
-        // Build image
-        const stream = await client.buildImage(archive, {
-            t: imageTag,
-            buildargs: env,
-        });
-        try {
-            await new Promise((resolve, reject) => {
-                client.modem.followProgress(stream, (err, res) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        res.forEach(r => {
-                            if (r.errorDetail) {
-                                reject(r.errorDetail.message);
-                                return;
-                            } else {
-                                ctx.logger.info(r.stream?.trim());
-                            }
-                        });
-                        resolve(res);
-                    }
-                })
+        if (!await imageExists(client, imageTag)) {
+            // Build image
+            const stream = await client.buildImage(archive, {
+                t: imageTag,
+                buildargs: env,
             });
-        } catch (e) {
-            ctx.logger.error(e);
-            return null;
+            try {
+                await new Promise((resolve, reject) => {
+                    client.modem.followProgress(stream, (err, res) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            res.forEach(r => {
+                                if (r.errorDetail) {
+                                    reject(r.errorDetail.message);
+                                    return;
+                                } else {
+                                    ctx.logger.info(r.stream?.trim());
+                                }
+                            });
+                            resolve(res);
+                        }
+                    })
+                });
+            } catch (e) {
+                ctx.logger.error(e);
+                return null;
+            }
         }
 
         fs.unlinkSync(archive);
