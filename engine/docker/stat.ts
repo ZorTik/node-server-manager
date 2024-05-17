@@ -11,7 +11,6 @@ function calcCpuUsage(precpu: DockerClient.CPUStats, cpu: DockerClient.CPUStats)
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['stat'] {
     return async (id) => {
         const { memory_stats, precpu_stats, cpu_stats } = await client.getContainer(id).stats({ stream: false });
-
         return {
             id,
             memory: {

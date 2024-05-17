@@ -51,7 +51,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
 
-        if (!await imageExists(client, imageTag)) { // TODO: Test this
+        if (!await imageExists(client, imageTag)) { // TODO: Test this a udělat aby se image rebuildnul pokud byla provedena změna portů ve službě!!
             // Build image
             const stream = await client.buildImage(archive, {
                 t: imageTag,

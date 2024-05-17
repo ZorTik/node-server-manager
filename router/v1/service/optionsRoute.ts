@@ -16,6 +16,10 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     res.status(400).json({status: 400, message: 'Body is required.'});
                     return;
                 }
+                if (Object.keys(options).includes('port') || Object.keys(options).includes('ports')) {
+                    res.status(400).json({status: 400, message: 'Port(s) cannot be changed yet.'});
+                    return;
+                }
                 if (await engine.updateOptions(id, options)) {
                     res.status(200).json({status: 200, message: 'Service options updated.'});
                 } else {
