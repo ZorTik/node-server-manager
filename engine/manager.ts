@@ -129,10 +129,12 @@ export type StatusCode = 1 | 2 | 3;
 
 class _InternalError extends Error {
     readonly code: StatusCode;
+    readonly msg: string;
 
     constructor(msg: string, code?: StatusCode) {
         super(msg);
         this.code = code ?? 1;
+        this.msg = msg;
     }
 }
 

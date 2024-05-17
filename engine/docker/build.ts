@@ -3,20 +3,9 @@ import fs from "fs";
 import path from "path";
 import tar from "tar";
 import ignore from "../ignore";
-import {currentContext} from "../../app";
+import {currentContext as ctx} from "../../app";
 import {ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
-
-async function prepVol(client: DockerClient, id: string) {
-    try {
-        await client.getVolume(id).inspect();
-    } catch (e) {
-        if (e.message.includes('No such')) {
-            await client.createVolume({ Name: id });
-        }
-    }
-    return client.getVolume(id);
-}
 
 async function imageExists(dc: DockerClient, tag: string) {
     try {
@@ -24,7 +13,7 @@ async function imageExists(dc: DockerClient, tag: string) {
         return true;
     } catch (e) {
         if (!e.message.includes('No such')) {
-            currentContext.logger.info('Image ' + tag + ' does not exist.');
+            ctx.logger.info('Image ' + tag + ' does not exist.');
             return false;
         }
     }
@@ -39,7 +28,6 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                   {ram, cpu, disk, port, ports, env},
                   onclose?: () => Promise<void>|void
     ) => {
-        const ctx = currentContext;
         const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
         try {
             fs.unlinkSync(archive);
@@ -63,7 +51,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
 
-        if (!await imageExists(client, imageTag)) {
+        if (!await imageExists(client, imageTag)) { // TODO: Test this
             // Build image
             const stream = await client.buildImage(archive, {
                 t: imageTag,
@@ -98,6 +86,14 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
         let container: DockerClient.Container;
         try {
+            // Prepare volume
+            try {
+                await client.getVolume(volumeId).inspect();
+            } catch (e) {
+                if (e.message.includes('No such')) {
+                    await client.createVolume({ Name: volumeId });
+                }
+            }
             // Create container
             container = await client.createContainer({
                 Image: imageTag,
@@ -115,7 +111,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     Mounts: [
                         {
                             Type: 'volume',
-                            Source: (await prepVol(client, volumeId)).name,
+                            Source: client.getVolume(volumeId).name,
                             Target: '/data',
                             ReadOnly: false,
                         }
@@ -140,10 +136,10 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     // I only want to trigger close when the container is not being
                     // stopped by nsm to prevent loops.
                     if (getActionType(container.id) != 'stop') {
-                        currentContext.logger.info('Container ' + container.id + ' stopped from the inside.');
+                        ctx.logger.info('Container ' + container.id + ' stopped from the inside.');
                         await onclose();
                     } else {
-                        currentContext.logger.info('Container ' + container.id + ' stopped by NSM.');
+                        ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
                     }
                 });
             }, 500);
