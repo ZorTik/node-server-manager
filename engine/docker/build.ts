@@ -7,7 +7,7 @@ import {currentContext as ctx} from "../../app";
 import {ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
 
-async function imageExists(dc: DockerClient, tag: string) {
+/*async function imageExists(dc: DockerClient, tag: string) {
     try {
         await dc.getImage(tag).inspect();
         return true;
@@ -17,7 +17,7 @@ async function imageExists(dc: DockerClient, tag: string) {
             return false;
         }
     }
-}
+}*/
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
     const arDir = process.cwd() + '/archives';
@@ -51,34 +51,32 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
         const imageTag = path.basename(buildDir) + ':' + volumeId;
 
-        if (!await imageExists(client, imageTag)) { // TODO: Test this a udělat aby se image rebuildnul pokud byla provedena změna portů ve službě!!
-            // Build image
-            const stream = await client.buildImage(archive, {
-                t: imageTag,
-                buildargs: env,
+        // Build image
+        const stream = await client.buildImage(archive, {
+            t: imageTag,
+            buildargs: env,
+        });
+        try {
+            await new Promise((resolve, reject) => {
+                client.modem.followProgress(stream, (err, res) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        res.forEach(r => {
+                            if (r.errorDetail) {
+                                reject(r.errorDetail.message);
+                                return;
+                            } else {
+                                ctx.logger.info(r.stream?.trim());
+                            }
+                        });
+                        resolve(res);
+                    }
+                })
             });
-            try {
-                await new Promise((resolve, reject) => {
-                    client.modem.followProgress(stream, (err, res) => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            res.forEach(r => {
-                                if (r.errorDetail) {
-                                    reject(r.errorDetail.message);
-                                    return;
-                                } else {
-                                    ctx.logger.info(r.stream?.trim());
-                                }
-                            });
-                            resolve(res);
-                        }
-                    })
-                });
-            } catch (e) {
-                ctx.logger.error(e);
-                return null;
-            }
+        } catch (e) {
+            ctx.logger.error(e);
+            return null;
         }
 
         fs.unlinkSync(archive);
