@@ -9,7 +9,7 @@ import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
 import * as r from "./configuration/resources";
 import * as engine from "./engine";
-import {prepareLogger} from "./configuration/logger";
+import {prepareLogger} from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";

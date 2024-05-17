@@ -168,7 +168,7 @@ async function init(db_: Database, appConfig_: any) {
     volumesDir = process.cwd() + '/volumes';
 }
 
-async function createService(template: string, {
+export async function createService(template: string, {
     ram,
     cpu,
     disk,
@@ -235,7 +235,7 @@ async function createService(template: string, {
     return serviceId;
 }
 
-async function resumeService(id: string) {
+export async function resumeService(id: string) {
     reqNoPending(id);
     const perma_ = await db.getPerma(id);
     // Service does not exist
@@ -294,7 +294,7 @@ async function resumeService(id: string) {
     return true;
 }
 
-async function stopService(id: string) {
+export async function stopService(id: string) {
     reqNoPending(id);
     const session = await db.getSession(id);
     if (!session) {
@@ -320,7 +320,7 @@ async function stopService(id: string) {
     }
 }
 
-async function deleteService(id: string) {
+export async function deleteService(id: string) {
     try {
         await this.stopService(id);
     } catch (e) {
@@ -333,7 +333,7 @@ async function deleteService(id: string) {
     return db.deletePerma(id);
 }
 
-async function updateOptions(id: string, options: Options): Promise<boolean> {
+export async function updateOptions(id: string, options: Options): Promise<boolean> {
     reqNoPending(id);
     const perma = await db.getPerma(id);
     const data: PermaModel = {
@@ -347,23 +347,23 @@ async function updateOptions(id: string, options: Options): Promise<boolean> {
     return db.savePerma(data);
 }
 
-function getTemplate(id: string): Template|undefined {
+export function getTemplate(id: string): Template|undefined {
     return loadTemplate(id);
 }
 
-async function getService(id: string): Promise<PermaModel | undefined> {
+export async function getService(id: string): Promise<PermaModel | undefined> {
     return db.getPerma(id);
 }
 
-function getLastPowerError(id: string): Error | undefined {
+export function getLastPowerError(id: string): Error | undefined {
     return errors[id];
 }
 
-async function listServices(page: number, pageSize: number, all?: boolean): Promise<string[]> {
+export async function listServices(page: number, pageSize: number, all?: boolean): Promise<string[]> {
     return db.list((all ?? false) ? undefined : nodeId, page, pageSize);
 }
 
-function listTemplates(): Promise<string[]> {
+export function listTemplates(): Promise<string[]> {
     return new Promise((resolve, reject) => {
         fs.readdir(`${process.cwd()}/templates`, (err, files) => {
             if (err) {
@@ -375,7 +375,7 @@ function listTemplates(): Promise<string[]> {
     });
 }
 
-async function stopRunning() {
+export async function stopRunning() {
     for (let id of started) {
         try {
             await this.stopService(id);
@@ -412,18 +412,4 @@ export default async function ({db, appConfig, logger}: {
     for (let session of unclearedSessions) {
         await stopService(session.serviceId);
     }
-}
-
-export {
-    createService,
-    resumeService,
-    stopService,
-    deleteService,
-    updateOptions,
-    getTemplate,
-    getService,
-    getLastPowerError,
-    listServices,
-    listTemplates,
-    stopRunning
 }
