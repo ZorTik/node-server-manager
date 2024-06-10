@@ -27,7 +27,6 @@ export type AppContext = {
 };
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
-// TODO: Logování ze služeb
 let currentContext: AppContext;
 
 function prepareServiceLogs(appConfig: any, logger: winston.Logger) {

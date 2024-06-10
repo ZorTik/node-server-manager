@@ -1,10 +1,11 @@
-import {AppContext, ServiceManager} from "../../../app";
+import {AppContext, Database, ServiceManager} from "../../../app";
 import {RouterHandler} from "../../index";
 import ds from "check-disk-space";
 import * as os from "os";
 
-async function checkNsmResources(engine: ServiceManager) {
+async function checkNsmResources(engine: ServiceManager, db: Database) {
     const stats = await engine.engine.statAll();
+    const servicesGlobal = await db.list(engine.nodeId);
     const res = stats.reduce((acc, s) => {
         acc.memory.used += s.memory.used;
         acc.memory.total += s.memory.total;
@@ -21,10 +22,25 @@ async function checkNsmResources(engine: ServiceManager) {
             used: 0,
             total: 0,
             percent: 0,
-        }
+        },
+        services: {
+            memTotal: BigInt(0),
+            cpuTotal: BigInt(0),
+            diskTotal: BigInt(0),
+        },
     });
-    res.memory.percent = res.memory.used / res.memory.total;
-    res.cpu.percent = res.cpu.used / res.cpu.total;
+    for (const s of servicesGlobal) {
+        const service = await engine.getService(s);
+        res.services.memTotal += BigInt(service.optionsRam);
+        res.services.cpuTotal += BigInt(service.optionsCpu);
+        res.services.diskTotal += BigInt(service.optionsDisk);
+    }
+    if (res.memory.total > 0) {
+        res.memory.percent = res.memory.used / res.memory.total;
+    }
+    if (res.cpu.total > 0) {
+        res.cpu.percent = res.cpu.used / res.cpu.total;
+    }
     return res;
 }
 
@@ -42,7 +58,7 @@ export default async function ({engine, appConfig, database}: AppContext): Promi
                 const nodeId = appConfig['node_id'];
                 const runningContainers = await engine.engine.listContainers(await engine.listTemplates());
                 const sessions = await database.listSessions(engine.nodeId);
-                const all = await database.count(nodeId);
+                const all = await database.list(nodeId);
                 const {free, size} = await ds(engine.volumesDir);
                 const system = {
                     totalmem: os.totalmem(),
@@ -55,9 +71,9 @@ export default async function ({engine, appConfig, database}: AppContext): Promi
                     running: sessions
                         .filter(s => runningContainers.includes(s.containerId))
                         .map(s => s.serviceId),
-                    all,
+                    all: all.length,
                     system,
-                    ...(req.query.stats === 'true' ? { stats: checkNsmResources(engine) } : {})
+                    ...(req.query.stats === 'true' ? { stats: await checkNsmResources(engine, database) } : {})
                 }).end();
             },
         },

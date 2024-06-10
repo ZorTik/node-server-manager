@@ -59,6 +59,18 @@ components:
                   type: "number"
                 percent:
                   type: "number"
+            services:
+              type: "object"
+              properties:
+                memTotal:
+                  type: "number"
+                  description: "Total memory registered (limit, not in use) by all services"
+                cpuTotal:
+                  type: "number"
+                  description: "Total CPU registered (limit, not in use) by all services"
+                diskTotal:
+                  type: "number"
+                  description: "Total disk registered (limit, not in use) by all services"
     Result:
       type: "object"
       properties:

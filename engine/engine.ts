@@ -62,8 +62,8 @@ export type ServiceEngine = {
      */
     listContainers(templates?: string[]): Promise<string[]>;
     listAttachedPorts(): Promise<number[]>;
-    stat(id: string): Promise<ContainerStat|null>; // TODO: Implement
-    statAll(): Promise<ContainerStat[]>; // TODO: Implement
+    stat(id: string): Promise<ContainerStat|null>;
+    statAll(): Promise<ContainerStat[]>;
 }
 
 function initClient(appConfig: { docker_host: string }) {

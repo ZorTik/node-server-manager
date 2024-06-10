@@ -26,7 +26,7 @@ export type Database = {
     getSession(serviceId: string): Promise<SessionModel|undefined>;
     getPerma(serviceId: string): Promise<PermaModel|undefined>;
     getMetaVal(key: string, defaultVal?: string): Promise<string>;
-    list(nodeId: string, page: number, pageSize: number): Promise<string[]>;
+    list(nodeId: string, page?: number, pageSize?: number): Promise<PermaModel[]>;
     listSessions(nodeId: string): Promise<SessionModel[]>;
     count(nodeId: string): Promise<number>;
 }

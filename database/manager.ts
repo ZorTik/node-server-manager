@@ -112,14 +112,21 @@ export async function getMetaVal(key: string, defaultVal?: string): Promise<stri
     }
 }
 
-export async function list(nodeId: string|undefined, page: number, pageSize: number): Promise<string[]> {
+export async function list(nodeId: string|undefined, page?: number, pageSize?: number): Promise<PermaModel[]> {
     try {
-        const services = await client.service.findMany({
-            ...nodeId ? { where: { nodeId } } : {},
-            skip: page * pageSize,
-            take: pageSize,
-        });
-        return services.map(s => s.serviceId);
+        let services: any[];
+        if (page && pageSize) {
+            services = await client.service.findMany({
+                ...nodeId ? { where: { nodeId } } : {},
+                skip: page * pageSize,
+                take: pageSize,
+            });
+        } else {
+            services = await client.service.findMany({
+                ...nodeId ? { where: { nodeId } } : {},
+            })
+        }
+        return services as PermaModel[];
     } catch (e) {
         console.log(e);
         return [];

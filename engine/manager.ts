@@ -97,9 +97,9 @@ export type ServiceManager = {
     /**
      * Get the service by ID.
      *
-     * @param id The service ID
+     * @param from The service ID, or model
      */
-    getService(id: string): Promise<PermaModel|undefined>;
+    getService(from: string|PermaModel): Promise<ServiceInfo|undefined>;
     /**
      * Get the last power error of a service.
      *
@@ -122,6 +122,12 @@ export type ServiceManager = {
      */
     listTemplates(): Promise<string[]>;
     stopRunning(): Promise<void>;
+}
+
+export type ServiceInfo = PermaModel & {
+    optionsRam: number, // From options.ram
+    optionsCpu: number, // From options.cpu
+    optionsDisk: number, // From options.disk
 }
 
 // 1 = unknown, 2 = conflict, 3 = not found
@@ -351,8 +357,14 @@ export function getTemplate(id: string): Template|undefined {
     return loadTemplate(id);
 }
 
-export async function getService(id: string): Promise<PermaModel | undefined> {
-    return db.getPerma(id);
+export async function getService(from: string): Promise<ServiceInfo | undefined> {
+    const data = typeof from === 'string' ? await db.getPerma(from) : from;
+    return {
+        ...data,
+        optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
+        optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
+        optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
+    }
 }
 
 export function getLastPowerError(id: string): Error | undefined {
@@ -360,7 +372,8 @@ export function getLastPowerError(id: string): Error | undefined {
 }
 
 export async function listServices(page: number, pageSize: number, all?: boolean): Promise<string[]> {
-    return db.list((all ?? false) ? undefined : nodeId, page, pageSize);
+    const data = await db.list((all ?? false) ? undefined : nodeId, page, pageSize);
+    return data.map(d => d.serviceId);
 }
 
 export function listTemplates(): Promise<string[]> {
