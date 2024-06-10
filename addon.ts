@@ -4,6 +4,7 @@ import {AppContext} from "./app";
 import * as fs from "fs";
 import npm from "npm";
 import * as http from "http";
+import {isDebug} from "./helpers";
 
 type FunctionTypes = {
     'BEFORE_CONFIG': (ctx: { logger: winston.Logger }) => Promise<void>;
@@ -86,6 +87,9 @@ export default async function (logger: winston.Logger) {
         }
     }
     return <T extends keyof FunctionTypes>(step: T): FunctionTypes[T][] => {
+        if (isDebug()) {
+            logger.info(`Running step ${step}`);
+        }
         return addons
             .filter((a) => a.steps[step])
             .map((a) => a.steps[step]);

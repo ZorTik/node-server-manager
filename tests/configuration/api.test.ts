@@ -38,7 +38,9 @@ describe("Test v1 API", () => {
     });
 
     afterAll((done) => {
-        quitFunc();
+        if (quitFunc) {
+            quitFunc();
+        }
         done();
     });
 });
