@@ -80,6 +80,7 @@ export default async function (router: Application, options?: AppBootOptions): P
     return new Promise((resolve) => {
         let srv = undefined;
         if (options?.test == undefined || options.test == false) {
+            logger.info(`Starting server`);
             srv = router.listen(appConfig.port, () => {
                 logger.info(`Server started on port ${appConfig.port}`);
                 resolve({ ...currentContext, steps });
