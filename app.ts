@@ -25,6 +25,11 @@ export type AppContext = {
     logger: winston.Logger;
     debug: boolean;
 };
+
+export type AppBootOptions = {
+    test?: boolean;
+}
+
 // TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
 let currentContext: AppContext;
@@ -40,7 +45,7 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 }
 
 // App orchestration code
-export default async function (router: Application): Promise<AppBootContext> {
+export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
     const logger = prepareLogger(process.env.DEBUG === 'true');
     r.prepareResources(); // Copy resources, etc.
 
@@ -71,12 +76,20 @@ export default async function (router: Application): Promise<AppBootContext> {
 
     // Start the server
     steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
+
     return new Promise((resolve) => {
-        const srv = router.listen(appConfig.port, () => {
+        const afterExpress = () => {
             logger.info(`Server started on port ${appConfig.port}`);
             resolve({ ...currentContext, steps });
-        });
-        steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
+        };
+        let srv = undefined;
+        if (options?.test == undefined || options.test == false) {
+            srv = router.listen(appConfig.port, afterExpress);
+        }
+        return () => {
+            afterExpress();
+            steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
+        };
     });
 }
 

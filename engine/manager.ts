@@ -8,7 +8,7 @@ import * as fs from "fs";
 import {PermaModel} from "../database";
 import {asyncServiceRun, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
 import winston from "winston";
-import {status} from "../index";
+import {status} from "../server";
 
 export type Options = {
     /**

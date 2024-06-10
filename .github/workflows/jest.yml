@@ -6,6 +6,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: 'mysql://test:test@localhost:3306/test'
+      CONFIG_DOCKER_HOST: '///var/run/docker.sock'
+      DEBUG: 'true'
     steps:
       - uses: actions/checkout@v2
       - name: Shutdown default MySQL

@@ -1,4 +1,4 @@
-import statusRoute from "./util/statusRoute";
+import statusRoute from "./status/index";
 import lookupRoute from "./service/lookupRoute";
 import deleteRoute from "./service/deleteRoute";
 import listRoute from "./service/listRoute";
