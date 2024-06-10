@@ -10,9 +10,8 @@ function expectProps(obj: any, model: string[]) {
 }
 
 describe("Test v1 API", () => {
-    let quitFunc: any;
     beforeAll(async () => {
-        quitFunc = await boot(server, { test: true });
+        await boot(server, { test: true });
     }, 20000);
 
     test("Test /v1/status", async () => {
@@ -35,12 +34,5 @@ describe("Test v1 API", () => {
             'stats.services.cpuTotal',
             'stats.services.diskTotal',
         ]);
-    });
-
-    afterAll((done) => {
-        if (quitFunc) {
-            quitFunc();
-        }
-        done();
     });
 });

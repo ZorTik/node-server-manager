@@ -78,18 +78,14 @@ export default async function (router: Application, options?: AppBootOptions): P
     steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
 
     return new Promise((resolve) => {
-        const afterExpress = () => {
-            logger.info(`Server started on port ${appConfig.port}`);
-            resolve({ ...currentContext, steps });
-        };
         let srv = undefined;
         if (options?.test == undefined || options.test == false) {
-            srv = router.listen(appConfig.port, afterExpress);
+            srv = router.listen(appConfig.port, () => {
+                logger.info(`Server started on port ${appConfig.port}`);
+                resolve({ ...currentContext, steps });
+            });
         }
-        return () => {
-            afterExpress();
-            steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
-        };
+        steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
     });
 }
 
