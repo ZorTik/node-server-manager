@@ -30,7 +30,6 @@ export type AppBootOptions = {
     test?: boolean;
 }
 
-// TODO: Přidat možnost bin IP adresy do options
 // TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
 let currentContext: AppContext;
 
@@ -78,15 +77,17 @@ export default async function (router: Application, options?: AppBootOptions): P
     steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
 
     return new Promise((resolve) => {
+        const ctx = { ...currentContext, steps };
         let srv = undefined;
         if (options?.test == undefined || options.test == false) {
             logger.info(`Starting server`);
             srv = router.listen(appConfig.port, () => {
                 logger.info(`Server started on port ${appConfig.port}`);
-                resolve({ ...currentContext, steps });
+                resolve(ctx);
             });
         }
         steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
+        resolve(ctx);
     });
 }
 
