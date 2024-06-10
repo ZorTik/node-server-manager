@@ -24,7 +24,7 @@ describe("Test v1 API", () => {
         const res = await request(server).get("/v1/status?stats=true");
         expect(res.status).toBe(200);
         expectProps(res.body, [
-            'stats.memory.used',
+            'stats.memory.usedt',
             'stats.memory.total',
             'stats.memory.percent',
             'stats.cpu.used',
