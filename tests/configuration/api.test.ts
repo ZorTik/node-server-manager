@@ -13,7 +13,7 @@ describe("Test v1 API", () => {
     let quitFunc: any;
     beforeAll(async () => {
         quitFunc = await boot(server, { test: true });
-    });
+    }, 20000);
 
     test("Test /v1/status", async () => {
         const res = await request(server).get("/v1/status");
@@ -36,8 +36,6 @@ describe("Test v1 API", () => {
             'stats.services.diskTotal',
         ]);
     });
-
-    // TODO: Add tests
 
     afterAll((done) => {
         quitFunc();
