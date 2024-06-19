@@ -1,4 +1,4 @@
-import DockerClient, {Volume} from "dockerode";
+import DockerClient from "dockerode";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
@@ -6,28 +6,17 @@ import ignore from "../ignore";
 import {currentContext as ctx} from "../../app";
 import {ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
-
-/*async function imageExists(dc: DockerClient, tag: string) {
-    try {
-        await dc.getImage(tag).inspect();
-        return true;
-    } catch (e) {
-        if (!e.message.includes('No such')) {
-            ctx.logger.info('Image ' + tag + ' does not exist.');
-            return false;
-        }
-    }
-}*/
+import {accessNetwork} from "../../networking/manager";
+import Dockerode from "dockerode";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
     const arDir = process.cwd() + '/archives';
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
     }
-    return async (buildDir, volumeId,
-                  {ram, cpu, disk, port, ports, env},
-                  onclose?: () => Promise<void>|void
-    ) => {
+    return async (buildDir, volumeId, options, onclose?: () => Promise<void>|void) => {
+        const {ram, cpu, disk, port, ports, network, env} = options;
+        const id = volumeId;
         const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
         try {
             fs.unlinkSync(archive);
@@ -52,10 +41,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         const imageTag = path.basename(buildDir) + ':' + volumeId;
 
         // Build image
-        const stream = await client.buildImage(archive, {
-            t: imageTag,
-            buildargs: env,
-        });
+        const stream = await client.buildImage(archive, { t: imageTag, buildargs: env });
         try {
             await new Promise((resolve, reject) => {
                 client.modem.followProgress(stream, (err, res) => {
@@ -83,6 +69,8 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
 
         let container: DockerClient.Container;
+        // Whether, or not we're creating a brand-new service
+        let creating = false;
         try {
             // Prepare volume
             try {
@@ -90,8 +78,16 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             } catch (e) {
                 if (e.message.includes('No such')) {
                     await client.createVolume({ Name: volumeId });
+                    creating = true;
                 }
             }
+            let net: Dockerode.Network|undefined = undefined;
+            if (network && !network.portsOnly) {
+                net = await accessNetwork(client, network.address, { id });
+            }
+            // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
+            const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
+            // TODO: Handle network - Bind this container to the network above, or bind ports to the network.address if portsOnly=true
             // Create container
             container = await client.createContainer({
                 Image: imageTag,
@@ -104,7 +100,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 HostConfig: {
                     Memory: ram,
                     CpuShares: cpu,
-                    PortBindings: { [port + '/tcp']: [{HostPort: `${port}`}] },
+                    PortBindings: { [port + '/tcp']: [{HostPort: fullPortDef(port)}] },
                     DiskQuota: disk,
                     Mounts: [
                         {
@@ -116,10 +112,13 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     ],
                 },
                 Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-                ExposedPorts: { [port]: {} },
+                ExposedPorts: { [fullPortDef(port)]: {} },
                 AttachStdin: true,
                 OpenStdin: true,
             });
+            if (net != null) {
+                // TODO: Connect container to net
+            }
             await container.start();
             // Watcher
             setTimeout(async () => {

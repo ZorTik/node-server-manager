@@ -1,23 +1,7 @@
 import {PrismaClient} from "@prisma/client";
 
-export type SessionModel = {
-    serviceId: string,
-    nodeId: string,
-    containerId: string,
-}
-
-export type PermaModel = {
-    serviceId: string,
-    template: string,
-    nodeId: string,
-    port: number,
-    options: {[key: string]: any},
-    env: {[key: string]: string},
-}
-
 export type Database = {
     client: PrismaClient;
-
     saveSession(info: SessionModel): Promise<boolean>;
     savePerma(info: PermaModel): Promise<boolean>;
     deleteSession(serviceId: string): Promise<boolean>;
@@ -29,4 +13,27 @@ export type Database = {
     list(nodeId: string, page?: number, pageSize?: number): Promise<PermaModel[]>;
     listSessions(nodeId: string): Promise<SessionModel[]>;
     count(nodeId: string): Promise<number>;
+}
+
+export type SessionModel = {
+    serviceId: string,
+    nodeId: string,
+    containerId: string,
+}
+
+export type PermaModel = {
+    serviceId: string,
+    template: string,
+    nodeId: string,
+    port: number,
+    options: {
+        [key: string]: any
+    },
+    env: {
+        [key: string]: string
+    },
+    network?: {
+        address: string,
+        portsOnly: boolean,
+    }
 }

@@ -8,6 +8,12 @@ export type BuildOptions = {
     cpu: number; // in cores
     disk: number;
     env: {[key: string]: string};
+    network?: {
+        address: string,
+        // If only ports should be exposed to this
+        // IP address.
+        portsOnly: boolean,
+    };
 }
 
 export type ContainerStat = {
@@ -38,7 +44,11 @@ export type ServiceEngine = {
      * @param onclose Function on internal container close
      * @return ID of created container
      */
-    build(buildDir: string, volumeId: string, options: BuildOptions, onclose?: () => Promise<void>|void): Promise<string>; // Container ID (local)
+    build(
+        buildDir: string,
+        volumeId: string,
+        options: BuildOptions,
+        onclose?: () => Promise<void>|void): Promise<string>; // Container ID (local)
     /**
      * Stops a container.
      *
@@ -50,9 +60,10 @@ export type ServiceEngine = {
      * Deletes a container.
      *
      * @param id Container ID
+     * @param options The delete options
      * @return Success state
      */
-    delete(id: string): Promise<boolean>;
+    delete(id: string, options?: { deleteNetwork?: boolean }): Promise<boolean>;
     deleteVolume(id: string): Promise<boolean>;
     /**
      * Lists container ids of containers by templates.

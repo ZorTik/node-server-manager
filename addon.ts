@@ -18,14 +18,15 @@ type FunctionTypes = {
 }
 
 export type Moment = keyof FunctionTypes;
+export type AddonSteps = {
+    [key in Moment]: FunctionTypes[key];
+};
 export type Addon = {
     name: string,
     author?: string,
     version?: string,
     disabled?: boolean,
-    steps: {
-        [key in Moment]: FunctionTypes[key];
-    }
+    steps: AddonSteps,
 }
 
 // Installs dependencies written in libraries.txt
@@ -86,12 +87,13 @@ export default async function (logger: winston.Logger) {
             logger.info(`Loaded addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
         }
     }
-    return <T extends keyof FunctionTypes>(step: T): FunctionTypes[T][] => {
+    return <T extends keyof FunctionTypes>(step: T, ...args: any[]) => {
         if (isDebug()) {
             logger.info(`Running step ${step}`);
         }
-        return addons
-            .filter((a) => a.steps[step])
-            .map((a) => a.steps[step]);
+        addons
+            .filter((addon) => addon.steps[step])
+            .map((addon) => addon.steps[step])
+            .forEach(f => f.apply(f, args));
     }
 }

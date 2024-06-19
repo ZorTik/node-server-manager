@@ -44,6 +44,25 @@ export type Options = {
      * (optional)
      */
     env?: {[key: string]: string}, // Optional ENV, see example_settings.yml
+    /**
+     * The (optional) network settings for the service.
+     * This specifies fi the service will be bind to custom network interface
+     * in the future and how.
+     */
+    network?: {
+        /**
+         * Bind address.
+         */
+        address: string,
+        /**
+         * If whole service interface (all ports) should be exposed to the
+         * interface (false), or only defined ports (true).
+         *
+         * Defined ports are those specified in ports?: number[], and main
+         * service port.
+         */
+        portsOnly: boolean,
+    }
 }
 
 export type ServiceManager = {
@@ -179,7 +198,8 @@ export async function createService(template: string, {
     cpu,
     disk,
     ports,
-    env
+    env,
+    network,
 }) {
     const {defaults, port_range} = settings(template);
     // Pick random main port from the range specified in settings.yml
@@ -204,7 +224,8 @@ export async function createService(template: string, {
                     SERVICE_ID: serviceId
                 },
                 port: port,
-                ports: ports ?? []
+                ports: ports ?? [],
+                network,
             },
             async () => {
                 await self.stopService(serviceId);
@@ -218,7 +239,7 @@ export async function createService(template: string, {
         }
         const options = {ram, cpu, ports};
         // Save permanent info
-        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env })) {
+        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env, network })) {
             await rollback();
             throw new _InternalError('Failed to save perma info to database');
         }
@@ -253,7 +274,7 @@ export async function resumeService(id: string) {
         throw new _InternalError('Already running.', 2);
     }
 
-    const {template, options, env} = perma_;
+    const {template, options, env, network} = perma_;
     const {defaults} = settings(template);
 
     const self = this;
@@ -270,7 +291,8 @@ export async function resumeService(id: string) {
                 disk: options.disk ?? defaults.disk as number,
                 env: env ?? defaults.env as {[key: string]: string},
                 port: perma_.port,
-                ports: options.ports ?? []
+                ports: options.ports ?? [],
+                network,
             },
             async () => {
                 await self.stopService(id);
@@ -291,7 +313,7 @@ export async function resumeService(id: string) {
         }
     }).then(success => {
         if (success) {
-            // TODO
+            currentContext.logger.info('Service ' + id + ' resumed.');
         } else {
             errors[id] = new Error('Failed to resume service');
             started.splice(started.indexOf(id), 1);
@@ -300,7 +322,7 @@ export async function resumeService(id: string) {
     return true;
 }
 
-export async function stopService(id: string) {
+export async function stopService(id: string, fromDeleteFunc?: boolean) {
     reqNoPending(id);
     const session = await db.getSession(id);
     if (!session) {
@@ -312,7 +334,9 @@ export async function stopService(id: string) {
     try {
         await engine.stop(session.containerId);
 
-        const one = await engine.delete(session.containerId);
+        const one = fromDeleteFunc == true
+            ? await engine.delete(session.containerId, { deleteNetwork: true })
+            : await engine.delete(session.containerId);
         const two = await db.deleteSession(id);
 
         if (one && two) {
@@ -328,7 +352,7 @@ export async function stopService(id: string) {
 
 export async function deleteService(id: string) {
     try {
-        await this.stopService(id);
+        await this.stopService(id, true);
     } catch (e) {
         // Skip not running error
         if (!(e.code && e.code == 2)) {

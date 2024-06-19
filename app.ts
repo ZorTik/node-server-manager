@@ -51,30 +51,30 @@ export default async function (router: Application, options?: AppBootOptions): P
     // Load addon steps
     const steps = await loadAddons(logger);
 
-    steps('BEFORE_CONFIG').forEach((f) => f({ logger }));
+    steps('BEFORE_CONFIG', { logger });
     const appConfig = loadAppConfig();
 
     prepareServiceLogs(appConfig, logger);
 
     // Database connection layer
-    steps('BEFORE_DB').forEach((f) => f({ logger, appConfig }));
+    steps('BEFORE_DB', { logger, appConfig });
     const database = createDbManager();
 
     // Service (virtualization) layer
-    steps('BEFORE_ENGINE').forEach((f) => f({ logger, appConfig, database }));
+    steps('BEFORE_ENGINE', { logger, appConfig, database });
     await initServiceManager({ db: database, appConfig, logger });
     currentContext = { router, engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Load security
-    steps('BEFORE_SECURITY').forEach((f) => f({ ...currentContext }));
+    steps('BEFORE_SECURITY', { ...currentContext });
     await loadSecurity({ ...currentContext });
 
     // Load HTTP routes
-    steps('BEFORE_ROUTES').forEach((f) => f({ ...currentContext }));
+    steps('BEFORE_ROUTES', { ...currentContext });
     await loadAppRoutes({ ...currentContext });
 
     // Start the server
-    steps('BEFORE_SERVER').forEach((f) => f({ ...currentContext }));
+    steps('BEFORE_SERVER', { ...currentContext });
 
     return new Promise((resolve) => {
         const ctx = { ...currentContext, steps };
@@ -86,7 +86,7 @@ export default async function (router: Application, options?: AppBootOptions): P
                 resolve(ctx);
             });
         }
-        steps('AFTER_SERVER').forEach((f) => f({ ...currentContext }, srv));
+        steps('AFTER_SERVER', { ...currentContext }, srv);
         resolve(ctx);
     });
 }

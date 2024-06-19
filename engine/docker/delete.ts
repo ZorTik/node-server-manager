@@ -1,10 +1,12 @@
 import DockerClient from "dockerode";
 import {currentContext} from "../../app";
 import {ServiceEngine} from "../engine";
+import {deleteNetwork as doDeleteNetwork, isInNetwork} from "../../networking/manager";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['delete'] {
-    return async (id) => {
+    return async (id, options) => {
         try {
+            const { deleteNetwork } = options;
             if (self) {
                 // del func is called on startup,
                 // this prevents it from accessing undefined 'self' stop.
@@ -14,6 +16,16 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             const {Image} = await c.inspect();
             await c.remove({ force: true });
             await client.getImage(Image).remove({ force: true });
+            // Delete network if it's associated with any.
+            const networkId = await isInNetwork(client, id);
+            if (networkId) {
+                // Disconnect this container from the attached network.
+                await client.getNetwork(networkId).disconnect({ Container: id, Force: true });
+                if (deleteNetwork == true) {
+                    // Delete network if requested.
+                    await doDeleteNetwork(client, id);
+                }
+            }
             return true;
         } catch (e) {
             if (e.message.includes('No such container:') || e.message.includes('removal of container')) {

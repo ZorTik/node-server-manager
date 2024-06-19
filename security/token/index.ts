@@ -1,4 +1,4 @@
-import {AppContext} from "../../app";
+import {AppContext} from "@nsm/app";
 import crypto from "crypto";
 
 export default async function ({database, router, logger}: AppContext) {
