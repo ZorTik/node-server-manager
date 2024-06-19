@@ -1,0 +1,1 @@
+# TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba ???

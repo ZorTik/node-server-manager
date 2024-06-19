@@ -30,7 +30,6 @@ export type AppBootOptions = {
     test?: boolean;
 }
 
-// TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba
 let currentContext: AppContext;
 
 function prepareServiceLogs(appConfig: any, logger: winston.Logger) {

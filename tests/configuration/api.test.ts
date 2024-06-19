@@ -1,7 +1,7 @@
 import server from "../../server";
 import boot from "../../app";
 import request from "supertest";
-import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
+import {beforeAll, describe, expect, test} from "@jest/globals";
 
 function expectProps(obj: any, model: string[]) {
     for (const key of model) {
