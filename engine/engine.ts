@@ -31,16 +31,12 @@ export type ContainerStat = {
     },
 }
 
-export type SigType = 'SIGINT';
-
 export type ServiceEngineI = ServiceEngine & { // Internal
     // If we are using the default (not custom) engine
     defaultEngine: boolean,
 }
 
 export type ServiceEngine = {
-    client: DockerClient;
-
     /**
      * (Re)builds a container from provided build dir and volume dir.
      *
@@ -104,17 +100,6 @@ function initClient(appConfig: { docker_host: string }) {
     return client;
 }
 
-async function synchronizeContainers(client: DockerClient, engine: ServiceEngine) {
-    const options: DockerClient.ContainerListOptions = { all: true, filters: JSON.stringify({ 'label': ['nsm=true'] }) };
-    const list = await client.listContainers(options);
-    for (const c of list) {
-        if (c.State !== 'running') {
-            continue;
-        }
-        await engine.stop(c.Id);
-    }
-}
-
 export default async function (appConfig: any): Promise<ServiceEngineI> {
     let engine = getSingleton<ServiceEngine>('engine');
     const usingDefaultEngine = engine == undefined;
@@ -148,7 +133,19 @@ export default async function (appConfig: any): Promise<ServiceEngineI> {
         engineImpl.listAttachedPorts = listAttachedPorts(engineImpl, client);
         engineImpl.stat = stat(engineImpl, client);
         engineImpl.statAll = statall(engineImpl, client);
-        await synchronizeContainers(client, engineImpl);
+
+        // Synchronize containers
+        const containerList = await client.listContainers({
+            all: true,
+            filters: JSON.stringify({ 'label': ['nsm=true'] }) }
+        );
+        for (const container of containerList) {
+            if (container.State !== 'running') {
+                continue;
+            }
+            await engineImpl.stop(container.Id);
+        }
+
         engine = engineImpl;
     }
     return {
