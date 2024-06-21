@@ -1,5 +1,5 @@
 import {currentContext, Database} from "../app";
-import createEngine, {ServiceEngine} from "./engine";
+import createEngine, {ServiceEngine, ServiceEngineI} from "./engine";
 import loadTemplate, {Template} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
@@ -66,7 +66,7 @@ export type Options = {
 }
 
 export type ServiceManager = {
-    engine: ServiceEngine;
+    engine: ServiceEngineI;
     nodeId: string;
     volumesDir: string;
 
@@ -163,7 +163,7 @@ class _InternalError extends Error {
     }
 }
 
-export let engine: ServiceEngine;
+export let engine: ServiceEngineI;
 export let nodeId: string;
 export let volumesDir: string;
 
@@ -442,7 +442,7 @@ export default async function ({db, appConfig, logger}: {
 }) {
     const nodeId = appConfig['node_id'] as string;
 
-    logger.info(`Initializing service manager for node ${nodeId}...`)
+    logger.info(`Initializing service manager for node ${nodeId}...`);
 
     const unclearedSessions = await db.listSessions(nodeId);
     await init(db, appConfig);

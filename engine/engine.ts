@@ -1,5 +1,6 @@
 import DockerClient from "dockerode";
 import { build, stop, deleteFunc, deleteVolume, listContainers, listAttachedPorts, stat, statall } from "./docker";
+import {getSingleton} from "@nsm/depend";
 
 export type BuildOptions = {
     port: number;
@@ -31,6 +32,11 @@ export type ContainerStat = {
 }
 
 export type SigType = 'SIGINT';
+
+export type ServiceEngineI = ServiceEngine & { // Internal
+    // If we are using the default (not custom) engine
+    defaultEngine: boolean,
+}
 
 export type ServiceEngine = {
     client: DockerClient;
@@ -65,6 +71,8 @@ export type ServiceEngine = {
      */
     delete(id: string, options?: { deleteNetwork?: boolean }): Promise<boolean>;
     deleteVolume(id: string): Promise<boolean>;
+    openConsole(id: string): Promise<NodeJS.ReadWriteStream|undefined>;
+    volumePath(id: string): Promise<string|undefined>;
     /**
      * Lists container ids of containers by templates.
      *
@@ -107,18 +115,44 @@ async function synchronizeContainers(client: DockerClient, engine: ServiceEngine
     }
 }
 
-export default async function (appConfig: any): Promise<ServiceEngine> {
-    const client = initClient(appConfig);
-    const engine: ServiceEngine = {} as ServiceEngine;
-    engine.client = client;
-    engine.build = build(engine, client);
-    engine.stop = stop(engine, client);
-    engine.delete = deleteFunc(engine, client);
-    engine.deleteVolume = deleteVolume(engine, client);
-    engine.listContainers = listContainers(engine, client);
-    engine.listAttachedPorts = listAttachedPorts(engine, client);
-    engine.stat = stat(engine, client);
-    engine.statAll = statall(engine, client);
-    await synchronizeContainers(client, engine);
-    return engine;
+export default async function (appConfig: any): Promise<ServiceEngineI> {
+    let engine = getSingleton<ServiceEngine>('engine');
+    const usingDefaultEngine = engine == undefined;
+    if (usingDefaultEngine) {
+        // Default engine implementation
+        const client = initClient(appConfig);
+        const engineImpl = {} as ServiceEngine & { dockerClient: DockerClient };
+        engineImpl.dockerClient = client;
+        engineImpl.build = build(engine, client);
+        engineImpl.stop = stop(engine, client);
+        engineImpl.delete = deleteFunc(engine, client);
+        engineImpl.deleteVolume = deleteVolume(engine, client);
+        engineImpl.openConsole = async (id) => {
+            try {
+                return client.getContainer(id).attach({
+                    stream: true, stdin: true, stdout: true, stderr: true, hijack: true,
+                    // Optional options, TODO: Extract somewhere as configuration??
+                    logs: true,
+                });
+            } catch (e) {
+                // TODO: More robust logging
+                console.log(e);
+                return undefined;
+            }
+        };
+        engineImpl.volumePath = async (id: string) => {
+            const vol = await client.getVolume(id).inspect();
+            return vol.Mountpoint;
+        };
+        engineImpl.listContainers = listContainers(engine, client);
+        engineImpl.listAttachedPorts = listAttachedPorts(engine, client);
+        engineImpl.stat = stat(engine, client);
+        engineImpl.statAll = statall(engine, client);
+        await synchronizeContainers(client, engineImpl);
+        engine = engineImpl;
+    }
+    return {
+        defaultEngine: usingDefaultEngine,
+        ...engine,
+    };
 }
