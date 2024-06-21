@@ -123,10 +123,10 @@ export default async function (appConfig: any): Promise<ServiceEngineI> {
         const client = initClient(appConfig);
         const engineImpl = {} as ServiceEngine & { dockerClient: DockerClient };
         engineImpl.dockerClient = client;
-        engineImpl.build = build(engine, client);
-        engineImpl.stop = stop(engine, client);
-        engineImpl.delete = deleteFunc(engine, client);
-        engineImpl.deleteVolume = deleteVolume(engine, client);
+        engineImpl.build = build(engineImpl, client);
+        engineImpl.stop = stop(engineImpl, client);
+        engineImpl.delete = deleteFunc(engineImpl, client);
+        engineImpl.deleteVolume = deleteVolume(engineImpl, client);
         engineImpl.openConsole = async (id) => {
             try {
                 return client.getContainer(id).attach({
@@ -144,10 +144,10 @@ export default async function (appConfig: any): Promise<ServiceEngineI> {
             const vol = await client.getVolume(id).inspect();
             return vol.Mountpoint;
         };
-        engineImpl.listContainers = listContainers(engine, client);
-        engineImpl.listAttachedPorts = listAttachedPorts(engine, client);
-        engineImpl.stat = stat(engine, client);
-        engineImpl.statAll = statall(engine, client);
+        engineImpl.listContainers = listContainers(engineImpl, client);
+        engineImpl.listAttachedPorts = listAttachedPorts(engineImpl, client);
+        engineImpl.stat = stat(engineImpl, client);
+        engineImpl.statAll = statall(engineImpl, client);
         await synchronizeContainers(client, engineImpl);
         engine = engineImpl;
     }
