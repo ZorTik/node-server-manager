@@ -1,6 +1,6 @@
 import DockerClient from "dockerode";
 import { build, stop, deleteFunc, deleteVolume, listContainers, listAttachedPorts, stat, statall } from "./docker";
-import {getSingleton} from "@nsm/depend";
+import {getSingleton} from "../depend";
 
 export type BuildOptions = {
     port: number;
