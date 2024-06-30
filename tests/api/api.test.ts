@@ -28,6 +28,9 @@ async function miniService() {
     do {
         const statusRes = await request(server).get("/v1/service/" + id + "/powerstatus");
         status = statusRes.body.status;
+        await new Promise((resolve) => {
+            setTimeout(() => resolve(null), 300);
+        });
     } while (status !== "IDLE");
     if (status === "IDLE") {
         return id;
@@ -103,7 +106,7 @@ describe("Test v1 API models", () => {
             "session.nodeId",
             "session.containerId",
         ]);
-    });
+    }, 20000);
 
     // TODO: /v1/service/<id>/resume
 
@@ -127,7 +130,7 @@ describe("Test v1 API models", () => {
            "message",
            "statusPath"
        ]);
-    });
+    }, 20000);
 
     test("Test /v1/service/{serviceId}/reboot", async  () => {
         const id = await miniService();
@@ -138,7 +141,7 @@ describe("Test v1 API models", () => {
             "message",
             "statusPath"
         ]);
-    });
+    }, 20000);
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {
         const id = await miniService();
@@ -149,7 +152,7 @@ describe("Test v1 API models", () => {
            "status",
            "error"
         ]);
-    });
+    }, 20000);
 
     // TODO: /v1/service/<id>/options
 

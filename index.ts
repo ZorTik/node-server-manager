@@ -9,7 +9,8 @@ app(server).then((ctx) => {
     process.once('SIGINT', async () => {
         logger.info('Stopping running services...');
         setStatus("stopping");
-        steps('EXIT').forEach((f: any) => f(ctx));
+        //steps('EXIT').forEach((f: any) => f(ctx));
+        steps('EXIT', ctx);
         await engine.stopRunning();
         process.exit(0);
     });
