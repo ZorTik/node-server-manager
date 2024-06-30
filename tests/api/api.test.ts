@@ -13,7 +13,32 @@ function expectProps(obj: any, model: any[]) {
     }
 }
 
-describe("Test v1 API", () => {
+async function miniService() {
+    const createRes = await request(server)
+        .post("/v1/service/create")
+        .send({
+            template: "example_minecraft",
+            env: {
+                JAVA_VERSION: "11",
+                VERSION: "1.12.2"
+            }
+        });
+    const id = createRes.body.serviceId;
+    let status: string;
+    do {
+        const statusRes = await request(server).get("/v1/service/" + id + "/powerstatus");
+        status = statusRes.body.status;
+    } while (status !== "IDLE");
+    if (status === "IDLE") {
+        return id;
+    } else if (status === "ERROR") {
+        return undefined;
+    } else {
+        throw new Error("Invalid status: " + status);
+    }
+}
+
+describe("Test v1 API models", () => {
     beforeAll(async () => {
         await boot(server, { test: true });
     }, 20000);
@@ -61,5 +86,74 @@ describe("Test v1 API", () => {
         ]);
     });
 
+    test("Test /v1/service/{serviceId}", async () => {
+        const id = await miniService();
+        const res = await request(server).get("/v1/service/" + id);
+        expect(res.status).toBe(200);
+        expectProps(res.body, [
+            "id",
+            "template.id",
+            "template.name",
+            "template.description",
+            "template.settings",
+            "port",
+            "options",
+            "env",
+            "session.serviceId",
+            "session.nodeId",
+            "session.containerId",
+        ]);
+    });
+
+    // TODO: /v1/service/<id>/resume
+
+    test("Test /v1/service/{serviceId}/stop", async () => {
+       const id = await miniService();
+       const res = await request(server).post("/v1/service/" + id + "/stop");
+       expect(res.status).toBe(200);
+       expectProps(res.body, [
+           "status",
+           "message",
+           "statusPath"
+       ]);
+    });
+
+    test("Test /v1/service/{serviceId}/delete", async () => {
+       const id = await miniService();
+       const res = await request(server).post("/v1/service/" + id + "/delete");
+       expect(res.status).toBe(200);
+       expectProps(res.body, [
+           "status",
+           "message",
+           "statusPath"
+       ]);
+    });
+
+    test("Test /v1/service/{serviceId}/reboot", async  () => {
+        const id = await miniService();
+        const res = await request(server).post("/v1/service/" + id + "/reboot");
+        expect(res.status).toBe(200);
+        expectProps(res.body, [
+            "status",
+            "message",
+            "statusPath"
+        ]);
+    });
+
+    test("Test /v1/service/{serviceId}/powerstatus", async () => {
+        const id = await miniService();
+        const res = await request(server).get("/v1/service/" + id + "/powerstatus");
+        expect(res.status).toBe(200);
+        expectProps(res.body, [
+           "id",
+           "status",
+           "error"
+        ]);
+    });
+
+    // TODO: /v1/service/<id>/options
+
     // TODO: Add missing API tests
 });
+
+// TODO: Test v1 API in-depth
