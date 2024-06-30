@@ -1,19 +1,23 @@
 import DockerClient from "dockerode";
 
-// TODO: Remove id from options and figure out how to use net unique ID from manager (store it in db)
-export async function accessNetwork(client: DockerClient, ip: string, options: { id: string }) {
-    let net = client.getNetwork(options.id);
+export async function accessNetwork(client: DockerClient, ip: string, id: string) {
+    let net = client.getNetwork(id);
     try {
         await net.inspect();
     } catch (e) {
         if (e.message.includes('not found')) {
-            // TODO: Create network and assign it to net
+            net = await createNetwork(client, ip);
         } else {
             // Something unexpected occurred here.
             throw e;
         }
     }
     return net;
+}
+
+export async function createNetwork(client: DockerClient, ip: string) {
+    // TODO
+    return undefined; // TODO: Delete this line and implement the func
 }
 
 export async function deleteNetwork(client: DockerClient, id: string) {

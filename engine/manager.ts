@@ -334,12 +334,17 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     try {
         await engine.stop(session.containerId);
 
-        const one = fromDeleteFunc == true
-            ? await engine.delete(session.containerId, { deleteNetwork: true })
-            : await engine.delete(session.containerId);
-        const two = await db.deleteSession(id);
+        let serviceSucc: boolean = true;
+        if (engine.useVolumes) {
+            serviceSucc = fromDeleteFunc == true
+                ? await engine.delete(session.containerId, { deleteNetwork: true })
+                : await engine.delete(session.containerId);
+        } else if (fromDeleteFunc) {
+            serviceSucc = await engine.delete(session.containerId, { deleteNetwork: true });
+        }
+        const sessionSucc = await db.deleteSession(id);
 
-        if (one && two) {
+        if (serviceSucc && sessionSucc) {
             started.splice(started.indexOf(id), 1);
             return true;
         } else {
@@ -359,7 +364,11 @@ export async function deleteService(id: string) {
             throw e;
         }
     }
-    await engine.deleteVolume(id);
+    if (engine.useVolumes) {
+        await engine.deleteVolume(id);
+    } else {
+        // If the useVolumes is false, service is deleted inside stopService
+    }
     return db.deletePerma(id);
 }
 

@@ -6,7 +6,6 @@ import {deleteNetwork as doDeleteNetwork, isInNetwork} from "../../networking/ma
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['delete'] {
     return async (id, options) => {
         try {
-            const { deleteNetwork } = options;
             if (self) {
                 // del func is called on startup,
                 // this prevents it from accessing undefined 'self' stop.
@@ -21,7 +20,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             if (networkId) {
                 // Disconnect this container from the attached network.
                 await client.getNetwork(networkId).disconnect({ Container: id, Force: true });
-                if (deleteNetwork == true) {
+                if (options.deleteNetwork == true) {
                     // Delete network if requested.
                     await doDeleteNetwork(client, id);
                 }

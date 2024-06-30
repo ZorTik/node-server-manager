@@ -4,10 +4,115 @@ import path from "path";
 import tar from "tar";
 import ignore from "../ignore";
 import {currentContext as ctx} from "../../app";
-import {ServiceEngine} from "../engine";
+import {BuildOptions, ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
-import {accessNetwork} from "../../networking/manager";
+import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
+
+async function prepareImage(client: DockerClient, arDir: string, buildDir: string, volumeId: string, env: any) {
+    const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
+    try {
+        fs.unlinkSync(archive);
+    } catch (e) {
+        if (!e.message.includes('ENOENT')) {
+            throw e;
+        }
+    }
+    await tar.c({
+        gzip: false,
+        file: archive,
+        cwd: buildDir
+    }, [...ignore(buildDir)]);
+
+    const imageTag = path.basename(buildDir) + ':' + volumeId;
+
+    // Build image
+    const stream = await client.buildImage(archive, { t: imageTag, buildargs: env });
+    try {
+        await new Promise((resolve, reject) => {
+            client.modem.followProgress(stream, (err, res) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    res.forEach(r => {
+                        if (r.errorDetail) {
+                            reject(r.errorDetail.message);
+                            return;
+                        } else {
+                            ctx.logger.info(r.stream?.trim());
+                        }
+                    });
+                    resolve(res);
+                }
+            })
+        });
+    } catch (e) {
+        ctx.logger.error(e);
+        return null;
+    }
+    fs.unlinkSync(archive);
+    return imageTag;
+}
+
+async function prepareNetwork(client: DockerClient, network: BuildOptions['network'], creatingContainer: boolean) {
+    let net: Dockerode.Network|undefined = undefined;
+    /*if (network && !network.portsOnly) {
+        let netId; // TODO: get netId from relational storage for this container
+        if (creatingContainer || !netId) {
+            net = await createNetwork(client, network.address);
+            netId = net.id;
+            // TODO: Save netId to relational storage
+        } else {
+            net = await accessNetwork(client, network.address, netId);
+        }
+    }*/ // TODO: Uncomment and complete
+    return net;
+}
+
+async function prepareContainer(
+    client: DockerClient,
+    imageTag: string,
+    buildDir: string,
+    volumeId: string,
+    options: BuildOptions,
+    net: Dockerode.Network|undefined
+) {
+    // TODO: Handle network - Bind this container to the network above (DONE), or bind ports to the network.address if portsOnly=true
+    const {ram, cpu, disk, port, network, env} = options;
+    const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
+    // Create container
+    const container = await client.createContainer({
+        Image: imageTag,
+        Labels: {
+            'nsm': 'true',
+            'nsm.id': path.basename(buildDir),
+            'nsm.buildDir': buildDir,
+            'nsm.volumeId': volumeId,
+        },
+        HostConfig: {
+            Memory: ram,
+            CpuShares: cpu,
+            PortBindings: { [port + '/tcp']: [{HostPort: fullPortDef(port)}] },
+            DiskQuota: disk,
+            Mounts: [
+                {
+                    Type: 'volume',
+                    Source: client.getVolume(volumeId).name,
+                    Target: '/data',
+                    ReadOnly: false,
+                }
+            ],
+        },
+        Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
+        ExposedPorts: { [fullPortDef(port)]: {} },
+        AttachStdin: true,
+        OpenStdin: true,
+    });
+    if (net != null) {
+        await net.connect({ Container: container.id }); // TODO: Implement EndpointConfig and test
+    }
+    return container;
+}
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
     const arDir = process.cwd() + '/archives';
@@ -15,57 +120,19 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         fs.mkdirSync(arDir);
     }
     return async (buildDir, volumeId, options, onclose?: () => Promise<void>|void) => {
-        const {ram, cpu, disk, port, ports, network, env} = options;
         const id = volumeId;
-        const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
-        try {
-            fs.unlinkSync(archive);
-        } catch (e) {
-            if (!e.message.includes('ENOENT')) {
-                throw e;
-            }
-        }
-        await tar.c({
-            gzip: false,
-            file: archive,
-            cwd: buildDir
-        }, [...ignore(buildDir)]);
 
         // Populate env with built-in vars
-        env.SERVICE_PORT = port.toString();
-        env.SERVICE_PORTS = ports.join(' ');
-        env.SERVICE_RAM = ram.toString();
-        env.SERVICE_CPU = cpu.toString();
-        env.SERVICE_DISK = disk.toString();
+        options.env.SERVICE_PORT = options.port.toString();
+        options.env.SERVICE_PORTS = options.ports.join(' ');
+        options.env.SERVICE_RAM = options.ram.toString();
+        options.env.SERVICE_CPU = options.cpu.toString();
+        options.env.SERVICE_DISK = options.disk.toString();
 
-        const imageTag = path.basename(buildDir) + ':' + volumeId;
+        const {network, env} = options;
+        ctx.logger.info(id + ' > Building image');
+        const imageTag = await prepareImage(client, arDir, buildDir, volumeId, env);
 
-        // Build image
-        const stream = await client.buildImage(archive, { t: imageTag, buildargs: env });
-        try {
-            await new Promise((resolve, reject) => {
-                client.modem.followProgress(stream, (err, res) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        res.forEach(r => {
-                            if (r.errorDetail) {
-                                reject(r.errorDetail.message);
-                                return;
-                            } else {
-                                ctx.logger.info(r.stream?.trim());
-                            }
-                        });
-                        resolve(res);
-                    }
-                })
-            });
-        } catch (e) {
-            ctx.logger.error(e);
-            return null;
-        }
-
-        fs.unlinkSync(archive);
         fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
 
         let container: DockerClient.Container;
@@ -77,49 +144,19 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 await client.getVolume(volumeId).inspect();
             } catch (e) {
                 if (e.message.includes('No such')) {
+                    ctx.logger.info(id + ': Creating volume');
                     await client.createVolume({ Name: volumeId });
                     creating = true;
                 }
             }
-            let net: Dockerode.Network|undefined = undefined;
-            if (network && !network.portsOnly) {
-                net = await accessNetwork(client, network.address, { id });
-            }
+            ctx.logger.info(id + ' > Preparing network');
+            const net = await prepareNetwork(client, network, creating);
             // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-            const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
-            // TODO: Handle network - Bind this container to the network above, or bind ports to the network.address if portsOnly=true
-            // Create container
-            container = await client.createContainer({
-                Image: imageTag,
-                Labels: {
-                    'nsm': 'true',
-                    'nsm.id': path.basename(buildDir),
-                    'nsm.buildDir': buildDir,
-                    'nsm.volumeId': volumeId,
-                },
-                HostConfig: {
-                    Memory: ram,
-                    CpuShares: cpu,
-                    PortBindings: { [port + '/tcp']: [{HostPort: fullPortDef(port)}] },
-                    DiskQuota: disk,
-                    Mounts: [
-                        {
-                            Type: 'volume',
-                            Source: client.getVolume(volumeId).name,
-                            Target: '/data',
-                            ReadOnly: false,
-                        }
-                    ],
-                },
-                Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-                ExposedPorts: { [fullPortDef(port)]: {} },
-                AttachStdin: true,
-                OpenStdin: true,
-            });
-            if (net != null) {
-                // TODO: Connect container to net
-            }
+            ctx.logger.info(id + ' > Preparing container');
+            container = await prepareContainer(client, imageTag, buildDir, volumeId, options, net);
+            ctx.logger.info(id + ' > Starting container');
             await container.start();
+            ctx.logger.info(id + ' > Watching changes');
             // Watcher
             setTimeout(async () => {
                 const attachOptions = { stream: true, stdout: true, hijack: true };
