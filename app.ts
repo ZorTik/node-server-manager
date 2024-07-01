@@ -45,7 +45,7 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 // App orchestration code
 export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
     const logger = prepareLogger(process.env.DEBUG === 'true');
-    r.prepareResources(); // Copy resources, etc.
+    r.prepareResources(options?.test === true); // Copy resources, etc.
 
     // Load addon steps
     const steps = await loadAddons(logger);

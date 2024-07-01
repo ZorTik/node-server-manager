@@ -1,0 +1,11 @@
+name: 'Test'
+description: 'A Test template'
+port_range:
+  min: 22222
+  max: 33333
+defaults:
+  ram: 512000000 # bytes
+  cpu: 2 # cores
+  disk: 2000000000 # bytes
+# Optional ENV vars, and their default values
+env: {}
