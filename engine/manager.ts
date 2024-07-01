@@ -239,7 +239,7 @@ export async function createService(template: string, {
         }
         const options = {ram, cpu, ports};
         // Save permanent info
-        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env, network })) {
+        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
             await rollback();
             throw new _InternalError('Failed to save perma info to database');
         }
