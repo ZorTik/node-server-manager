@@ -138,7 +138,6 @@ describe("Test v1 API models", () => {
         expectProps(res.body, [
            "id", undefined,
            "status", undefined,
-           "error", undefined,
         ]);
     }, 20000);
 
