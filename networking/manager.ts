@@ -16,8 +16,21 @@ export async function accessNetwork(client: DockerClient, ip: string, id: string
 }
 
 export async function createNetwork(client: DockerClient, ip: string) {
-    // TODO
-    return undefined; // TODO: Delete this line and implement the func
+    const uuid = crypto.randomUUID();
+    return client.createNetwork({
+        Name: uuid,
+        Driver: 'bridge',
+        Options: {
+            'com.docker.network.bridge.enable_icc': 'true', // Inter-container connectivity, may disable
+            'com.docker.network.bridge.enable_ip_masquerade': 'true',
+            'com.docker.network.bridge.host_binding_ipv4': ip,
+            'com.docker.network.bridge.name': uuid,
+            'com.docker.network.driver.mtu': '1500'
+        },
+        Labels: {
+            'nsm': 'true',
+        }
+    });
 }
 
 export async function deleteNetwork(client: DockerClient, id: string) {

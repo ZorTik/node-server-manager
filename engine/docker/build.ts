@@ -77,7 +77,6 @@ async function prepareContainer(
     options: BuildOptions,
     net: Dockerode.Network|undefined
 ) {
-    // TODO: Handle network - Bind this container to the network above (DONE), or bind ports to the network.address if portsOnly=true
     const {ram, cpu, disk, port, network, env} = options;
     const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
     // Create container

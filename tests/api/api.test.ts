@@ -94,17 +94,17 @@ describe("Test v1 API models", () => {
         const res = await request(server).get("/v1/service/" + id);
         expect(res.status).toBe(200);
         expectProps(res.body, [
-            "id",
-            "template.id",
-            "template.name",
-            "template.description",
-            "template.settings",
-            "port",
-            "options",
-            "env",
-            "session.serviceId",
-            "session.nodeId",
-            "session.containerId",
+            "id", undefined,
+            "template.id", undefined,
+            "template.name", undefined,
+            "template.description", undefined,
+            "template.settings", undefined,
+            "port", undefined,
+            "options", undefined,
+            "env", undefined,
+            "session.serviceId", undefined,
+            "session.nodeId", undefined,
+            "session.containerId", undefined,
         ]);
     }, 20000);
 
@@ -115,20 +115,20 @@ describe("Test v1 API models", () => {
        const res = await request(server).post("/v1/service/" + id + "/stop");
        expect(res.status).toBe(200);
        expectProps(res.body, [
-           "status",
-           "message",
-           "statusPath"
+           "status", undefined,
+           "message", undefined,
+           "statusPath", undefined,
        ]);
-    });
+    }, 20000);
 
     test("Test /v1/service/{serviceId}/delete", async () => {
        const id = await miniService();
        const res = await request(server).post("/v1/service/" + id + "/delete");
        expect(res.status).toBe(200);
        expectProps(res.body, [
-           "status",
-           "message",
-           "statusPath"
+           "status", undefined,
+           "message", undefined,
+           "statusPath", undefined,
        ]);
     }, 20000);
 
@@ -137,9 +137,9 @@ describe("Test v1 API models", () => {
         const res = await request(server).post("/v1/service/" + id + "/reboot");
         expect(res.status).toBe(200);
         expectProps(res.body, [
-            "status",
-            "message",
-            "statusPath"
+            "status", undefined,
+            "message", undefined,
+            "statusPath", undefined,
         ]);
     }, 20000);
 
@@ -148,9 +148,9 @@ describe("Test v1 API models", () => {
         const res = await request(server).get("/v1/service/" + id + "/powerstatus");
         expect(res.status).toBe(200);
         expectProps(res.body, [
-           "id",
-           "status",
-           "error"
+           "id", undefined,
+           "status", undefined,
+           "error", undefined,
         ]);
     }, 20000);
 
