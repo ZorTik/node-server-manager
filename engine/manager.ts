@@ -392,6 +392,9 @@ export function getTemplate(id: string): Template|undefined {
 
 export async function getService(from: string): Promise<ServiceInfo | undefined> {
     const data = typeof from === 'string' ? await db.getPerma(from) : from;
+    if (!data) {
+        return undefined;
+    }
     return {
         ...data,
         optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,

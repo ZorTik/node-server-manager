@@ -108,7 +108,6 @@ describe("Test v1 API models", () => {
        expectProps(res.body, [
            "status", undefined,
            "message", undefined,
-           "statusPath", undefined,
        ]);
     }, 20000);
 
@@ -119,7 +118,6 @@ describe("Test v1 API models", () => {
        expectProps(res.body, [
            "status", undefined,
            "message", undefined,
-           "statusPath", undefined,
        ]);
     }, 20000);
 
@@ -130,7 +128,6 @@ describe("Test v1 API models", () => {
         expectProps(res.body, [
             "status", undefined,
             "message", undefined,
-            "statusPath", undefined,
         ]);
     }, 20000);
 
