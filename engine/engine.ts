@@ -40,6 +40,11 @@ export type DeleteOptions = {
     deleteNetwork?: boolean;
 }
 
+export type MetaStorage = {
+    set: (key: string, value: any) => Promise<boolean>;
+    get: <T>(key: string, def?: T) => Promise<T|undefined>;
+}
+
 export type ServiceEngineI = ServiceEngine & { // Internal
     // If we are using the default (not custom) engine
     defaultEngine: boolean,
@@ -72,6 +77,7 @@ export type ServiceEngine = {
      * @param buildDir The image build dir
      * @param volumeId The volume name
      * @param options Build options
+     * @param meta Meta storage for this unique context
      * @param onclose Function on internal container close
      * @return ID of created container
      */
@@ -79,6 +85,7 @@ export type ServiceEngine = {
         buildDir: string,
         volumeId: string,
         options: BuildOptions,
+        meta: MetaStorage,
         onclose?: () => Promise<void>|void): Promise<string>; // Container ID (local)
 
     /**

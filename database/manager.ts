@@ -150,3 +150,26 @@ export async function count(nodeId: string): Promise<number> {
         return -1;
     }
 }
+
+export async function setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean> {
+    try {
+        await client.serviceMeta.upsert({
+            where: { serviceId },
+            update: { serviceId, key, value },
+            create: { serviceId, key, value }
+        });
+        return true;
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
+}
+
+export async function getServiceMeta(serviceId: string, key: string): Promise<any> {
+    const meta = await client.serviceMeta.findUnique({ where: { serviceId, key } });
+    if (meta) {
+        return meta.value;
+    } else {
+        return undefined;
+    }
+}

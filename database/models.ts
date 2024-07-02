@@ -13,6 +13,8 @@ export type Database = {
     list(nodeId: string, page?: number, pageSize?: number): Promise<PermaModel[]>;
     listSessions(nodeId: string): Promise<SessionModel[]>;
     count(nodeId: string): Promise<number>;
+    setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean>;
+    getServiceMeta(serviceId: string, key: string): Promise<any>;
 }
 
 export type SessionModel = {

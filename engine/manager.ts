@@ -1,5 +1,5 @@
 import {currentContext, Database} from "../app";
-import createEngine, {ServiceEngine, ServiceEngineI} from "./engine";
+import createEngine, {MetaStorage, ServiceEngine, ServiceEngineI} from "./engine";
 import loadTemplate, {Template} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
@@ -227,6 +227,7 @@ export async function createService(template: string, {
                 ports: ports ?? [],
                 network,
             },
+            metaStorageForService(serviceId),
             async () => {
                 await self.stopService(serviceId);
             }
@@ -294,6 +295,7 @@ export async function resumeService(id: string) {
                 ports: options.ports ?? [],
                 network,
             },
+            metaStorageForService(id),
             async () => {
                 await self.stopService(id);
             }
@@ -432,6 +434,17 @@ export async function stopRunning() {
             currentContext.logger.error(e.message);
         }
     }
+}
+
+function metaStorageForService(id: string): MetaStorage { // service id
+    return {
+        set: async (key, value) => {
+            return db.setServiceMeta(id, key, value);
+        },
+        get: async (key, def) => {
+            return (await db.getServiceMeta(id, key)) ?? def;
+        },
+    };
 }
 
 

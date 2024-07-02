@@ -4,7 +4,7 @@ import path from "path";
 import tar from "tar";
 import ignore from "../ignore";
 import {currentContext as ctx} from "../../app";
-import {BuildOptions, ServiceEngine} from "../engine";
+import {BuildOptions, MetaStorage, ServiceEngine} from "../engine";
 import {getActionType} from "../asyncp";
 import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
@@ -54,18 +54,21 @@ async function prepareImage(client: DockerClient, arDir: string, buildDir: strin
     return imageTag;
 }
 
-async function prepareNetwork(client: DockerClient, network: BuildOptions['network'], creatingContainer: boolean) {
+async function prepareNetwork(client: DockerClient, network: BuildOptions['network'], meta: MetaStorage, creatingContainer: boolean) {
     let net: Dockerode.Network|undefined = undefined;
-    /*if (network && !network.portsOnly) {
-        let netId; // TODO: get netId from relational storage for this container
+    if (network && !network.portsOnly) {
+        const metaKey = "net-id";
+        let netId = await meta.get<string>(metaKey);
         if (creatingContainer || !netId) {
             net = await createNetwork(client, network.address);
             netId = net.id;
-            // TODO: Save netId to relational storage
+            if (!await meta.set(metaKey, netId)) {
+                throw new Error("Could not save network data.");
+            }
         } else {
             net = await accessNetwork(client, network.address, netId);
         }
-    }*/ // TODO: Uncomment and complete
+    }
     return net;
 }
 
@@ -118,7 +121,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
     }
-    return async (buildDir, volumeId, options, onclose?: () => Promise<void>|void) => {
+    return async (buildDir, volumeId, options, meta, onclose?: () => Promise<void>|void) => {
         const id = volumeId;
 
         // Populate env with built-in vars
@@ -149,7 +152,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 }
             }
             ctx.logger.info(id + ' > Preparing network');
-            const net = await prepareNetwork(client, network, creating);
+            const net = await prepareNetwork(client, network, meta, creating);
             // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
             ctx.logger.info(id + ' > Preparing container');
             container = await prepareContainer(client, imageTag, buildDir, volumeId, options, net);
