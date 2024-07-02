@@ -1,5 +1,5 @@
 import {currentContext, Database} from "../app";
-import createEngine, {MetaStorage, ServiceEngine, ServiceEngineI} from "./engine";
+import createEngine, {ServiceEngineI} from "./engine";
 import loadTemplate, {Template} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
@@ -63,6 +63,11 @@ export type Options = {
          */
         portsOnly: boolean,
     }
+}
+
+export type MetaStorage = {
+    set: (key: string, value: any) => Promise<boolean>;
+    get: <T>(key: string, def?: T) => Promise<T|undefined>;
 }
 
 export type ServiceManager = {

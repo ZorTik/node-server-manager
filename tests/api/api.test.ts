@@ -29,6 +29,10 @@ async function miniService(ctx: AppBootContext) {
     }
 }
 
+async function dropMiniService(ctx: AppBootContext, id: string) {
+    await ctx.engine.deleteService(id);
+}
+
 describe("Test v1 API models", () => {
     let ctx: AppBootContext|undefined = undefined;
 
@@ -96,7 +100,7 @@ describe("Test v1 API models", () => {
             "session.nodeId", undefined,
             "session.containerId", undefined,
         ]);
-
+        await dropMiniService(ctx, id);
     }, 20000);
 
     // TODO: /v1/service/<id>/resume
@@ -109,6 +113,7 @@ describe("Test v1 API models", () => {
            "status", undefined,
            "message", undefined,
        ]);
+       await dropMiniService(ctx, id);
     }, 20000);
 
     test("Test /v1/service/{serviceId}/delete", async () => {
@@ -119,6 +124,7 @@ describe("Test v1 API models", () => {
            "status", undefined,
            "message", undefined,
        ]);
+       await dropMiniService(ctx, id);
     }, 20000);
 
     test("Test /v1/service/{serviceId}/reboot", async  () => {
@@ -129,6 +135,7 @@ describe("Test v1 API models", () => {
             "status", undefined,
             "message", undefined,
         ]);
+        await dropMiniService(ctx, id);
     }, 20000);
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {
@@ -139,6 +146,7 @@ describe("Test v1 API models", () => {
            "id", undefined,
            "status", undefined,
         ]);
+        await dropMiniService(ctx, id);
     }, 20000);
 
     // TODO: /v1/service/<id>/options

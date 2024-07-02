@@ -1,6 +1,7 @@
 import DockerClient from "dockerode";
 import {build, stop, deleteFunc, deleteVolume, listContainers, listAttachedPorts, stat, statall} from "./docker";
 import {getSingleton} from "../depend";
+import {MetaStorage} from "./manager";
 
 export type BuildOptions = {
     port: number;
@@ -38,11 +39,6 @@ export type DeleteOptions = {
      * network should be deleted.
      */
     deleteNetwork?: boolean;
-}
-
-export type MetaStorage = {
-    set: (key: string, value: any) => Promise<boolean>;
-    get: <T>(key: string, def?: T) => Promise<T|undefined>;
 }
 
 export type ServiceEngineI = ServiceEngine & { // Internal
