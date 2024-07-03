@@ -5,6 +5,8 @@ import server, {setStatus, status} from "./server";
 app(server).then((ctx) => {
     const {engine, logger, steps} = ctx;
 
+    ctx.logger.info('Registering signal handlers');
+
     // On SIGINT, stop all running services
     process.once('SIGINT', async () => {
         logger.info('Stopping running services...');

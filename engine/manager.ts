@@ -172,6 +172,8 @@ export type ServiceManager = {
     stopRunning(): Promise<void>;
 
     enableNoTemplateMode(alternateSettings: NoTAlternateSettings): Promise<void>;
+
+    noTemplateMode(): boolean;
 }
 
 export type ServiceInfo = PermaModel & {
@@ -436,7 +438,16 @@ export async function updateOptions(id: string, options: Options): Promise<boole
 }
 
 export function getTemplate(id: string): Template|undefined {
-    return loadTemplate(id);
+    if (noTemplateMode()) {
+        return {
+            id: noTTemplate,
+            name: "Built-in",
+            description: "A no-template template.",
+            settings: noTAlternateSett,
+        }
+    } else {
+        return loadTemplate(id);
+    }
 }
 
 export async function getService(from: string): Promise<ServiceInfo | undefined> {
@@ -499,6 +510,10 @@ function metaStorageForService(id: string): MetaStorage { // service id
     };
 }
 
+export function noTemplateMode() {
+    return noTAlternateSett !== undefined;
+}
+
 
 // Utils
 
@@ -532,4 +547,6 @@ export default async function ({db, appConfig, logger}: {
     for (let session of unclearedSessions) {
         await stopService(session.serviceId);
     }
+
+    logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
 }

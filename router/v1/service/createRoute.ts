@@ -21,7 +21,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
             post: async (req, res) => {
                 const beginTime = Date.now();
                 const body = req.body;
-                if (!body || !body.template) {
+                if (!body || (!engine.noTemplateMode() && !body.template)) {
                     res.status(400).json({status: 400, message: 'Missing body or template key.'}).end();
                     return;
                 }

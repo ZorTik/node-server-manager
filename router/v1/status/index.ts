@@ -23,7 +23,7 @@ async function checkNsmResources(engine: ServiceManager, db: Database) {
             total: 0,
             percent: 0,
         },
-        services: {
+        services: { // TODO: Ukazuje stále 0???
             memTotal: BigInt(0),
             cpuTotal: BigInt(0),
             diskTotal: BigInt(0),
