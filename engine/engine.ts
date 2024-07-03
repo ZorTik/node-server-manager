@@ -53,24 +53,32 @@ export type ServiceEngineI = ServiceEngine & { // Internal
  */
 export type ServiceEngine = {
     /**
-     * Indicated if this engine uses external storage and should keep
+     * Indicates if this engine uses external storage and should keep
      * the services or not. This significantly changes the behaviour of NSM
      * to the ServiceEngine.
      *
      * There are several differences that apply according to this state.
      * If Enabled:
      * - The delete function is called on DELETE and also STOP!
+     *   In other words, the container is deleted ALWAYS, and rebuilt everytime
+     *   with the used volume that holds the files.
      * - The deleteVolume function is called only on DELETE
      * If Disabled:
      * - The delete function is called ONLY ON DELETE, not on stop (services are kept)
      * - The deleteVolume function is NEVER CALLED!
      */
     useVolumes: boolean;
+    /**
+     * If this engine supports no-t mode from engine/manager.
+     * If enabled, buildDir from build() method can be undefined.
+     */
+    supportsNoTemplateMode: boolean;
 
     /**
      * (Re)builds a container from provided build dir and volume dir.
      *
-     * @param buildDir The image build dir
+     * @param buildDir The image build dir, or undefined if no-template mode is enabled.
+     *                 Should throw error if no-t mode is not supported by this engine.
      * @param volumeId The volume name
      * @param options Build options
      * @param meta Meta storage for this unique context
@@ -78,7 +86,7 @@ export type ServiceEngine = {
      * @return ID of created container
      */
     build(
-        buildDir: string,
+        buildDir: string|undefined,
         volumeId: string,
         options: BuildOptions,
         meta: MetaStorage,
@@ -153,6 +161,7 @@ async function buildDefaultEngine(appConfig: any) {
     const engineImpl = {} as ServiceEngine & { dockerClient: DockerClient };
     engineImpl.dockerClient = client;
     engineImpl.useVolumes = true; // Docker uses volumes strategy
+    engineImpl.supportsNoTemplateMode = false;
     engineImpl.build = build(engineImpl, client);
     engineImpl.stop = stop(engineImpl, client);
     engineImpl.delete = deleteFunc(engineImpl, client);

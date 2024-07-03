@@ -4,7 +4,8 @@ import path from "path";
 import tar from "tar";
 import ignore from "../ignore";
 import {currentContext as ctx} from "../../app";
-import {BuildOptions, MetaStorage, ServiceEngine} from "../engine";
+import {BuildOptions, ServiceEngine} from "../engine";
+import {MetaStorage} from "../manager";
 import {getActionType} from "../asyncp";
 import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
@@ -123,6 +124,10 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
     }
     return async (buildDir, volumeId, options, meta, onclose?: () => Promise<void>|void) => {
         const id = volumeId;
+
+        if (!buildDir) {
+            throw new Error('Docker engine does not support no-template mode!');
+        }
 
         // Populate env with built-in vars
         options.env.SERVICE_PORT = options.port.toString();

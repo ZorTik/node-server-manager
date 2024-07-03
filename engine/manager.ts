@@ -70,6 +70,20 @@ export type MetaStorage = {
     get: <T>(key: string, def?: T) => Promise<T|undefined>;
 }
 
+export type NoTAlternateSettings = {
+    port_range: {
+        min: number,
+        max: number
+    },
+    defaults: {
+        ram: number,
+        cpu: number,
+        disk: number
+    },
+    env: {
+    }
+}
+
 export type ServiceManager = {
     engine: ServiceEngineI;
     nodeId: string;
@@ -83,6 +97,7 @@ export type ServiceManager = {
      * @returns The service ID
      */
     createService(template: string, options: Options): Promise<string>; // Service ID
+
     /**
      * Resume a service.
      *
@@ -90,6 +105,7 @@ export type ServiceManager = {
      * @returns Whether the service was resumed
      */
     resumeService(id: string): Promise<boolean>;
+
     /**
      * Stop a service.
      *
@@ -97,6 +113,7 @@ export type ServiceManager = {
      * @returns Whether the service was stopped
      */
     stopService(id: string): Promise<boolean>;
+
     /**
      * Delete a service.
      *
@@ -104,6 +121,7 @@ export type ServiceManager = {
      * @returns Whether the service was deleted
      */
     deleteService(id: string): Promise<boolean>;
+
     /**
      * Update the options of a service.
      *
@@ -111,6 +129,7 @@ export type ServiceManager = {
      * @param options The new options
      */
     updateOptions(id: string, options: Options): Promise<boolean>;
+
     /**
      * Get the template by ID.
      *
@@ -118,18 +137,21 @@ export type ServiceManager = {
      * @returns The template wrapper
      */
     getTemplate(id: string): Template|undefined;
+
     /**
      * Get the service by ID.
      *
      * @param from The service ID, or model
      */
     getService(from: string|PermaModel): Promise<ServiceInfo|undefined>;
+
     /**
      * Get the last power error of a service.
      *
      * @param id The service ID
      */
     getLastPowerError(id: string): Error|undefined;
+
     /**
      * List all available services.
      *
@@ -139,13 +161,17 @@ export type ServiceManager = {
      * @returns The list of service IDs
      */
     listServices(page: number, pageSize: number, all?: boolean): Promise<string[]>;
+
     /**
      * List all available templates.
      *
      * @returns The list of template IDs
      */
     listTemplates(): Promise<string[]>;
+
     stopRunning(): Promise<void>;
+
+    enableNoTemplateMode(alternateSettings: NoTAlternateSettings): Promise<void>;
 }
 
 export type ServiceInfo = PermaModel & {
@@ -174,6 +200,7 @@ export let volumesDir: string;
 
 let db: Database;
 let appConfig: any;
+let noTAlternateSett: NoTAlternateSettings|undefined = undefined;
 
 // Returns the build directory for the template
 function buildDir(template: string) {
@@ -189,6 +216,7 @@ function settings(template: string) {
 const errors = {};
 // Service IDs that are currently running
 const started = [];
+const noTTemplate = '__no_t__';
 
 async function init(db_: Database, appConfig_: any) {
     db = db_;
@@ -206,7 +234,9 @@ export async function createService(template: string, {
     env,
     network,
 }) {
-    const {defaults, port_range} = settings(template);
+    reqCompatibleEngine();
+    template = noTAlternateSett ? noTTemplate : template;
+    const {defaults, port_range} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
     // Pick random main port from the range specified in settings.yml
     const port = await retrieveRandomPort(
         engine,
@@ -218,7 +248,7 @@ export async function createService(template: string, {
     asyncServiceRun(serviceId, 'create', async () => {
         // Container id
         const containerId = await engine.build(
-            buildDir(template),
+            noTAlternateSett ? undefined : buildDir(template),
             serviceId,
             {
                 ram: ram ?? defaults.ram as number,
@@ -269,6 +299,7 @@ export async function createService(template: string, {
 }
 
 export async function resumeService(id: string) {
+    reqCompatibleEngine();
     reqNoPending(id);
     const perma_ = await db.getPerma(id);
     // Service does not exist
@@ -281,7 +312,18 @@ export async function resumeService(id: string) {
     }
 
     const {template, options, env, network} = perma_;
-    const {defaults} = settings(template);
+
+    if (noTAlternateSett && template !== noTTemplate) {
+        throw new Error('Tried to resume template-based service from within no-template mode.');
+    } else if (template === noTTemplate && !noTAlternateSett) {
+        throw new Error('Tried to resume no-t service from within template mode.');
+    }
+
+    if (noTAlternateSett && perma_.nodeId !== nodeId) {
+        throw new Error('In no-template mode, only services that came from this node can be resumed here.');
+    }
+
+    const {defaults} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
 
     const self = this;
 
@@ -289,7 +331,7 @@ export async function resumeService(id: string) {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
         const containerId = await engine.build(
-            buildDir(template),
+            noTAlternateSett ? undefined : buildDir(template),
             id,
             {
                 ram: options.ram ?? defaults.ram as number,
@@ -441,6 +483,11 @@ export async function stopRunning() {
     }
 }
 
+export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettings) {
+    noTAlternateSett = alternateSettings;
+    currentContext.logger.info("No-template mode has been enabled.");
+}
+
 function metaStorageForService(id: string): MetaStorage { // service id
     return {
         set: async (key, value) => {
@@ -462,6 +509,12 @@ function reqNoPending(id: string) {
     }
     if (isServicePending(id)) {
         throw new Error('Service is pending another action.');
+    }
+}
+
+function reqCompatibleEngine() {
+    if (noTAlternateSett && !engine.supportsNoTemplateMode) {
+        throw new Error('No-template mode is enabled, but current engine does not support it! Please switch to different engine.');
     }
 }
 
