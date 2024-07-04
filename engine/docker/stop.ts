@@ -6,7 +6,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         try {
             const list = await client.listContainers();
             if (list.map(c => c.Id).includes(id)) {
-                await client.getContainer(id).stop();
+                await client.getContainer(id).stop({ signal: 'SIGINT' });
             }
             return true;
         } catch (e) {

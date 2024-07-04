@@ -1,8 +1,9 @@
 import server from "../../server";
 import boot, {AppBootContext} from "../../app";
 import request from "supertest";
-import {beforeAll, describe, expect, test} from "@jest/globals";
+import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
 import {isServicePending} from "../../engine/asyncp";
+import {log} from "console";
 
 function expectProps(obj: any, model: any[]) {
     for (let i = 0; i < model.length; i += 2) {
@@ -32,8 +33,11 @@ async function miniService(ctx: AppBootContext) {
 describe("Test v1 API models", () => {
     let ctx: AppBootContext|undefined = undefined;
 
-    beforeAll(async () => {
-        ctx = await boot(server, { test: true });
+    beforeAll((done) => {
+        boot(server, { test: true }).then((ctx_) => {
+            ctx = ctx_;
+            done();
+        });
     }, 20000);
 
     test("Test /v1/status", async () => {
@@ -81,6 +85,7 @@ describe("Test v1 API models", () => {
 
     test("Test /v1/service/{serviceId}", async () => {
         const id = await miniService(ctx);
+        log(id);
         const res = await request(server).get("/v1/service/" + id);
         expect(res.status).toBe(200);
         expectProps(res.body, [
@@ -102,6 +107,7 @@ describe("Test v1 API models", () => {
 
     test("Test /v1/service/{serviceId}/stop", async () => {
        const id = await miniService(ctx);
+       log(id);
        const res = await request(server).post("/v1/service/" + id + "/stop");
        expect(res.status).toBe(200);
        expectProps(res.body, [
@@ -112,6 +118,7 @@ describe("Test v1 API models", () => {
 
     test("Test /v1/service/{serviceId}/delete", async () => {
        const id = await miniService(ctx);
+        log(id);
        const res = await request(server).post("/v1/service/" + id + "/delete");
        expect(res.status).toBe(200);
        expectProps(res.body, [
@@ -122,6 +129,7 @@ describe("Test v1 API models", () => {
 
     test("Test /v1/service/{serviceId}/reboot", async  () => {
         const id = await miniService(ctx);
+        log(id);
         const res = await request(server).post("/v1/service/" + id + "/reboot");
         expect(res.status).toBe(200);
         expectProps(res.body, [
@@ -132,6 +140,7 @@ describe("Test v1 API models", () => {
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {
         const id = await miniService(ctx);
+        log(id);
         const res = await request(server).get("/v1/service/" + id + "/powerstatus");
         expect(res.status).toBe(200);
         expectProps(res.body, [
@@ -139,6 +148,10 @@ describe("Test v1 API models", () => {
            "status", undefined,
         ]);
     }, 20000);
+
+    afterAll(() => {
+        return ctx.engine.stopRunning();
+    }, 60000);
 
     // TODO: /v1/service/<id>/options
 

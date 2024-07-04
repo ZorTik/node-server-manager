@@ -12,9 +12,10 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 await self.stop(id);
             }
             const c = client.getContainer(id);
-            const {Image} = await c.inspect();
+            const {Config, } = await c.inspect();
             await c.remove({ force: true });
-            await client.getImage(Image).remove({ force: true });
+            const volumeIdUsed = Config.Labels['nsm.volumeId'];
+            await client.getImage(volumeIdUsed + ':latest').remove({ force: true });
             // Delete network if it's associated with any.
             const networkId = await isInNetwork(client, id);
             if (networkId) {
@@ -31,7 +32,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 currentContext?.logger.warn('Ignoring error: ' + e.message);
                 return true;
             }
-            console.log(e);
+            currentContext.logger.error(e);
             return false;
         }
     }

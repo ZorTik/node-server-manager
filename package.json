@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "A new service control engine, built on docker.",
   "main": "index.js",
+  "jest": {
+    "modulePathIgnorePatterns": [
+      "<rootDir>/dist/"
+    ]
+  },
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
     "start": "node installTempDeps.js && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",

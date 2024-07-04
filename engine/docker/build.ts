@@ -25,7 +25,8 @@ async function prepareImage(client: DockerClient, arDir: string, buildDir: strin
         cwd: buildDir
     }, [...ignore(buildDir)]);
 
-    const imageTag = path.basename(buildDir) + ':' + volumeId;
+    // const imageTag = path.basename(buildDir) + ':' + volumeId;
+    const imageTag = volumeId + ':latest';
 
     // Build image
     const stream = await client.buildImage(archive, { t: imageTag, buildargs: env });
