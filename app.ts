@@ -46,11 +46,13 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 // before manager.engine is initialized. This is necessary as the manager is being
 // used (mainly for expandEngine()) even before manager.init() is called.
 function managerForUnsafeUse() {
-    const excludeKeys: (keyof ServiceManager)[] = ["expandEngine"];
+    const excludeKeys: (keyof ServiceManager)[] = ["expandEngine", "initEngineForcibly", "engine"];
     //
+    const managerRef = { ...manager };
     const handler: ProxyHandler<any> = {
         get(target, prop, receiver) {
-            if ((excludeKeys as any[]).includes(prop)) {
+            // If it's key of base manager, not expanded object and is not excluded, deny access
+            if ((Object.keys(managerRef) as any[]).includes(prop) && !(excludeKeys as any[]).includes(prop)) {
                 throw new Error("ServiceManager is not initialized yet! " +
                     "You can only access those members now: " + excludeKeys.join(", "));
             }
@@ -77,12 +79,16 @@ export default async function (router: Application, options?: AppBootOptions): P
     steps('BEFORE_DB', { logger, appConfig });
     const database = createDbManager();
 
-    managerForUnsafeUse();
-    currentContext = { router, manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
+    // Temporarily lock manager until it's initialized
+    let _manager = managerForUnsafeUse();
+    currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Service (virtualization) layer
     steps('BEFORE_ENGINE', { ...currentContext });
     await initServiceManager({ db: database, appConfig, logger });
+
+    // Bring back original manager
+    currentContext.manager = manager;
 
     // Load security
     steps('BEFORE_SECURITY', { ...currentContext });

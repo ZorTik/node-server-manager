@@ -93,8 +93,6 @@ export type ServiceManager = {
     nodeId: string;
     volumesDir: string;
 
-    expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
-
     /**
      * Create a new service.
      *
@@ -180,6 +178,11 @@ export type ServiceManager = {
     enableNoTemplateMode(alternateSettings: NoTAlternateSettings): Promise<void>;
 
     noTemplateMode(): boolean;
+
+    // DON'T call those until you really know what you are doing.
+    expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
+    initEngineForcibly(): Promise<void>;
+    //
 }
 
 export type ServiceInfo = PermaModel & {
@@ -229,7 +232,10 @@ const noTTemplate = '__no_t__';
 async function init(db_: Database, appConfig_: any) {
     db = db_;
     appConfig = appConfig_;
-    engine = await createEngine(appConfig);
+    if (!engine) {
+        // Init only if it has not already been force-initialized
+        engine = await createEngine(appConfig);
+    }
     nodeId = appConfig['node_id'] as string;
     volumesDir = process.cwd() + '/volumes';
 }
@@ -241,7 +247,7 @@ export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<
         } else if (!engine) {
             // Engine is not initialized yet, but we want to expand it, so
             // we need to force load it.
-            engine = await createEngine(currentContext.appConfig);
+            await initEngineForcibly();
         }
         // An expansion is provided, so there are changes to be applied.
         for (const k in Object.keys(exp)) {
@@ -539,6 +545,16 @@ export function noTemplateMode() {
 
 export function initialized() {
     return engine !== undefined;
+}
+
+export async function initEngineForcibly() {
+    if (engine) {
+        throw new Error("Engine is already loaded.");
+    }
+    if (!currentContext || !currentContext.appConfig) {
+        throw new Error("Engine can't be loaded forcibly!");
+    }
+    engine = await createEngine(currentContext.appConfig);
 }
 
 
