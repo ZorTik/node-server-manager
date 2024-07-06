@@ -117,7 +117,7 @@ export type ServiceEngine = {
      */
     deleteVolume(id: string): Promise<boolean>;
 
-    openConsole(id: string): Promise<NodeJS.ReadWriteStream|undefined>;
+    openStream(id: string): Promise<NodeJS.ReadWriteStream|undefined>;
 
     volumePath(id: string): Promise<string|undefined>; // TODO: Doc
 
@@ -166,13 +166,17 @@ async function buildDefaultEngine(appConfig: any) {
     engineImpl.stop = stop(engineImpl, client);
     engineImpl.delete = deleteFunc(engineImpl, client);
     engineImpl.deleteVolume = deleteVolume(engineImpl, client);
-    engineImpl.openConsole = async (id) => {
+    engineImpl.openStream = async (id) => {
         try {
-            return client.getContainer(id).attach({
+            const c = client.getContainer(id);
+            const rws = await c.attach({
                 stream: true, stdin: true, stdout: true, stderr: true, hijack: true,
                 // Optional options, TODO: Extract somewhere as configuration??
                 logs: true,
             });
+            rws.setEncoding('utf8');
+
+            return rws;
         } catch (e) {
             // TODO: More robust logging
             console.log(e);
