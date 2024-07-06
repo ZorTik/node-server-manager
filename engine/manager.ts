@@ -84,10 +84,16 @@ export type NoTAlternateSettings = {
     }
 }
 
+export type EngineExpansion = {
+    [k in keyof ServiceEngineI | string]: any;
+};
+
 export type ServiceManager = {
     engine: ServiceEngineI;
     nodeId: string;
     volumesDir: string;
+
+    expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
 
     /**
      * Create a new service.
@@ -196,7 +202,7 @@ class _InternalError extends Error {
     }
 }
 
-export let engine: ServiceEngineI;
+export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
 export let volumesDir: string;
 
@@ -226,6 +232,23 @@ async function init(db_: Database, appConfig_: any) {
     engine = await createEngine(appConfig);
     nodeId = appConfig['node_id'] as string;
     volumesDir = process.cwd() + '/volumes';
+}
+
+export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {
+    if (exp) {
+        if (!engine && (!currentContext || !currentContext.appConfig)) {
+            throw new Error("Engine is not yet loaded and can't be loaded forcibly!");
+        } else if (!engine) {
+            // Engine is not initialized yet, but we want to expand it, so
+            // we need to force load it.
+            engine = await createEngine(currentContext.appConfig);
+        }
+        // An expansion is provided, so there are changes to be applied.
+        for (const k in Object.keys(exp)) {
+            engine[k] = exp[k];
+        }
+    }
+    return engine as any;
 }
 
 export async function createService(template: string, {
@@ -512,6 +535,10 @@ function metaStorageForService(id: string): MetaStorage { // service id
 
 export function noTemplateMode() {
     return noTAlternateSett !== undefined;
+}
+
+export function initialized() {
+    return engine !== undefined;
 }
 
 

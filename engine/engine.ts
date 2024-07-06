@@ -41,6 +41,10 @@ export type DeleteOptions = {
     deleteNetwork?: boolean;
 }
 
+export type DockerServiceEngine = ServiceEngineI & {
+    dockerClient: DockerClient;
+}
+
 export type ServiceEngineI = ServiceEngine & { // Internal
     // If we are using the default (not custom) engine
     defaultEngine: boolean,
@@ -73,6 +77,8 @@ export type ServiceEngine = {
      * If enabled, buildDir from build() method can be undefined.
      */
     supportsNoTemplateMode: boolean;
+
+    cast<T extends ServiceEngine>(): T;
 
     /**
      * (Re)builds a container from provided build dir and volume dir.
@@ -117,10 +123,6 @@ export type ServiceEngine = {
      */
     deleteVolume(id: string): Promise<boolean>;
 
-    openStream(id: string): Promise<NodeJS.ReadWriteStream|undefined>;
-
-    volumePath(id: string): Promise<string|undefined>; // TODO: Doc
-
     /**
      * Lists container ids of containers by templates.
      *
@@ -158,35 +160,15 @@ function initDockerClient(appConfig: { docker_host: string }) {
 async function buildDefaultEngine(appConfig: any) {
     // Default engine implementation
     const client = initDockerClient(appConfig);
-    const engineImpl = {} as ServiceEngine & { dockerClient: DockerClient };
+    const engineImpl = {} as DockerServiceEngine;
     engineImpl.dockerClient = client;
     engineImpl.useVolumes = true; // Docker uses volumes strategy
     engineImpl.supportsNoTemplateMode = false;
+    engineImpl.cast = () => engineImpl as any;
     engineImpl.build = build(engineImpl, client);
     engineImpl.stop = stop(engineImpl, client);
     engineImpl.delete = deleteFunc(engineImpl, client);
     engineImpl.deleteVolume = deleteVolume(engineImpl, client);
-    engineImpl.openStream = async (id) => {
-        try {
-            const c = client.getContainer(id);
-            const rws = await c.attach({
-                stream: true, stdin: true, stdout: true, stderr: true, hijack: true,
-                // Optional options, TODO: Extract somewhere as configuration??
-                logs: true,
-            });
-            rws.setEncoding('utf8');
-
-            return rws;
-        } catch (e) {
-            // TODO: More robust logging
-            console.log(e);
-            return undefined;
-        }
-    };
-    engineImpl.volumePath = async (id: string) => {
-        const vol = await client.getVolume(id).inspect();
-        return vol.Mountpoint;
-    };
     engineImpl.listContainers = listContainers(engineImpl, client);
     engineImpl.listAttachedPorts = listAttachedPorts(engineImpl, client);
     engineImpl.stat = stat(engineImpl, client);

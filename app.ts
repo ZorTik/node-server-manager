@@ -8,7 +8,7 @@ import initServiceManager from './engine';
 import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
 import * as r from "./configuration/resources";
-import * as engine from "./engine";
+import * as manager from "./engine";
 import {prepareLogger} from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
@@ -42,6 +42,31 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
     }
 }
 
+// Decorate all manager functions except those excluded to disallow using them
+// before manager.engine is initialized. This is necessary as the manager is being
+// used (mainly for expandEngine()) even before manager.init() is called.
+function managerForUnsafeUse() {
+    const excludeKeys: (keyof ServiceManager)[] = ["expandEngine"];
+    for (const k of Object.keys(manager)) {
+        const attr = manager[k];
+        if (typeof attr !== "function") {
+            // We only decorate functions
+            continue;
+        }
+        if ((excludeKeys as any[]).includes(k)) {
+            // Key is excluded
+            continue;
+        }
+        const func = manager[k];
+        manager[k] = (...args: any[]) => {
+            if (!manager.initialized()) {
+                throw new Error("ServiceManager is not initialized yet! Please do this later.");
+            }
+            return func(...args);
+        }
+    }
+}
+
 // App orchestration code
 export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
     const logger = prepareLogger(process.env.DEBUG === 'true');
@@ -59,10 +84,12 @@ export default async function (router: Application, options?: AppBootOptions): P
     steps('BEFORE_DB', { logger, appConfig });
     const database = createDbManager();
 
+    managerForUnsafeUse();
+    currentContext = { router, manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
+
     // Service (virtualization) layer
-    steps('BEFORE_ENGINE', { logger, appConfig, database });
+    steps('BEFORE_ENGINE', { ...currentContext });
     await initServiceManager({ db: database, appConfig, logger });
-    currentContext = { router, manager: engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Load security
     steps('BEFORE_SECURITY', { ...currentContext });
