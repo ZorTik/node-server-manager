@@ -5,7 +5,7 @@ import {currentContext} from "../../app";
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['listContainers'] {
     return async (templates) => {
         if (templates === undefined) {
-            templates = await currentContext.engine.listTemplates();
+            templates = await currentContext.manager.listTemplates();
         }
         try {
             return (await client.listContainers())

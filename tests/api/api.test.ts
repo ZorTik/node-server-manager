@@ -16,14 +16,14 @@ function expectProps(obj: any, model: any[]) {
 }
 
 async function miniService(ctx: AppBootContext) {
-    const id = await ctx.engine.createService("test", {});
+    const id = await ctx.manager.createService("test", {});
     do {
         await new Promise((resolve) => {
             setTimeout(() => resolve(null), 300);
         });
     } while (isServicePending(id));
     // Status check
-    if (ctx.engine.getLastPowerError(id)) {
+    if (ctx.manager.getLastPowerError(id)) {
         return undefined;
     } else {
         return id;
@@ -31,7 +31,7 @@ async function miniService(ctx: AppBootContext) {
 }
 
 async function stopMini(ctx: AppBootContext, id: string) {
-    await ctx.engine.stopService(id);
+    await ctx.manager.stopService(id);
 }
 
 describe("Test v1 API models", () => {
@@ -166,7 +166,7 @@ describe("Test v1 API models", () => {
     }, 20000);
 
     afterAll(() => {
-        return ctx.engine.stopRunning();
+        return ctx.manager.stopRunning();
     }, 60000);
 
     // TODO: /v1/service/<id>/options

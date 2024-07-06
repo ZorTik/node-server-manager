@@ -14,18 +14,18 @@ function isRequiredOption(value: any) {
     return false;
 }
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/create',
         routes: {
             post: async (req, res) => {
                 const beginTime = Date.now();
                 const body = req.body;
-                if (!body || (!engine.noTemplateMode() && !body.template)) {
+                if (!body || (!manager.noTemplateMode() && !body.template)) {
                     res.status(400).json({status: 400, message: 'Missing body or template key.'}).end();
                     return;
                 }
-                const template = engine.getTemplate(body.template);
+                const template = manager.getTemplate(body.template);
                 if (!template) {
                     res.status(400).json({status: 400, message: 'Invalid template ID.'}).end();
                     return;
@@ -59,7 +59,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                 options.env = env;
                 // Create the service
                 try {
-                    const serviceId = await engine.createService(template.id, options);
+                    const serviceId = await manager.createService(template.id, options);
                     res.status(200).json({
                         status: 200,
                         message: 'Service create action successfully registered to be completed in a moment.',

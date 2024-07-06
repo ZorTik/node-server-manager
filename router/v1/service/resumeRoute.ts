@@ -2,7 +2,7 @@ import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 import {handleErr} from "../../../util/routes";
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/resume',
         routes: {
@@ -13,7 +13,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    const result = await engine.resumeService(id);
+                    const result = await manager.resumeService(id);
                     if (result) {
                         res.status(200).json({
                             status: 200,

@@ -19,7 +19,7 @@ export type AppBootContext = AppContext & { steps: any };
 // Passed context to the routes
 export type AppContext = {
     router: Router;
-    engine: ServiceManager;
+    manager: ServiceManager;
     database: Database;
     appConfig: any;
     logger: winston.Logger;
@@ -62,7 +62,7 @@ export default async function (router: Application, options?: AppBootOptions): P
     // Service (virtualization) layer
     steps('BEFORE_ENGINE', { logger, appConfig, database });
     await initServiceManager({ db: database, appConfig, logger });
-    currentContext = { router, engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
+    currentContext = { router, manager: engine, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Load security
     steps('BEFORE_SECURITY', { ...currentContext });

@@ -3,7 +3,7 @@ import server, {setStatus, status} from "./server";
 
 // Start the server
 app(server).then((ctx) => {
-    const {engine, logger, steps} = ctx;
+    const {manager, logger, steps} = ctx;
 
     ctx.logger.info('Registering signal handlers');
 
@@ -13,7 +13,7 @@ app(server).then((ctx) => {
         setStatus("stopping");
         //steps('EXIT').forEach((f: any) => f(ctx));
         steps('EXIT', ctx);
-        await engine.stopRunning();
+        await manager.stopRunning();
         process.exit(0);
     });
 });

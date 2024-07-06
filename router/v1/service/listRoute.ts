@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 
-export default async function ({engine, database}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, database}: AppContext): Promise<RouterHandler> {
     return {
         url: '/servicelist',
         routes: {
@@ -14,11 +14,11 @@ export default async function ({engine, database}: AppContext): Promise<RouterHa
                     return;
                 }
                 res.status(200).json({
-                    services: await engine.listServices(page, pageSize, all),
+                    services: await manager.listServices(page, pageSize, all),
                     meta: {
                         page,
                         pageSize,
-                        total: await database.count(engine.nodeId),
+                        total: await database.count(manager.nodeId),
                     }
                 }).end();
             }

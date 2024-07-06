@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/delete',
         routes: {
@@ -12,7 +12,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    const result = await engine.deleteService(id);
+                    const result = await manager.deleteService(id);
                     if (result) {
                         res.status(200).json({status: 200, message: 'Service deleted.'});
                     } else {
