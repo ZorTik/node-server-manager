@@ -47,24 +47,17 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 // used (mainly for expandEngine()) even before manager.init() is called.
 function managerForUnsafeUse() {
     const excludeKeys: (keyof ServiceManager)[] = ["expandEngine"];
-    for (const k of Object.keys(manager)) {
-        const attr = manager[k];
-        if (typeof attr !== "function") {
-            // We only decorate functions
-            continue;
-        }
-        if ((excludeKeys as any[]).includes(k)) {
-            // Key is excluded
-            continue;
-        }
-        const func = manager[k];
-        manager[k] = (...args: any[]) => {
-            if (!manager.initialized()) {
-                throw new Error("ServiceManager is not initialized yet! Please do this later.");
+    //
+    const handler: ProxyHandler<any> = {
+        get(target, prop, receiver) {
+            if ((excludeKeys as any[]).includes(prop)) {
+                throw new Error("ServiceManager is not initialized yet! " +
+                    "You can only access those members now: " + excludeKeys.join(", "));
             }
-            return func(...args);
+            return Reflect.get(target, prop, receiver);
         }
     }
+    return new Proxy(manager, handler);
 }
 
 // App orchestration code
