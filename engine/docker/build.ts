@@ -9,7 +9,7 @@ import {MetaStorage} from "../manager";
 import {getActionType} from "../asyncp";
 import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
-import {constructObjectLabels} from "@nsm/util/services";
+import {constructObjectLabels} from "../../util/services";
 
 async function prepareImage(client: DockerClient, arDir: string, buildDir: string, volumeId: string, env: any) {
     const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
