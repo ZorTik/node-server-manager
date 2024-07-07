@@ -91,7 +91,6 @@ export type EngineExpansion = {
 export type ServiceManager = {
     engine: ServiceEngineI;
     nodeId: string;
-    volumesDir: string;
 
     /**
      * Create a new service.
@@ -181,6 +180,7 @@ export type ServiceManager = {
 
     // DON'T call those until you really know what you are doing.
     expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
+
     initEngineForcibly(): Promise<void>;
     //
 }
@@ -207,7 +207,6 @@ class _InternalError extends Error {
 
 export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
-export let volumesDir: string;
 
 let db: Database;
 let appConfig: any;
@@ -237,7 +236,6 @@ async function init(db_: Database, appConfig_: any) {
         engine = await createEngine(appConfig);
     }
     nodeId = appConfig['node_id'] as string;
-    volumesDir = process.cwd() + '/volumes';
 }
 
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {

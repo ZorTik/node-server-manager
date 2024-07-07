@@ -1,6 +1,5 @@
 import {AppContext, Database, ServiceManager} from "../../../app";
 import {RouterHandler} from "../../index";
-import ds from "check-disk-space";
 import * as os from "os";
 
 async function checkNsmResources(engine: ServiceManager, db: Database) {
@@ -59,7 +58,7 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
                 const runningContainers = await manager.engine.listContainers(await manager.listTemplates());
                 const sessions = await database.listSessions(manager.nodeId);
                 const all = await database.list(nodeId);
-                const {free, size} = await ds(manager.volumesDir);
+                const [free, size] = await manager.engine.calcHostUsage();
                 const system = {
                     totalmem: os.totalmem(),
                     freemem: os.freemem(),

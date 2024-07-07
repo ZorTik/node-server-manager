@@ -9,6 +9,7 @@ import {MetaStorage} from "../manager";
 import {getActionType} from "../asyncp";
 import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
+import {constructObjectLabels} from "@nsm/util/services";
 
 async function prepareImage(client: DockerClient, arDir: string, buildDir: string, volumeId: string, env: any) {
     const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
@@ -88,8 +89,7 @@ async function prepareContainer(
     const container = await client.createContainer({
         Image: imageTag,
         Labels: {
-            'nsm': 'true',
-            'nsm.id': path.basename(buildDir),
+            ...constructObjectLabels({ id: volumeId }),
             'nsm.buildDir': buildDir,
             'nsm.volumeId': volumeId,
         },
@@ -113,7 +113,7 @@ async function prepareContainer(
         OpenStdin: true,
     });
     if (net != null) {
-        await net.connect({ Container: container.id }); // TODO: Implement EndpointConfig and test
+        await net.connect({ Container: container.id }); // Implement EndpointConfig?? TODO: Test
     }
     return container;
 }
@@ -141,7 +141,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         ctx.logger.info(id + ' > Building image');
         const imageTag = await prepareImage(client, arDir, buildDir, volumeId, env);
 
-        fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
+        //fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
 
         let container: DockerClient.Container;
         // Whether, or not we're creating a brand-new service
@@ -153,7 +153,13 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
             } catch (e) {
                 if (e.message.includes('No such')) {
                     ctx.logger.info(id + ': Creating volume');
-                    await client.createVolume({ Name: volumeId });
+                    await client.createVolume({
+                        Name: volumeId,
+                        Labels: {
+                            ...constructObjectLabels({ id: volumeId }),
+                            'nsm.volumeId': volumeId,
+                        },
+                    });
                     creating = true;
                 }
             }
