@@ -89,8 +89,8 @@ export type EngineExpansion = {
 };
 
 export type ServiceManager = {
-    engine: ServiceEngineI;
     nodeId: string;
+    engine: ServiceEngineI;
 
     /**
      * Create a new service.
@@ -233,7 +233,7 @@ async function init(db_: Database, appConfig_: any) {
     appConfig = appConfig_;
     if (!engine) {
         // Init only if it has not already been force-initialized
-        engine = await createEngine(appConfig);
+        await initEngineForcibly();
     }
     nodeId = appConfig['node_id'] as string;
 }
@@ -248,9 +248,14 @@ export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<
             await initEngineForcibly();
         }
         // An expansion is provided, so there are changes to be applied.
-        for (const k in Object.keys(exp)) {
-            engine[k] = exp[k];
-        }
+        Object.keys(exp).forEach((expKey) => {
+            if (!Number.isNaN(Number(expKey))) {
+                throw new Error("Invalid expansion format, please replace functions within with lambda functions. " +
+                    "Invalid: { funcName(param) {}, funcName2(param) {} }" +
+                    "Valid: { funcName: (param) => {}, funcName2: (param) => {} }")
+            }
+            engine[expKey] = exp[expKey];
+        });
     }
     return engine as any;
 }
@@ -553,6 +558,9 @@ export async function initEngineForcibly() {
         throw new Error("Engine can't be loaded forcibly!");
     }
     engine = await createEngine(currentContext.appConfig);
+    // I set it here to keep the exact reference if the engine
+    // is changed in the future.
+    engine.cast = () => engine as any;
 }
 
 

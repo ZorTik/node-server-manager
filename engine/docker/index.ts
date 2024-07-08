@@ -36,7 +36,7 @@ export default async function buildDockerEngine(appConfig: any) {
     engineImpl.dockerClient = client;
     engineImpl.useVolumes = true; // Docker uses volumes strategy
     engineImpl.supportsNoTemplateMode = false;
-    engineImpl.cast = () => engineImpl as any;
+    // engineImpl.cast - Being replaced in manager.
     engineImpl.build = build(engineImpl, client);
     engineImpl.stop = stop(engineImpl, client);
     engineImpl.delete = deleteFunc(engineImpl, client);

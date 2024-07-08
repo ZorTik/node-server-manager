@@ -48,6 +48,8 @@ export type DockerServiceEngine = ServiceEngineI & {
 export type ServiceEngineI = ServiceEngine & { // Internal
     // If we are using the default (not custom) engine
     defaultEngine: boolean,
+
+    cast<T extends ServiceEngine>(): T;
 }
 
 /**
@@ -77,8 +79,6 @@ export type ServiceEngine = {
      * If enabled, buildDir from build() method can be undefined.
      */
     supportsNoTemplateMode: boolean;
-
-    cast<T extends ServiceEngine>(): T;
 
     /**
      * (Re)builds a container from provided build dir and volume dir.
@@ -157,6 +157,7 @@ export default async function (appConfig: any): Promise<ServiceEngineI> {
     }
     return {
         defaultEngine: usingBuiltInEngine && engineId === 'docker',
+        cast: undefined, // Being set in manager
         ...engine,
     };
 }
