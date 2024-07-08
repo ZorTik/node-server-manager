@@ -65,6 +65,11 @@ export type Options = {
     }
 }
 
+/**
+ * Per-service storage.
+ * Data set here are being persisted to the relational database and being kept
+ * as long term data. Every key set here is per-service.
+ */
 export type MetaStorage = {
     set: (key: string, value: any) => Promise<boolean>;
     get: <T>(key: string, def?: T) => Promise<T|undefined>;
@@ -89,7 +94,13 @@ export type EngineExpansion = {
 };
 
 export type ServiceManager = {
+    /**
+     * This NSM instance ID
+     */
     nodeId: string;
+    /**
+     * Internal engine implementation
+     */
     engine: ServiceEngineI;
 
     /**
@@ -172,10 +183,29 @@ export type ServiceManager = {
      */
     listTemplates(): Promise<string[]>;
 
+    /**
+     * Stop all running services on this instance.
+     */
     stopRunning(): Promise<void>;
 
+    /**
+     * Enable no-template mode.
+     *
+     * When this is enabled, all services are being treated as same template, and it's
+     * up to the internal engine to handle creating them without templates. Services
+     * created using template mode can't be manipulated in this mode. Also, internal
+     * engine must support this mode.
+     *
+     * @param alternateSettings The global template default settings, replacement for
+     *                          settings.yml in template mode. This will be used as
+     *                          the settings for the global template used for every
+     *                          service created in this mode.
+     */
     enableNoTemplateMode(alternateSettings: NoTAlternateSettings): Promise<void>;
 
+    /**
+     * Whether the no-template mode is enabled.
+     */
     noTemplateMode(): boolean;
 
     // DON'T call those until you really know what you are doing.
