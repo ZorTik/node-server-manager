@@ -9,6 +9,7 @@ import {PermaModel} from "../database";
 import {asyncServiceRun, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
 import winston from "winston";
 import {status} from "../server";
+import * as bus from "@nsm/event/bus";
 
 export type Options = {
     /**
@@ -478,6 +479,9 @@ export async function deleteService(id: string) {
         }
     }
     if (engine.useVolumes) {
+        // Notify before the volume is being deleted so all can unregister their hooks
+        // on this volume
+        await bus.callEvent('nsm:engine:deletev', { id });
         await engine.deleteVolume(id);
     } else {
         // If the useVolumes is false, service is deleted inside stopService

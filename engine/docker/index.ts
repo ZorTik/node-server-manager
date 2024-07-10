@@ -50,7 +50,7 @@ export default async function buildDockerEngine(appConfig: any) {
         let free_ = 0;
         let size_ = 0;
         for (const vol of Volumes) {
-            if (!vol.Labels.hasOwnProperty('nsm')) {
+            if (!vol.Labels || !('nsm' in vol.Labels)) {
                 // Not a NSM volume.
                 continue;
             }

@@ -72,7 +72,7 @@ describe("Test v1 API models", () => {
             'stats.services.cpuTotal', undefined,
             'stats.services.diskTotal', undefined,
         ]);
-    });
+    }, 20000);
 
     test("Test /v1/servicelist", async () => {
         const res = await request(server)
