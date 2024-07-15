@@ -73,7 +73,7 @@ export type ServiceEngine = {
      * - The delete function is called ONLY ON DELETE, not on stop (services are kept)
      * - The deleteVolume function is NEVER CALLED!
      */
-    useVolumes: boolean;
+    volumesMode: boolean;
     /**
      * If this engine supports no-t mode from engine/manager.
      * If enabled, buildDir from build() method can be undefined.

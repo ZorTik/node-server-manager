@@ -34,7 +34,7 @@ export default async function buildDockerEngine(appConfig: any) {
     const client = initDockerClient(appConfig);
     const engineImpl = {} as DockerServiceEngine;
     engineImpl.dockerClient = client;
-    engineImpl.useVolumes = true; // Docker uses volumes strategy
+    engineImpl.volumesMode = true; // Docker uses volumes strategy
     engineImpl.supportsNoTemplateMode = false;
     // engineImpl.cast - Being replaced in manager.
     engineImpl.build = build(engineImpl, client);

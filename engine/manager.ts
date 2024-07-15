@@ -449,7 +449,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
         await engine.stop(session.containerId);
 
         let serviceSucc: boolean = true;
-        if (engine.useVolumes) {
+        if (engine.volumesMode) {
             serviceSucc = fromDeleteFunc == true
                 ? await engine.delete(session.containerId, { deleteNetwork: true })
                 : await engine.delete(session.containerId);
@@ -478,7 +478,7 @@ export async function deleteService(id: string) {
             throw e;
         }
     }
-    if (engine.useVolumes) {
+    if (engine.volumesMode) {
         // Notify before the volume is being deleted so all can unregister their hooks
         // on this volume
         await bus.callEvent('nsm:engine:deletev', { id });

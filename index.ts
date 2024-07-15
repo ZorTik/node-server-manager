@@ -1,5 +1,6 @@
 import app from "./app";
 import server, {setStatus, status} from "./server";
+import * as bus from "@nsm/event/bus";
 
 // Start the server
 app(server).then((ctx) => {
@@ -11,7 +12,7 @@ app(server).then((ctx) => {
     process.once('SIGINT', async () => {
         logger.info('Stopping running services...');
         setStatus("stopping");
-        //steps('EXIT').forEach((f: any) => f(ctx));
+        await bus.callEvent('nsm:exit', undefined);
         steps('EXIT', ctx);
         await manager.stopRunning();
         process.exit(0);
