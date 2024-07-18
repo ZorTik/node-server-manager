@@ -83,6 +83,14 @@ export type ServiceEngine = {
     /**
      * (Re)builds a container from provided build dir and volume dir.
      *
+     * If it's fresh build, it should do the following:
+     * - Build the container and store its ID somewhere since NSM will identify it
+     *   using the provided ID.
+     * - Store the volume ID attached to this container since it is needed in #getAttachedVolume
+     *
+     * and also on every run:
+     * - Behave in compatibility with selected volumesMode
+     *
      * @param buildDir The image build dir, or undefined if no-template mode is enabled.
      *                 Should throw error if no-t mode is not supported by this engine.
      * @param volumeId The volume name
@@ -102,18 +110,20 @@ export type ServiceEngine = {
      * Stops a container.
      *
      * @param id Container ID
+     * @param meta Meta storage for this unique context
      * @return Success state
      */
-    stop(id: string): Promise<boolean>;
+    stop(id: string, meta: MetaStorage): Promise<boolean>;
 
     /**
      * Deletes a container.
      *
      * @param id Container ID
+     * @param meta Meta storage for this unique context
      * @param options The delete options
      * @return Success state
      */
-    delete(id: string, options?: DeleteOptions): Promise<boolean>;
+    delete(id: string, meta: MetaStorage, options?: DeleteOptions): Promise<boolean>;
 
     /**
      * Deletes a volume by ID.
@@ -124,12 +134,28 @@ export type ServiceEngine = {
     deleteVolume(id: string): Promise<boolean>;
 
     /**
+     * Get ID of volume that this container is attached to, or undefined
+     * if not found or no volume. Meta is not present here because this func
+     * is used to determine ID for building the meta.
+     *
+     * @param id The volume ID.
+     */
+    getAttachedVolume(id: string): Promise<string|undefined>;
+
+    /**
      * Lists container ids of containers by templates.
      *
      * @param templates The templates
      * @return List of container IDs
      */
     listContainers(templates?: string[]): Promise<string[]>;
+
+    /**
+     * List running containers owned by this engine on this machine.
+     *
+     * @return List of container IDs
+     */
+    listRunning(): Promise<string[]>;
 
     listAttachedPorts(): Promise<number[]>;
 

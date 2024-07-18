@@ -5,7 +5,7 @@ import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
-import {PermaModel} from "../database";
+import {PermaModel, SessionModel} from "../database";
 import {asyncServiceRun, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
 import winston from "winston";
 import {status} from "../server";
@@ -157,8 +157,9 @@ export type ServiceManager = {
      * Get the service by ID.
      *
      * @param from The service ID, or model
+     * @param options The get options
      */
-    getService(from: string|PermaModel): Promise<ServiceInfo|undefined>;
+    getService(from: string|PermaModel, options?: { includeSession?: boolean }): Promise<ServiceInfo|undefined>;
 
     /**
      * Get the last power error of a service.
@@ -220,6 +221,7 @@ export type ServiceInfo = PermaModel & {
     optionsRam: number, // From options.ram
     optionsCpu: number, // From options.cpu
     optionsDisk: number, // From options.disk
+    session?: SessionModel
 }
 
 // 1 = unknown, 2 = conflict, 3 = not found
@@ -310,6 +312,7 @@ export async function createService(template: string, {
     );
     const serviceId = crypto.randomUUID(); // Create new unique service id
     const self = this;
+    const meta = metaStorageForService(serviceId);
     asyncServiceRun(serviceId, 'create', async () => {
         // Container id
         const containerId = await engine.build(
@@ -327,7 +330,7 @@ export async function createService(template: string, {
                 ports: ports ?? [],
                 network,
             },
-            metaStorageForService(serviceId),
+            meta,
             async () => {
                 await self.stopService(serviceId);
             }
@@ -336,7 +339,7 @@ export async function createService(template: string, {
             throw new _InternalError('Failed to create container. Service: ' + serviceId);
         }
         const rollback = async () => {
-            await engine.delete(containerId);
+            await engine.delete(containerId, meta);
         }
         const options = {ram, cpu, ports};
         // Save permanent info
@@ -391,6 +394,7 @@ export async function resumeService(id: string) {
     const {defaults} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
 
     const self = this;
+    const meta = metaStorageForService(id);
 
     asyncServiceRun(id, 'resume', async () => {
         // Rebuild container using existing volume directory,
@@ -407,7 +411,7 @@ export async function resumeService(id: string) {
                 ports: options.ports ?? [],
                 network,
             },
-            metaStorageForService(id),
+            meta,
             async () => {
                 await self.stopService(id);
             }
@@ -422,7 +426,7 @@ export async function resumeService(id: string) {
             return true;
         } else {
             // Cleanup if err with db
-            await engine.stop(containerId);
+            await engine.stop(containerId, meta);
             return false;
         }
     }).then(success => {
@@ -445,16 +449,18 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
 
     lckStatusTp(session.containerId, 'stop');
 
+    const meta = metaStorageForService(id);
+
     try {
-        await engine.stop(session.containerId);
+        await engine.stop(session.containerId, meta);
 
         let serviceSucc: boolean = true;
         if (engine.volumesMode) {
             serviceSucc = fromDeleteFunc == true
-                ? await engine.delete(session.containerId, { deleteNetwork: true })
-                : await engine.delete(session.containerId);
+                ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
+                : await engine.delete(session.containerId, meta);
         } else if (fromDeleteFunc) {
-            serviceSucc = await engine.delete(session.containerId, { deleteNetwork: true });
+            serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
         }
         const sessionSucc = await db.deleteSession(id);
 
@@ -516,16 +522,21 @@ export function getTemplate(id: string): Template|undefined {
     }
 }
 
-export async function getService(from: string): Promise<ServiceInfo | undefined> {
+export async function getService(from: string, options?: { includeSession?: boolean }): Promise<ServiceInfo | undefined> {
     const data = typeof from === 'string' ? await db.getPerma(from) : from;
     if (!data) {
         return undefined;
+    }
+    let session = undefined;
+    if (options?.includeSession === true) {
+        session = await currentContext.database.getSession(data.serviceId);
     }
     return {
         ...data,
         optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
         optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
         optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
+        session
     }
 }
 
@@ -551,13 +562,7 @@ export function listTemplates(): Promise<string[]> {
 }
 
 export async function stopRunning() {
-    for (let id of started) {
-        try {
-            await this.stopService(id);
-        } catch (e) {
-            currentContext.logger.error(e.message);
-        }
-    }
+    await Promise.all(started.map(this.stopService));
 }
 
 export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettings) {
@@ -627,8 +632,17 @@ export default async function ({db, appConfig, logger}: {
 
     const unclearedSessions = await db.listSessions(nodeId);
     await init(db, appConfig);
-    for (let session of unclearedSessions) {
+    // Perform startup cleanup
+    for (const session of unclearedSessions) {
         await stopService(session.serviceId);
+    }
+    for (const running of await engine.listRunning()) {
+        const volumeId = await engine.getAttachedVolume(running);
+        if (!volumeId) {
+            // The container does not exist or does not have a volume attached?
+            continue;
+        }
+        await engine.stop(running, metaStorageForService(volumeId));
     }
 
     logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);

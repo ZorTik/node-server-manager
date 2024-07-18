@@ -1,4 +1,4 @@
-export type EventHandler = (evt: any) => Promise<void>|void;
+export type EventHandler = (evt: any) => Promise<any>|any;
 export type BuiltInEventTypes = 'nsm:engine:deletev' | 'nsm:exit';
 
 const handlers: { [type: string]: EventHandler[] } = {};

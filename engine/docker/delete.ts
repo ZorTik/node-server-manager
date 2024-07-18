@@ -4,12 +4,12 @@ import {ServiceEngine} from "../engine";
 import {deleteNetwork as doDeleteNetwork, isInNetwork} from "../../networking/manager";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['delete'] {
-    return async (id, options) => {
+    return async (id, meta, options) => {
         try {
             if (self) {
                 // del func is called on startup,
                 // this prevents it from accessing undefined 'self' stop.
-                await self.stop(id);
+                await self.stop(id, meta);
             }
             const c = client.getContainer(id);
             const {Config, } = await c.inspect();

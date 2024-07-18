@@ -6,15 +6,15 @@ import * as bus from "@nsm/event/bus";
 app(server).then((ctx) => {
     const {manager, logger, steps} = ctx;
 
-    ctx.logger.info('Registering signal handlers');
-
-    // On SIGINT, stop all running services
-    process.once('SIGINT', async () => {
-        logger.info('Stopping running services...');
-        setStatus("stopping");
-        await bus.callEvent('nsm:exit', undefined);
-        steps('EXIT', ctx);
-        await manager.stopRunning();
-        process.exit(0);
+    // Catch signals
+    ['SIGINT', 'SIGTERM', 'SIGQUIT'].forEach(sig => {
+        process.on(sig, async () => {
+            logger.info(sig + ': Executing stop sequence, please wait');
+            setStatus("stopping");
+            await bus.callEvent('nsm:exit', undefined);
+            steps('EXIT', ctx);
+            await manager.stopRunning();
+            process.exit(0);
+        });
     });
 });
