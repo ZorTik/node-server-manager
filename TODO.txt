@@ -1,3 +1,2 @@
 # TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba ???
-# TODO: Přidat do enginu setting který umožní nepoužívat šablony
 # TODO: SIGINT nevyvolává handler v index.ts, který by měl vypínat běžící služby
