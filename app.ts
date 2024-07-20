@@ -111,7 +111,7 @@ export default async function (router: Application, options?: AppBootOptions): P
                 resolve(ctx);
             });
         }
-        steps('AFTER_SERVER', { ...currentContext }, srv);
+        steps('BOOT', { ...currentContext }, srv);
         resolve(ctx);
     });
 }

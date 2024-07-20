@@ -1,6 +1,5 @@
 import winston from "winston";
-import {Database} from "./database";
-import {AppContext, ServiceManager} from "./app";
+import {AppContext} from "./app";
 import * as fs from "fs";
 import npm from "npm";
 import * as http from "http";
@@ -13,7 +12,7 @@ type FunctionTypes = {
     'BEFORE_SECURITY': (ctx: AppContext) => Promise<void>;
     'BEFORE_ROUTES': (ctx: AppContext) => Promise<void>;
     'BEFORE_SERVER': (ctx: AppContext) => Promise<void>;
-    'AFTER_SERVER': (ctx: AppContext, srv: http.Server) => Promise<void>;
+    'BOOT': (ctx: AppContext, srv: http.Server) => Promise<void>;
     'EXIT': (ctx: AppContext) => Promise<void>;
 }
 
