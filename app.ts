@@ -114,7 +114,9 @@ export default async function (router: Application, options?: AppBootOptions): P
             });
         }
         steps('BOOT', ctxCpy(), srv);
-        resolve(ctx);
+        if (!srv) {
+            resolve(ctx);
+        }
     });
 }
 
