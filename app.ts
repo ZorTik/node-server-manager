@@ -103,21 +103,15 @@ export default async function (router: Application, options?: AppBootOptions): P
     // Start the server
     steps('BEFORE_SERVER', ctxCpy());
 
-    return new Promise((resolve) => {
-        const ctx = { ...ctxCpy(), steps };
-        let srv = undefined;
-        if (options?.test == undefined || options.test == false) {
-            logger.info(`Starting server`);
-            srv = router.listen(appConfig.port, () => {
-                logger.info(`Server started on port ${appConfig.port}`);
-                resolve(ctx);
-            });
-        }
-        steps('BOOT', ctxCpy(), srv);
-        if (!srv) {
-            resolve(ctx);
-        }
-    });
+    let srv = undefined;
+    if (options?.test == undefined || options.test == false) {
+        logger.info(`Starting server`);
+        srv = router.listen(appConfig.port, () => {
+            logger.info(`Server started on port ${appConfig.port}`);
+        });
+    }
+    steps('BOOT', ctxCpy(), srv);
+    return { ...ctxCpy(), steps };
 }
 
 export { Database, ServiceManager, currentContext }
