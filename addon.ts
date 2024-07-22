@@ -30,19 +30,17 @@ export type Addon = {
 
 // Installs dependencies written in libraries.txt
 async function installDeps(logger: winston.Logger, libs: { [key: string]: string }) {
-    for (const lib in libs) {
-        const dep = `${lib}@${libs[lib]}`;
-        logger.info(`Installing ${dep}`);
-        await new Promise((resolve, reject) => {
-            npm.commands.install([dep], (err) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-                resolve(true);
-            });
+    const libsArray = Object.keys(libs).map((key) => key + '@' + libs[key]);
+    logger.info(`Installing ${libsArray.join(', ')}`);
+    await new Promise((resolve, reject) => {
+        npm.commands.install(libsArray, (err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(true);
         });
-    }
+    });
 }
 
 // Load addons
