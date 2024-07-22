@@ -68,7 +68,7 @@ export default async function (logger: winston.Logger) {
                 .filter((lib) => lib.includes("="))
                 .map((lib) => lib.split('='))
                 .reduce((acc, [name, version]) => {
-                    acc[name] = version;
+                    acc[name] = version.replace('\r', '');
                     return acc;
                 }, {} as { [key: string]: string });
             await installDeps(logger, libs);
