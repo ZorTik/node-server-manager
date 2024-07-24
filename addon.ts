@@ -28,17 +28,23 @@ export type Addon = {
     steps: AddonSteps,
 }
 
+async function initNpm() {
+    await npm.load();
+    npm.config.set('save', false);
+    npm.config.set('save-dev', false);
+}
+
 // Installs dependencies written in libraries.txt
-async function installDeps(logger: winston.Logger, libs: { [key: string]: string }) {
+async function installLibs(logger: winston.Logger, libs: { [key: string]: string }) {
     const libsArray = Object.keys(libs).map((key) => key + '@' + libs[key]);
     logger.info(`Installing ${libsArray.join(', ')}`);
     await new Promise((resolve, reject) => {
         npm.commands.install(libsArray, (err) => {
             if (err) {
                 reject(err);
-                return;
+            } else {
+                resolve(true);
             }
-            resolve(true);
         });
     });
 }
@@ -46,36 +52,35 @@ async function installDeps(logger: winston.Logger, libs: { [key: string]: string
 // Load addons
 export default async function (logger: winston.Logger) {
     const addons: Addon[] = [];
-    let npmLoaded = false;
-    const dirs = fs.readdirSync(__dirname + '/addons')
-        .map((dir) => __dirname + '/addons/' + dir)
-        .filter((file) => fs.existsSync(file + '/index.js'));
-    for (const dir of dirs) {
+    // Load NPM client
+    await initNpm();
+    // Loop addon dirs
+    for (const dir of (
+        // Directories array
+        fs.readdirSync(__dirname + '/addons')
+            .map((dir) => __dirname + '/addons/' + dir)
+            .filter((file) => fs.existsSync(file + '/index.js'))
+    )) {
         if (dir.endsWith('example_addon')) {
             // Skip default example addon
             continue;
         }
         logger.info(`Loading addon from ${dir}`);
         if (fs.existsSync(dir + '/libraries.txt')) {
-            if (!npmLoaded) {
-                await npm.load();
-                npm.config.set('save', false);
-                npm.config.set('save-dev', false);
-                npmLoaded = true;
-            }
-            const libs = fs.readFileSync(dir + '/libraries.txt', 'utf8')
-                .split('\n')
-                .filter((lib) => lib.includes("="))
-                .map((lib) => lib.split('='))
-                .reduce((acc, [name, version]) => {
-                    acc[name] = version.replace('\r', '');
-                    return acc;
-                }, {} as { [key: string]: string });
-            await installDeps(logger, libs);
+            await installLibs(logger, (
+                // Libraries mapped
+                fs.readFileSync(dir + '/libraries.txt', 'utf8')
+                    .split('\n')
+                    .filter((lib) => lib.includes("="))
+                    .map((lib) => lib.split('='))
+                    .reduce((acc, [name, version]) => {
+                        acc[name] = version.replace('\r', '');
+                        return acc;
+                    }, {} as { [key: string]: string })
+            ));
         }
 
-        const file = dir + '/index.js';
-        const addon = require(file).default as Addon;
+        const addon = require(dir + '/index.js').default as Addon;
         if (!addon.disabled) {
             addons.push(addon);
 
