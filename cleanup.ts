@@ -5,7 +5,7 @@ import {resolveSequentially} from "@nsm/util/promises";
 
 let active = false;
 
-export default function (ctx: AppBootContext) {
+export default function (ctx: AppBootContext, exit?: boolean) {
     const { manager, logger, steps } = ctx;
 
     if (active == true) {
@@ -17,8 +17,11 @@ export default function (ctx: AppBootContext) {
 
     setStatus("stopping");
     resolveSequentially(
-        () => bus.callEvent('nsm:exit', undefined),
-        () => steps('EXIT', ctx),
+        ...(exit == true ? [
+            // Those steps that should only be called on exit
+            () => bus.callEvent('nsm:exit', undefined),
+            () => steps('EXIT', ctx)
+        ] : []),
         () => manager.stopRunning()
     ).then(() => {
         process.exit(0);
