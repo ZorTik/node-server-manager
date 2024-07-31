@@ -24,6 +24,8 @@ export default function (ctx: AppBootContext, exit?: boolean) {
         ] : []),
         () => manager.stopRunning()
     ).then(() => {
-        process.exit(0);
+        if (exit == true) {
+            process.exit(0);
+        }
     });
 }
