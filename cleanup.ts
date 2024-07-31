@@ -13,7 +13,9 @@ export default function (ctx: AppBootContext, exit?: boolean) {
     }
 
     active = true;
-    logger.info('SIGINT' + ': Executing stop sequence, please wait');
+    if (exit == true) {
+        logger.info('SIGINT' + ': Executing stop sequence, please wait');
+    }
 
     setStatus("stopping");
     resolveSequentially(
