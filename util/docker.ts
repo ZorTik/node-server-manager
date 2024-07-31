@@ -4,7 +4,12 @@ function calcCpuUsage(precpu: DockerClient.CPUStats, cpu: DockerClient.CPUStats)
     const cpu_delta = cpu?.cpu_usage.total_usage - precpu?.cpu_usage.total_usage;
     const system_cpu_delta = cpu?.system_cpu_usage - precpu?.system_cpu_usage;
     const number_cpus = cpu?.online_cpus;
-    return ((cpu_delta / system_cpu_delta) * number_cpus * 100.0) ?? 0.0;
+    const result = (cpu_delta / system_cpu_delta) * number_cpus * 100.0;
+    if (result == null) {
+        return 0.0;
+    } else {
+        return result;
+    }
 }
 
 export function adaptContainerStatsFromDocker(id: string, stats: ContainerStats) {
