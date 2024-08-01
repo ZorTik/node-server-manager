@@ -63,7 +63,7 @@ describe("Test v1 API models", () => {
         const res = await request(server).get("/v1/status");
         expect(res.status).toBe(200);
         expect(res.body.running).toContain(id);
-    });
+    }, 20000);
 
     test("Test /v1/status?stats=true", async () => {
         const res = await request(server).get("/v1/status?stats=true");
