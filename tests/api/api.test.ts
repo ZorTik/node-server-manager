@@ -58,6 +58,13 @@ describe("Test v1 API models", () => {
         ]);
     });
 
+    test("Test /v1/status to have service in running", async () => {
+        const id = await miniService(ctx);
+        const res = await request(server).get("/v1/status");
+        expect(res.status).toBe(200);
+        expect(res.body.running).toContain(id);
+    });
+
     test("Test /v1/status?stats=true", async () => {
         const res = await request(server).get("/v1/status?stats=true");
         expect(res.status).toBe(200);
@@ -85,6 +92,16 @@ describe("Test v1 API models", () => {
             'meta.pageSize', 10,
             'meta.total', 0,
         ]);
+    });
+
+    test("Test /v1/servicelist right size", async () => {
+        await miniService(ctx);
+        await miniService(ctx);
+        const res = await request(server)
+            .post("/v1/servicelist")
+            .send({ page: 0, pageSize: 1 });
+        expect(res.status).toBe(200);
+        expect(res.body.services).toHaveLength(1);
     });
 
     test("Test /v1/service/{serviceId}", async () => {
