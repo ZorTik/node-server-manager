@@ -10,7 +10,7 @@ const locks = [];
  * @param f The function to run
  * @returns The result of the function
  */
-export async function asyncServiceRun<T>(id: string, tp: string, f: () => Promise<T>): Promise<T> {
+export async function serviceBusyAction<T>(id: string, tp: string, f: () => (Promise<T>|T)): Promise<T> {
     let e_ = null;
     try {
         statuses[id] = true;

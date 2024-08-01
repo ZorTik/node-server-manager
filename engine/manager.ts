@@ -6,7 +6,7 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
-import {asyncServiceRun, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
+import {serviceBusyAction, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
 import winston from "winston";
 import {status} from "../server";
 import * as bus from "@nsm/event/bus";
@@ -313,7 +313,7 @@ export async function createService(template: string, {
     const serviceId = crypto.randomUUID(); // Create new unique service id
     const self = this;
     const meta = metaStorageForService(serviceId);
-    asyncServiceRun(serviceId, 'create', async () => {
+    serviceBusyAction(serviceId, 'create', async () => {
         // Container id
         const containerId = await engine.build(
             noTAlternateSett ? undefined : buildDir(template),
@@ -396,7 +396,7 @@ export async function resumeService(id: string) {
     const self = this;
     const meta = metaStorageForService(id);
 
-    asyncServiceRun(id, 'resume', async () => {
+    serviceBusyAction(id, 'resume', async () => {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
         const containerId = await engine.build(
@@ -449,27 +449,29 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
 
     lckStatusTp(session.containerId, 'stop');
 
-    const meta = metaStorageForService(id);
-
     try {
-        await engine.stop(session.containerId, meta);
+        await serviceBusyAction(id, 'stop', async () => {
+            const meta = metaStorageForService(id);
 
-        let serviceSucc: boolean = true;
-        if (engine.volumesMode) {
-            serviceSucc = fromDeleteFunc == true
-                ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
-                : await engine.delete(session.containerId, meta);
-        } else if (fromDeleteFunc) {
-            serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
-        }
-        const sessionSucc = await db.deleteSession(id);
+            await engine.stop(session.containerId, meta);
 
-        if (serviceSucc && sessionSucc) {
-            started.splice(started.indexOf(id), 1);
-            return true;
-        } else {
-            return false;
-        }
+            let serviceSucc: boolean = true;
+            if (engine.volumesMode) {
+                serviceSucc = fromDeleteFunc == true
+                    ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
+                    : await engine.delete(session.containerId, meta);
+            } else if (fromDeleteFunc) {
+                serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
+            }
+            const sessionSucc = await db.deleteSession(id);
+
+            if (serviceSucc && sessionSucc) {
+                started.splice(started.indexOf(id), 1);
+                return true;
+            } else {
+                return false;
+            }
+        });
     } finally {
         ulckStatusTp(session.containerId);
     }
