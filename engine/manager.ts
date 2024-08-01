@@ -158,8 +158,10 @@ export type ServiceManager = {
      *
      * @param from The service ID, or model
      * @param options The get options
+     *   includeSession: Whether to include the session to result
+     *   otherNodes: If true, we will include services on other NSM nodes to search
      */
-    getService(from: string|PermaModel, options?: { includeSession?: boolean }): Promise<ServiceInfo|undefined>;
+    getService(from: string|PermaModel, options?: { includeSession?: boolean, otherNodes?: boolean }): Promise<ServiceInfo|undefined>;
 
     /**
      * Get the last power error of a service.
@@ -524,21 +526,22 @@ export function getTemplate(id: string): Template|undefined {
     }
 }
 
-export async function getService(from: string, options?: { includeSession?: boolean }): Promise<ServiceInfo | undefined> {
+export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }): Promise<ServiceInfo | undefined> {
     const data = typeof from === 'string' ? await db.getPerma(from) : from;
-    if (!data) {
+    if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
+        let session = undefined;
+        if (options?.includeSession === true) {
+            session = await currentContext.database.getSession(data.serviceId);
+        }
+        return {
+            ...data,
+            optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
+            optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
+            optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
+            session
+        }
+    } else {
         return undefined;
-    }
-    let session = undefined;
-    if (options?.includeSession === true) {
-        session = await currentContext.database.getSession(data.serviceId);
-    }
-    return {
-        ...data,
-        optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
-        optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
-        optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
-        session
     }
 }
 
