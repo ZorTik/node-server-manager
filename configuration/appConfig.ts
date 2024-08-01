@@ -1,7 +1,7 @@
 import {loadYamlFile} from "../util/yaml";
 
 export default function loadAppConfig() {
-    const config = loadYamlFile(`${process.cwd()}/config.yml`);
+    const config = loadYamlFile(`${process.cwd()}/resources/config.yml`);
     for (let key in config) {
         // Overwrite with env variable if exists.
         const envKey = 'CONFIG_' + key.toUpperCase();

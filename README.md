@@ -37,7 +37,7 @@ Follow these steps to install and set up NSM:
    Open the `.env` file and provide the necessary configuration values.
 
 3. **Edit Configuration**
-   Adjust the default configuration settings in `config.yml` according to your requirements. You can also override these settings using environment variables. Detailed information about each configuration option is available within `config.yml`.
+   Adjust the default configuration settings in `resources/config.yml` according to your requirements. You can also override these settings using environment variables. Detailed information about each configuration option is available within the file.
 
 4. **Install Dependencies**
    Install the required Node.js packages:

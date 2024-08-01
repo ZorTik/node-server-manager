@@ -24,7 +24,7 @@ function initDockerClient(appConfig: { docker_host: string }) {
         let port = parseInt(appConfig.docker_host.replace(host, ''));
         client = new DockerClient({host, port});
     } else {
-        throw new Error('Docker engine configuration variable not found! Please set docker_host in config.yml or override using env.');
+        throw new Error('Docker engine configuration variable not found! Please set docker_host in resources/config.yml or override using env.');
     }
     return client;
 }
