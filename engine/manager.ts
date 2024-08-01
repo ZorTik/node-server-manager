@@ -450,7 +450,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     lckStatusTp(session.containerId, 'stop');
 
     try {
-        await serviceBusyAction(id, 'stop', async () => {
+        return await serviceBusyAction(id, 'stop', async () => {
             const meta = metaStorageForService(id);
 
             await engine.stop(session.containerId, meta);

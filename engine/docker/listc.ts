@@ -10,7 +10,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         try {
             return (await client.listContainers())
                 .filter(c => templates.some(function (t) {
-                    return c.Image.startsWith(t + ':');
+                    return c.Labels.hasOwnProperty('nsm.templateId') && c.Labels['nsm.templateId'] == t;
                 }))
                 .map(c => c.Id);
         } catch (e) {

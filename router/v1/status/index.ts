@@ -55,7 +55,8 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
         routes: {
             get: async (req, res) => {
                 const nodeId = appConfig['node_id'];
-                const runningContainers = await manager.engine.listContainers(await manager.listTemplates());
+                const templates = await manager.listTemplates();
+                const runningContainers = await manager.engine.listContainers(templates);
                 const sessions = await database.listSessions(manager.nodeId);
                 const all = await database.list(nodeId);
                 const [free, size] = await manager.engine.calcHostUsage();

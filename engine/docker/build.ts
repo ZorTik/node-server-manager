@@ -92,6 +92,7 @@ async function prepareContainer(
             ...constructObjectLabels({ id: volumeId }),
             'nsm.buildDir': buildDir,
             'nsm.volumeId': volumeId,
+            'nsm.templateId': buildDir ? path.basename(buildDir) : '__no_t__'
         },
         HostConfig: {
             Memory: ram,
