@@ -6,9 +6,8 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
-import {serviceBusyAction, isServicePending, lckStatusTp, ulckStatusTp} from "./asyncp";
+import {doBusyAction, lckStatusTp, reqNotPending, ulckStatusTp} from "./asyncp";
 import winston from "winston";
-import {status} from "../server";
 import * as bus from "@nsm/event/bus";
 
 export type Options = {
@@ -315,7 +314,7 @@ export async function createService(template: string, {
     const serviceId = crypto.randomUUID(); // Create new unique service id
     const self = this;
     const meta = metaStorageForService(serviceId);
-    serviceBusyAction(serviceId, 'create', async () => {
+    doBusyAction(serviceId, 'create', async () => {
         // Container id
         const containerId = await engine.build(
             noTAlternateSett ? undefined : buildDir(template),
@@ -370,7 +369,6 @@ export async function createService(template: string, {
 
 export async function resumeService(id: string) {
     reqCompatibleEngine();
-    reqNoPending(id);
     const perma_ = await db.getPerma(id);
     // Service does not exist
     if (!perma_) {
@@ -398,7 +396,7 @@ export async function resumeService(id: string) {
     const self = this;
     const meta = metaStorageForService(id);
 
-    serviceBusyAction(id, 'resume', async () => {
+    doBusyAction(id, 'resume', async () => {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
         const containerId = await engine.build(
@@ -443,7 +441,6 @@ export async function resumeService(id: string) {
 }
 
 export async function stopService(id: string, fromDeleteFunc?: boolean) {
-    reqNoPending(id);
     const session = await db.getSession(id);
     if (!session) {
         throw new _InternalError("This service is not running.", 2);
@@ -452,7 +449,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     lckStatusTp(session.containerId, 'stop');
 
     try {
-        return await serviceBusyAction(id, 'stop', async () => {
+        return await doBusyAction(id, 'stop', async () => {
             const meta = metaStorageForService(id);
 
             await engine.stop(session.containerId, meta);
@@ -499,8 +496,8 @@ export async function deleteService(id: string) {
     return db.deletePerma(id);
 }
 
-export async function updateOptions(id: string, options: Options): Promise<boolean> {
-    reqNoPending(id);
+export async function updateOptions(id: string, options: Options) {
+    reqNotPending(id);
     const perma = await db.getPerma(id);
     const data: PermaModel = {
         ...perma,
@@ -513,7 +510,7 @@ export async function updateOptions(id: string, options: Options): Promise<boole
     return db.savePerma(data);
 }
 
-export function getTemplate(id: string): Template|undefined {
+export function getTemplate(id: string) {
     if (noTemplateMode()) {
         return {
             id: noTTemplate,
@@ -526,7 +523,7 @@ export function getTemplate(id: string): Template|undefined {
     }
 }
 
-export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }): Promise<ServiceInfo | undefined> {
+export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }) {
     const data = typeof from === 'string' ? await db.getPerma(from) : from;
     if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
         let session = undefined;
@@ -545,11 +542,11 @@ export async function getService(from: string, options?: { includeSession?: bool
     }
 }
 
-export function getLastPowerError(id: string): Error | undefined {
+export function getLastPowerError(id: string) {
     return errors[id];
 }
 
-export async function listServices(page: number, pageSize: number, all?: boolean): Promise<string[]> {
+export async function listServices(page: number, pageSize: number, all?: boolean) {
     const data = await db.list((all ?? false) ? undefined : nodeId, page, pageSize);
     return data.map(d => d.serviceId);
 }
@@ -609,16 +606,6 @@ export async function initEngineForcibly() {
 
 
 // Utils
-
-function reqNoPending(id: string) {
-    if (status === "stopping") {
-        // If the NSM engine is in stopping state, ignore this
-        return;
-    }
-    if (isServicePending(id)) {
-        throw new Error('Service is pending another action.');
-    }
-}
 
 function reqCompatibleEngine() {
     if (noTAlternateSett && !engine.supportsNoTemplateMode) {

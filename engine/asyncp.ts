@@ -1,6 +1,7 @@
+import {status} from "@nsm/server";
+
 const statuses = {};
 const status_types = {};
-const locks = [];
 
 /**
  * Lock a service behind a pending operation lock.
@@ -10,8 +11,9 @@ const locks = [];
  * @param f The function to run
  * @returns The result of the function
  */
-export async function serviceBusyAction<T>(id: string, tp: string, f: () => (Promise<T>|T)): Promise<T> {
+export async function doBusyAction<T>(id: string, tp: string, f: () => (Promise<T>|T)): Promise<T> {
     let e_ = null;
+    reqNotPending(id);
     try {
         statuses[id] = true;
         status_types[id] = tp; // type of action
@@ -36,9 +38,6 @@ export function ulckStatusTp(id: string) {
 }
 
 export function isServicePending(id: string): boolean {
-    if (locks.includes(id)) {
-        throw new Error("Service is locked.");
-    }
     return statuses[id] || false;
 }
 
@@ -46,14 +45,8 @@ export function getActionType(id: string): string|undefined {
     return status_types[id] || undefined;
 }
 
-export function lock(id: string) {
-    if (locks.includes(id)) {
-        return false;
+export function reqNotPending(id: string) {
+    if (status !== "stopping" && isServicePending(id)) {
+        throw new Error('Service is pending another action.');
     }
-    locks.push(id);
-    return true;
-}
-
-export function unlock(id: string) {
-    locks.splice(locks.indexOf(id), 1);
 }
