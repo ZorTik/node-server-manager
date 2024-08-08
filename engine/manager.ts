@@ -6,7 +6,7 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
-import {doBusyAction, lckStatusTp, reqNotPending, ulckStatusTp} from "./asyncp";
+import {lckStatusTp, lockBusyAction, reqNotPending, ulckStatusTp} from "./asyncp";
 import winston from "winston";
 import * as bus from "@nsm/event/bus";
 
@@ -314,7 +314,9 @@ export async function createService(template: string, {
     const serviceId = crypto.randomUUID(); // Create new unique service id
     const self = this;
     const meta = metaStorageForService(serviceId);
-    doBusyAction(serviceId, 'create', async () => {
+    const unlock = lockBusyAction(serviceId, 'create');
+
+    (async () => {
         // Container id
         const containerId = await engine.build(
             noTAlternateSett ? undefined : buildDir(template),
@@ -354,11 +356,13 @@ export async function createService(template: string, {
             throw new _InternalError('Failed to save session info to database');
         }
         started.push(serviceId);
-    }).catch(e => {
+    })().catch((e) => {
         // Save to be later retrieved
         errors[serviceId] = e;
         currentContext.logger.error(e.message);
         started.splice(started.indexOf(serviceId), 1);
+    }).finally(() => {
+        unlock();
     });
     const e = errors[serviceId];
     if (e) {
@@ -395,8 +399,9 @@ export async function resumeService(id: string) {
 
     const self = this;
     const meta = metaStorageForService(id);
+    const unlock = lockBusyAction(id, 'resume');
 
-    doBusyAction(id, 'resume', async () => {
+    (async () => {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
         const containerId = await engine.build(
@@ -420,8 +425,9 @@ export async function resumeService(id: string) {
             currentContext.logger.error('Failed to create container. Service: ' + id);
             return false;
         }
+        const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
         // Save new session info
-        if (await db.saveSession({ serviceId: id, nodeId, containerId })) {
+        if (saved) {
             started.push(id);
             return true;
         } else {
@@ -429,13 +435,15 @@ export async function resumeService(id: string) {
             await engine.stop(containerId, meta);
             return false;
         }
-    }).then(success => {
-        if (success) {
+    })().then((success) => {
+        if (success == true) {
             currentContext.logger.info('Service ' + id + ' resumed.');
         } else {
             errors[id] = new Error('Failed to resume service');
             started.splice(started.indexOf(id), 1);
         }
+    }).finally(() => {
+        unlock();
     });
     return true;
 }
@@ -447,9 +455,11 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     }
 
     lckStatusTp(session.containerId, 'stop');
+    const unlock = lockBusyAction(id, 'stop');
 
+    let success = false;
     try {
-        return await doBusyAction(id, 'stop', async () => {
+        success = await (async () => {
             const meta = metaStorageForService(id);
 
             await engine.stop(session.containerId, meta);
@@ -470,10 +480,12 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
             } else {
                 return false;
             }
-        });
+        })();
     } finally {
+        unlock();
         ulckStatusTp(session.containerId);
     }
+    return success;
 }
 
 export async function deleteService(id: string) {

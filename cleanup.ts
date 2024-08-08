@@ -2,6 +2,7 @@ import {AppBootContext} from "@nsm/app";
 import {setStatus} from "@nsm/server";
 import * as bus from "@nsm/event/bus";
 import {resolveSequentially} from "@nsm/util/promises";
+import {setStopping} from "@nsm/engine/asyncp";
 
 let active = false;
 
@@ -18,6 +19,8 @@ export default function (ctx: AppBootContext, exit?: boolean) {
     }
 
     setStatus("stopping");
+    setStopping();
+
     resolveSequentially(
         ...(exit == true ? [
             // Those steps that should only be called on exit
