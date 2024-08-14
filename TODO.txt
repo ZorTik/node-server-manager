@@ -1,4 +1,3 @@
 # TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba ???
 # TODO: SIGINT nevyvolává handler v index.ts, který by měl vypínat běžící služby
 # TODO: SERVICE RESUME jde vyvolat za sebou, bez blocku akce.
-# TODO: Service list ignoruje page size
