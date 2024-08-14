@@ -115,7 +115,7 @@ export async function getMetaVal(key: string, defaultVal?: string): Promise<stri
 export async function list(nodeId: string|undefined, page?: number, pageSize?: number): Promise<PermaModel[]> {
     try {
         let services: any[];
-        if (page && pageSize) {
+        if (page != undefined && pageSize != undefined) {
             services = await client.service.findMany({
                 ...nodeId ? { where: { nodeId } } : {},
                 skip: page * pageSize,
