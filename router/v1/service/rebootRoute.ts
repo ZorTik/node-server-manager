@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/reboot',
         routes: {
@@ -12,7 +12,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    if (await engine.stopService(id) && await engine.resumeService(id)) {
+                    if (await manager.stopService(id) && await manager.resumeService(id)) {
                         res.status(200).json({status: 200, message: 'Service reboot action successfully registered to be completed in a moment.'});
                     } else {
                         res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});

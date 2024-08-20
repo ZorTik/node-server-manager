@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 
-export default async function ({database, engine}: AppContext): Promise<RouterHandler> {
+export default async function ({database, manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id',
         routes: {
@@ -15,11 +15,11 @@ export default async function ({database, engine}: AppContext): Promise<RouterHa
                 const session = await database.getSession(id);
                 let stats: any;
                 if (session && req.query.stats === 'true') {
-                    stats = await engine.engine.stat(session.containerId);
+                    stats = await manager.engine.stat(session.containerId);
                 } else {
                     stats = null;
                 }
-                const template = engine.getTemplate(service.template);
+                const template = manager.getTemplate(service.template);
                 // Build that info
                 res.json({
                     id: service.serviceId,

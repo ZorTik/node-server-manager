@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/options',
         routes: {
@@ -20,7 +20,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                     res.status(400).json({status: 400, message: 'Port(s) cannot be changed yet.'});
                     return;
                 }
-                if (await engine.updateOptions(id, options)) {
+                if (await manager.updateOptions(id, options)) {
                     res.status(200).json({status: 200, message: 'Service options updated.'});
                 } else {
                     res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});

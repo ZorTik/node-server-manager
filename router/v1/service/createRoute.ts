@@ -2,30 +2,27 @@
 import {RouterHandler} from "../../index";
 import {AppContext} from "../../../app";
 import {Options} from "../../../engine";
+import {clock} from "../../../util/clock";
 
 // Defines if the value inside template settings.yml env represents required option.
-function isRequiredOption(value: any) {
-    if (typeof value == "string" && value === "") {
-        return true;
-    }
-    if (typeof value === "number" && value == -1) {
-        return true;
-    }
-    return false;
+function checkRequired(value: any) {
+    return (
+        (typeof value == "string" && value === "") ||
+        (typeof value === "number" && value == -1)
+    )
 }
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/create',
         routes: {
             post: async (req, res) => {
-                const beginTime = Date.now();
-                const body = req.body;
-                if (!body || !body.template) {
+                const clk = clock();
+                if (!req.body || (!manager.noTemplateMode() && !req.body.template)) {
                     res.status(400).json({status: 400, message: 'Missing body or template key.'}).end();
                     return;
                 }
-                const template = engine.getTemplate(body.template);
+                const template = manager.getTemplate(req.body.template);
                 if (!template) {
                     res.status(400).json({status: 400, message: 'Invalid template ID.'}).end();
                     return;
@@ -41,7 +38,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                             .json({status: 400, message: 'Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.'})
                             .end();
                         return;
-                    } else if (isRequiredOption(template.settings['env'][key])) {
+                    } else if (checkRequired(template.settings['env'][key])) {
                         res.status(400)
                             .json({status: 400, message: 'Missing required option ' + key})
                             .end();
@@ -53,19 +50,19 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                 }
                 // Build options
                 const options: Options = {};
-                for (const key of Object.keys(body)) {
-                    options[key] = body[key];
+                for (const key of Object.keys(req.body)) {
+                    options[key] = req.body[key];
                 }
                 options.env = env;
                 // Create the service
                 try {
-                    const serviceId = await engine.createService(template.id, options);
+                    const serviceId = await manager.createService(template.id, options);
                     res.status(200).json({
                         status: 200,
                         message: 'Service create action successfully registered to be completed in a moment.',
                         serviceId,
                         statusPath: '/v1/service/' + serviceId + '/powerstatus',
-                        time: Date.now() - beginTime
+                        time: clk.durFromCreation()
                     }).end();
                 } catch (e) {
                     res.status(500).json({status: 500, message: e.message}).end();

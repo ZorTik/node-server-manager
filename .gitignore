@@ -143,3 +143,10 @@ package-lock.json
 
 service_logs
 service_logs/*
+
+# Exclude expansion dir
+exp/
+exp/**
+
+# Exclude local scripts
+cp-exp.bat

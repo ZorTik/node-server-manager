@@ -5,12 +5,11 @@
   "main": "index.js",
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
-    "start": "node installTempDeps.js && node dist/index.js",
-    "test": "jest"
+    "start": "node installTempDeps.js && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
+    "test": "npm run build && jest"
   },
   "keywords": [],
   "author": "ZorTik",
-  "license": "ISC",
   "devDependencies": {
     "@babel/core": "^7.23.9",
     "@babel/preset-env": "^7.23.9",
@@ -25,6 +24,7 @@
     "superagent": "^9.0.2",
     "supertest": "^7.0.0",
     "temp": "^0.9.4",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.3",
     "typescript-cp": "^0.1.9"
   },
@@ -44,6 +44,7 @@
     "@types/yaml": "^1.9.7",
     "basic-ftp": "^5.0.5",
     "cors": "^2.8.5",
+    "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
     "dockerode": "^4.0.2",
     "express": "^4.18.2",
@@ -52,6 +53,7 @@
     "jest": "^29.7.0",
     "npm": "^7.24.2",
     "tar": "^6.2.0",
+    "tsconfig-paths-jest": "^0.0.1",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
     "yaml": "^2.4.0"

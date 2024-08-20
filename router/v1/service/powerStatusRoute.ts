@@ -2,7 +2,7 @@ import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 import {isServicePending} from "../../../engine/asyncp";
 
-export default async function ({engine}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/powerstatus',
         routes: {
@@ -17,7 +17,7 @@ export default async function ({engine}: AppContext): Promise<RouterHandler> {
                 if (isServicePending(id)) {
                     status = 'PENDING';
                 } else {
-                    const err = engine.getLastPowerError(id);
+                    const err = manager.getLastPowerError(id);
                     if (err) {
                         status = 'ERROR';
                         error = err;

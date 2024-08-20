@@ -5,12 +5,12 @@ import {currentContext} from "../../app";
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['listContainers'] {
     return async (templates) => {
         if (templates === undefined) {
-            templates = await currentContext.engine.listTemplates();
+            templates = await currentContext.manager.listTemplates();
         }
         try {
             return (await client.listContainers())
                 .filter(c => templates.some(function (t) {
-                    return c.Image.startsWith(t + ':');
+                    return c.Labels.hasOwnProperty('nsm.templateId') && c.Labels['nsm.templateId'] == t;
                 }))
                 .map(c => c.Id);
         } catch (e) {

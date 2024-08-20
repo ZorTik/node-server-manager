@@ -1,29 +1,22 @@
 const statuses = {};
 const status_types = {};
-const locks = [];
+
+let stopping = false;
 
 /**
  * Lock a service behind a pending operation lock.
  *
  * @param id The service ID
  * @param tp The type of action
- * @param f The function to run
- * @returns The result of the function
+ * @returns The unlock function
  */
-export async function asyncServiceRun<T>(id: string, tp: string, f: () => Promise<T>): Promise<T> {
-    let e_ = null;
-    try {
-        statuses[id] = true;
-        status_types[id] = tp; // type of action
-        return await f();
-    } catch (e) {
-        e_ = e;
-    } finally {
+export function lockBusyAction(id: string, tp: string) {
+    reqNotPending(id);
+    statuses[id] = true;
+    status_types[id] = tp; // type of action
+    return () => {
         delete statuses[id];
         delete status_types[id];
-    }
-    if (e_) {
-        throw e_;
     }
 }
 
@@ -36,9 +29,6 @@ export function ulckStatusTp(id: string) {
 }
 
 export function isServicePending(id: string): boolean {
-    if (locks.includes(id)) {
-        throw new Error("Service is locked.");
-    }
     return statuses[id] || false;
 }
 
@@ -46,14 +36,12 @@ export function getActionType(id: string): string|undefined {
     return status_types[id] || undefined;
 }
 
-export function lock(id: string) {
-    if (locks.includes(id)) {
-        return false;
+export function reqNotPending(id: string) {
+    if (stopping == false && isServicePending(id)) {
+        throw new Error('Service is pending another action.');
     }
-    locks.push(id);
-    return true;
 }
 
-export function unlock(id: string) {
-    locks.splice(locks.indexOf(id), 1);
+export function setStopping() {
+    stopping = true;
 }

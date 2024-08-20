@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "mysql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -28,6 +28,13 @@ model Service {
   port      Int
   options   Json
   env       Json
+  network   Json?
+}
+
+model ServiceMeta {
+  serviceId String @id
+  key       String @unique
+  value     Json
 }
 
 // Persistent key-value storage for system-wide attributes.

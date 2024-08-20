@@ -1,29 +1,90 @@
-<div align="center">
-
 # Node Server Manager (NSM)
-A simple service manager built on docker engine. You can generate almost any service from templates using REST protocol. This is useful for creating game servers dynamically from templates.
-</div>
+
+NSM is a robust service manager built on Docker Engine. Its primary purpose is to facilitate dynamic service generation using REST protocol from predefined templates, making it an essential tool for large game networks, service hosting providers and basically everyone whose goal is to scale on the run.
+
+## Features
+
+- **Dynamic Service Generation**: Create and manage services on-the-fly using RESTful APIs.
+- **Template-Based Configuration**: Use customizable templates to define service configurations.
+- **No-template mode**: NSM supports integrating custom engine with no template mode to disable templates completely.
+- **Docker Integration**: Leverage Docker Engine for reliable and scalable service management.
+- **Resources usage management**: NSM provides ability to limit or extend resources limits and view current usage.
+- **Cluster-ready**: NSM is built to be used in a cluster. For more reference, head up to the wiki (soon).
+
+## Prerequisites
+
+Ensure you have the following installed before proceeding with the installation:
+
+- Node.js (v14 or higher)
+- Docker
+- npm (Node Package Manager)
 
 ## Installation
-To prepare NSM for production, go to the directory where you want to have NSM installed and do the following:
-1. Clone NSM using `git clone https://github.com/ZorTik/node-server-manager` or **download latest release** from this page and **extract** it
-2. Fill up .env file from template at `.env.example`
-3. Edit default configuration in `config.yml` or override it using env variables (More info in config.yml)
-4. Run `npm install`
-5. Run `npx prisma generate` to generate Prisma client
-6. Run `npx prisma migrate dev --name <choose_migration_name>` to sync database schema
-7. Run `npm run build` to build the project
+
+Follow these steps to install and set up NSM:
+
+1. **Clone the Repository**
+   ```sh
+   git clone https://github.com/ZorTik/node-server-manager
+   ```
+   Alternatively, download the latest release from the [NSM repository](https://github.com/ZorTik/node-server-manager) and extract it.
+
+2. **Configure Environment Variables**
+   Copy the example environment file and fill in the required values:
+   ```sh
+   cp .env.example .env
+   ```
+   Open the `.env` file and provide the necessary configuration values.
+
+3. **Edit Configuration**
+   Adjust the default configuration settings in `resources/config.yml` according to your requirements. You can also override these settings using environment variables. Detailed information about each configuration option is available within the file.
+
+4. **Install Dependencies**
+   Install the required Node.js packages:
+   ```sh
+   npm install
+   ```
+
+5. **Generate Prisma Client**
+   Generate the Prisma client for database interaction:
+   ```sh
+   npx prisma generate
+   ```
+
+6. **Sync Database Schema**
+   Apply the database schema migrations:
+   ```sh
+   npx prisma migrate deploy
+   ```
+
+7. **Build the Project**
+   Compile the project for production:
+   ```sh
+   npm run build
+   ```
 
 ## Running NSM
-Run `npm start` to start the server.
 
-## Integrating addons
-To integrate new addon, you need to either create your own one from template at `addons/example_addon` or download one and put it in the `addons` folder.
-Then, follow these steps:
-1. Download or create an addon in `addons/<your_addon_id_here>` directory
-2. Run `npm run build` to rebuild the project
+To start the NSM service, use the following command:
 
-## Creating a template
-TODO
-## Using the NSM API for managing services
-TODO
+```sh
+npm start
+```
+
+This will launch the NSM server, making it ready to handle requests and manage services dynamically.
+
+## Contributing
+
+Contributions to NSM are welcome! If you encounter any issues or have suggestions for improvements, please [open an issue](https://github.com/ZorTik/node-server-manager/issues) or submit a pull request.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/ZorTik/node-server-manager/blob/main/LICENSE) file for more details.
+
+## Contact
+
+For any questions or support, please contact me (maintainer) via [GitHub Issues](https://github.com/ZorTik/node-server-manager/issues) or my website.
+
+---
+
+For documentation, refer to the project repository. Detailed wiki is planned soon.

@@ -1,6 +1,5 @@
 import {AppContext, Database, ServiceManager} from "../../../app";
 import {RouterHandler} from "../../index";
-import ds from "check-disk-space";
 import * as os from "os";
 
 async function checkNsmResources(engine: ServiceManager, db: Database) {
@@ -23,7 +22,7 @@ async function checkNsmResources(engine: ServiceManager, db: Database) {
             total: 0,
             percent: 0,
         },
-        services: {
+        services: { // TODO: Ukazuje stále 0???
             memTotal: BigInt(0),
             cpuTotal: BigInt(0),
             diskTotal: BigInt(0),
@@ -50,16 +49,17 @@ async function checkNsmResources(engine: ServiceManager, db: Database) {
  *
  * @param context The app context
  */
-export default async function ({engine, appConfig, database}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, appConfig, database}: AppContext): Promise<RouterHandler> {
     return {
         url: '/status',
         routes: {
             get: async (req, res) => {
                 const nodeId = appConfig['node_id'];
-                const runningContainers = await engine.engine.listContainers(await engine.listTemplates());
-                const sessions = await database.listSessions(engine.nodeId);
+                const templates = await manager.listTemplates();
+                const runningContainers = await manager.engine.listContainers(templates);
+                const sessions = await database.listSessions(manager.nodeId);
                 const all = await database.list(nodeId);
-                const {free, size} = await ds(engine.volumesDir);
+                const [free, size] = await manager.engine.calcHostUsage();
                 const system = {
                     totalmem: os.totalmem(),
                     freemem: os.freemem(),
@@ -73,7 +73,7 @@ export default async function ({engine, appConfig, database}: AppContext): Promi
                         .map(s => s.serviceId),
                     all: all.length,
                     system,
-                    ...(req.query.stats === 'true' ? { stats: await checkNsmResources(engine, database) } : {})
+                    ...(req.query.stats === 'true' ? { stats: await checkNsmResources(manager, database) } : {})
                 }).end();
             },
         },
