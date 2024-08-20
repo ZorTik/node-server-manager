@@ -640,13 +640,14 @@ export default async function ({db, appConfig, logger}: {
     for (const session of unclearedSessions) {
         await stopService(session.serviceId);
     }
-    for (const running of await engine.listRunning()) {
-        const volumeId = await engine.getAttachedVolume(running);
+    const running = await engine.listRunning();
+    for (const id of running) {
+        const volumeId = await engine.getAttachedVolume(id);
         if (!volumeId) {
             // The container does not exist or does not have a volume attached?
             continue;
         }
-        await engine.stop(running, metaStorageForService(volumeId));
+        await engine.stop(id, metaStorageForService(volumeId));
     }
 
     logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
