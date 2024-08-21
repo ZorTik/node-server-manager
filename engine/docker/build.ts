@@ -10,6 +10,7 @@ import {getActionType} from "../asyncp";
 import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
 import {constructObjectLabels} from "../../util/services";
+import {createLogger} from "../../logger";
 
 function logService(id: string, str: any) {
     // Isn't this thing blocking??? Look at it later, zort - by zort xdd
@@ -150,10 +151,9 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         options.env.SERVICE_DISK = options.disk.toString();
 
         const {network, env} = options;
-        ctx.logger.info(id + ' > Building image');
+        const serviceLogger = createLogger({ label: volumeId.substring(0, 13) });
+        serviceLogger.info('Building image');
         const imageTag = await prepareImage(client, arDir, buildDir, volumeId, env);
-
-        //fs.mkdirSync(process.cwd() + '/volumes/' + volumeId, { recursive: true });
 
         let container: DockerClient.Container;
         // Whether, or not we're creating a brand-new service
@@ -175,14 +175,14 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     creating = true;
                 }
             }
-            ctx.logger.info(id + ' > Preparing network');
+            serviceLogger.info('Preparing network');
             const net = await prepareNetwork(client, network, meta, creating);
             // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-            ctx.logger.info(id + ' > Preparing container');
+            serviceLogger.info('Preparing container');
             container = await prepareContainer(client, imageTag, buildDir, volumeId, options, net);
-            ctx.logger.info(id + ' > Starting container');
+            serviceLogger.info('Starting container');
             await container.start();
-            ctx.logger.info(id + ' > Watching changes');
+            serviceLogger.info('Watching changes');
             // Watcher
             setTimeout(async () => {
                 const attachOptions = { stream: true, stdout: true, hijack: true };

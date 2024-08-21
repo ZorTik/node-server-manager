@@ -9,7 +9,7 @@ import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
 import * as r from "./configuration/resources";
 import * as manager from "./engine";
-import {prepareLogger} from "./logger";
+import {createLogger, createNewLatest} from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
@@ -64,7 +64,9 @@ function managerForUnsafeUse() {
 
 // App orchestration code
 export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
-    const logger = prepareLogger(process.env.DEBUG === 'true');
+    // Prepare logging
+    createNewLatest();
+    const logger = createLogger();
     r.prepareResources(options?.test === true); // Copy resources, etc.
 
     // Load addon steps

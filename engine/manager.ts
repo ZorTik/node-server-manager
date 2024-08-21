@@ -437,7 +437,7 @@ export async function resumeService(id: string) {
         }
     })().then((success) => {
         if (success == true) {
-            currentContext.logger.info('Service ' + id + ' resumed.');
+            currentContext.logger.info('Service ' + id + ' resumed');
         } else {
             errors[id] = new Error('Failed to resume service');
             started.splice(started.indexOf(id), 1);
