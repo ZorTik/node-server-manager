@@ -11,6 +11,12 @@ import {accessNetwork, createNetwork} from "../../networking/manager";
 import Dockerode from "dockerode";
 import {constructObjectLabels} from "../../util/services";
 
+function logService(id: string, str: any) {
+    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
+    const log_path = process.cwd() + '/service_logs/' + id + '.log';
+    fs.appendFileSync(log_path, (str ?? '').toString() + '\n');
+}
+
 async function prepareImage(client: DockerClient, arDir: string, buildDir: string, volumeId: string, env: any) {
     const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
     try {
@@ -32,6 +38,7 @@ async function prepareImage(client: DockerClient, arDir: string, buildDir: strin
     // Build image
     const stream = await client.buildImage(archive, { t: imageTag, buildargs: env });
     try {
+        logService(volumeId, '--------- Begin Build Log ---------\n');
         await new Promise((resolve, reject) => {
             client.modem.followProgress(stream, (err, res) => {
                 if (err) {
@@ -42,7 +49,9 @@ async function prepareImage(client: DockerClient, arDir: string, buildDir: strin
                             reject(r.errorDetail.message);
                             return;
                         } else {
-                            ctx.logger.info(r.stream?.trim());
+                            const msg = r.stream?.trim();
+                            //ctx.logger.info(msg);
+                            logService(volumeId, msg);
                         }
                     });
                     resolve(res);
@@ -50,9 +59,11 @@ async function prepareImage(client: DockerClient, arDir: string, buildDir: strin
             })
         });
     } catch (e) {
+        // TODO: Log error to service log
         ctx.logger.error(e);
         return null;
     }
+    logService(volumeId, '--------- End Of Build Log ---------\n');
     fs.unlinkSync(archive);
     return imageTag;
 }
@@ -177,9 +188,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 const attachOptions = { stream: true, stdout: true, hijack: true };
                 const rws = await client.getContainer(container.id).attach(attachOptions);
                 rws.on('data', (data) => {
-                    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
-                    const log_path = process.cwd() + '/service_logs/' + volumeId + '.log';
-                    fs.appendFileSync(log_path, data.toString());
+                    logService(volumeId, data);
                 }); // no-op, keepalive
                 rws.on('end', async () => {
                     // I only want to trigger close when the container is not being
