@@ -83,27 +83,25 @@ export default async function (router: Application, options?: AppBootOptions): P
 
     // Temporarily lock manager until it's initialized
     let _manager = managerForUnsafeUse();
-    currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
-
-    const ctxCpy = () => { return { ...currentContext } };
+    const ctx = currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Service (virtualization) layer
-    steps('BEFORE_ENGINE', ctxCpy());
+    steps('BEFORE_ENGINE', ctx);
     await initServiceManager({ db: database, appConfig, logger });
 
     // Bring back original manager
-    currentContext.manager = manager;
+    ctx.manager = currentContext.manager = manager;
 
     // Load security
-    steps('BEFORE_SECURITY', ctxCpy());
-    await loadSecurity(ctxCpy());
+    steps('BEFORE_SECURITY', ctx);
+    await loadSecurity(ctx);
 
     // Load HTTP routes
-    steps('BEFORE_ROUTES', ctxCpy());
-    await loadAppRoutes(ctxCpy());
+    steps('BEFORE_ROUTES', ctx);
+    await loadAppRoutes(ctx);
 
     // Start the server
-    steps('BEFORE_SERVER', ctxCpy());
+    steps('BEFORE_SERVER', ctx);
 
     let srv = undefined;
     if (options?.test == undefined || options.test == false) {
@@ -112,8 +110,8 @@ export default async function (router: Application, options?: AppBootOptions): P
             logger.info(`Server started on port ${appConfig.port}`);
         });
     }
-    steps('BOOT', ctxCpy(), srv);
-    return { ...ctxCpy(), steps };
+    steps('BOOT', ctx, srv);
+    return { ...ctx, steps };
 }
 
 export { Database, ServiceManager, currentContext }

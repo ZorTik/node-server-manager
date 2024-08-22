@@ -4,6 +4,7 @@ import * as fs from "fs";
 import npm from "npm";
 import * as http from "http";
 import {isDebug} from "./helpers";
+import {createLogger} from "@nsm/logger";
 
 type FunctionTypes = {
     'BEFORE_CONFIG': (ctx: { logger: winston.Logger }) => Promise<void>;
@@ -22,6 +23,7 @@ export type AddonSteps = {
 };
 export type Addon = {
     name: string,
+    briefName?: string,
     author?: string,
     version?: string,
     disabled?: boolean,
@@ -89,13 +91,21 @@ export default async function (logger: winston.Logger) {
             logger.info(`Loaded addon ${name}${author ? ` by ${author}` : ``}${version ? ` (v${version})` : ``}`);
         }
     }
-    return <T extends keyof FunctionTypes>(step: T, ...args: any[]) => {
+    return <T extends keyof FunctionTypes>(step: T, ctx: any, ...args: any[]) => {
         if (isDebug()) {
             logger.info(`Running step ${step}`);
         }
         addons
             .filter((addon) => addon.steps[step])
-            .map((addon) => addon.steps[step])
-            .forEach(f => f.apply(f, args));
+            .forEach(addon => {
+                const f = addon.steps[step];
+                // Make temporary duplicate
+                const ctxAddon = { ...ctx };
+                if (ctxAddon.logger) {
+                    // Make custom logger for each addon
+                    ctxAddon.logger = createLogger({ label: addon.briefName ?? addon.name });
+                }
+                f.apply(f, [ctxAddon, ...args])
+            });
     }
 }
