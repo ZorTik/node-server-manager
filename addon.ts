@@ -53,9 +53,10 @@ async function installLibs(logger: winston.Logger, libs: { [key: string]: string
 
 // Load addons
 export default async function (logger: winston.Logger) {
-    const addons: Addon[] = [];
     // Load NPM client
     await initNpm();
+
+    const addons: Addon[] = [];
     // Loop addon dirs
     for (const dir of (
         // Directories array
