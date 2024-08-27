@@ -1,4 +1,4 @@
-import redis from "redis";
+import {createClient} from "@redis/client";
 import {env} from "@nsm/util/env";
 
 const [host, port] = env(['CONFIG_REDIS_HOST', 'CONFIG_REDIS_PORT']);
@@ -9,7 +9,12 @@ function url(host: string, port: number, user?: string, pass?: string) {
 }
 
 export default async function() {
-    return redis.createClient({
+    const client = createClient({
         url: url(host, Number(port), process.env.CONFIG_REDIS_USER, process.env.CONFIG_REDIS_PASS)
-    }).connect();
+    })
+    /*.on('error', (err) => {
+        // TODO: Error handling
+    })*/;
+    await client.connect();
+    return client;
 }

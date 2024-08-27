@@ -53,6 +53,20 @@ function initGlobalLogger() {
     return logging.createLogger();
 }
 
+function initRedis({ appConfig, logger, manager }: AppContext) {
+    if (appConfig['redis'] == "true") {
+        logger.info('Using redis');
+        redis(manager)
+            .then(cl => {
+                logger.info('Redis connected');
+            })
+            .catch(err => {
+                logger.error(err);
+                process.exit(1);
+            });
+    }
+}
+
 // Decorate all manager functions except those excluded to disallow using them
 // before manager.engine is initialized. This is necessary as the manager is being
 // used (mainly for expandEngine()) even before manager.init() is called.
@@ -119,15 +133,7 @@ export default async function (router: Application, options?: AppBootOptions): P
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
             // Enable redis support
-            if (appConfig['redis'] == "true") {
-                logger.info('Using redis');
-                redis(ctx.manager).then(cl => {
-                    logger.info('Redis connected');
-                }).catch(err => {
-                    logger.error(err);
-                    process.exit(1);
-                });
-            }
+            initRedis(ctx);
         });
     }
     steps('BOOT', ctx, srv);

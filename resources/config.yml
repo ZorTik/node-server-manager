@@ -13,5 +13,5 @@ service_logs: true
 redis: false
 redis_host: 'localhost'
 redis_port: 6379
-redis_user: ''
+redis_user: 'default'
 redis_pass: ''
