@@ -9,7 +9,15 @@ jobs:
       CONFIG_DOCKER_HOST: '///var/run/docker.sock'
       DEBUG: 'true'
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Check dev branch
+        id: check_branch
+        run: |
+          if [[ "${{ github.head_ref }}" == "dev" ]]; then
+            echo "This PR is from the dev branch. Exiting..."
+            exit 0
+          fi
       - name: Shutdown default MySQL
         run: sudo service mysql stop
       - name: Setup MySQL

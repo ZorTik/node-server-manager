@@ -1,3 +1,9 @@
+import config from "./configuration/appConfig";
+
+// Preload app config here to set needed env variables
+// before some modules require them.
+config();
+
 import {Router} from 'express';
 import {Database} from "./database";
 import {ServiceManager} from "./engine";
@@ -5,11 +11,11 @@ import loadAddons from "./addon";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import initServiceManager from './engine';
-import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
+import redis from "./redis";
 import * as r from "./configuration/resources";
 import * as manager from "./engine";
-import {prepareLogger} from "./logger";
+import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
@@ -42,6 +48,25 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
     }
 }
 
+function initGlobalLogger() {
+    logging.createNewLatest();
+    return logging.createLogger();
+}
+
+function initRedis({ appConfig, logger, manager }: AppContext) {
+    if (appConfig['redis'] == "true") {
+        logger.info('Using redis');
+        redis(manager)
+            .then(cl => {
+                logger.info('Redis connected');
+            })
+            .catch(err => {
+                logger.error(err);
+                process.exit(1);
+            });
+    }
+}
+
 // Decorate all manager functions except those excluded to disallow using them
 // before manager.engine is initialized. This is necessary as the manager is being
 // used (mainly for expandEngine()) even before manager.init() is called.
@@ -64,14 +89,15 @@ function managerForUnsafeUse() {
 
 // App orchestration code
 export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
-    const logger = prepareLogger(process.env.DEBUG === 'true');
+    // Prepare logging
+    const logger = initGlobalLogger();
     r.prepareResources(options?.test === true); // Copy resources, etc.
 
     // Load addon steps
     const steps = await loadAddons(logger);
 
     steps('BEFORE_CONFIG', { logger });
-    const appConfig = loadAppConfig();
+    const appConfig = config();
 
     prepareServiceLogs(appConfig, logger);
 
@@ -81,37 +107,37 @@ export default async function (router: Application, options?: AppBootOptions): P
 
     // Temporarily lock manager until it's initialized
     let _manager = managerForUnsafeUse();
-    currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
-
-    const ctxCpy = () => { return { ...currentContext } };
+    const ctx = currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
 
     // Service (virtualization) layer
-    steps('BEFORE_ENGINE', ctxCpy());
+    steps('BEFORE_ENGINE', ctx);
     await initServiceManager({ db: database, appConfig, logger });
 
     // Bring back original manager
-    currentContext.manager = manager;
+    ctx.manager = currentContext.manager = manager;
 
     // Load security
-    steps('BEFORE_SECURITY', ctxCpy());
-    await loadSecurity(ctxCpy());
+    steps('BEFORE_SECURITY', ctx);
+    await loadSecurity(ctx);
 
     // Load HTTP routes
-    steps('BEFORE_ROUTES', ctxCpy());
-    await loadAppRoutes(ctxCpy());
+    steps('BEFORE_ROUTES', ctx);
+    await loadAppRoutes(ctx);
 
     // Start the server
-    steps('BEFORE_SERVER', ctxCpy());
+    steps('BEFORE_SERVER', ctx);
 
     let srv = undefined;
     if (options?.test == undefined || options.test == false) {
         logger.info(`Starting server`);
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
+            // Enable redis support
+            initRedis(ctx);
         });
     }
-    steps('BOOT', ctxCpy(), srv);
-    return { ...ctxCpy(), steps };
+    steps('BOOT', ctx, srv);
+    return { ...ctx, steps };
 }
 
 export { Database, ServiceManager, currentContext }

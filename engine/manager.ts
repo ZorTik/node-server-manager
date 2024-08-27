@@ -170,6 +170,11 @@ export type ServiceManager = {
     getLastPowerError(id: string): Error|undefined;
 
     /**
+     * Get list of running services on this node.
+     */
+    getRunningServices(): string[];
+
+    /**
      * List all available services.
      *
      * @param page The page number (index)
@@ -437,7 +442,7 @@ export async function resumeService(id: string) {
         }
     })().then((success) => {
         if (success == true) {
-            currentContext.logger.info('Service ' + id + ' resumed.');
+            currentContext.logger.info('Service ' + id + ' resumed');
         } else {
             errors[id] = new Error('Failed to resume service');
             started.splice(started.indexOf(id), 1);
@@ -614,6 +619,10 @@ export async function initEngineForcibly() {
     // I set it here to keep the exact reference if the engine
     // is changed in the future.
     engine.cast = () => engine as any;
+}
+
+export function getRunningServices() {
+    return [...started];
 }
 
 
