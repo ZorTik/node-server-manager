@@ -7,9 +7,10 @@ import createDbManager from './database';
 import initServiceManager from './engine';
 import loadAppConfig from "./configuration/appConfig";
 import loadSecurity from "./security";
+import redis from "./redis";
 import * as r from "./configuration/resources";
 import * as manager from "./engine";
-import {createLogger, createNewLatest} from "./logger";
+import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
@@ -42,6 +43,11 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
     }
 }
 
+function initGlobalLogger() {
+    logging.createNewLatest();
+    return logging.createLogger();
+}
+
 // Decorate all manager functions except those excluded to disallow using them
 // before manager.engine is initialized. This is necessary as the manager is being
 // used (mainly for expandEngine()) even before manager.init() is called.
@@ -65,8 +71,7 @@ function managerForUnsafeUse() {
 // App orchestration code
 export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
     // Prepare logging
-    createNewLatest();
-    const logger = createLogger();
+    const logger = initGlobalLogger();
     r.prepareResources(options?.test === true); // Copy resources, etc.
 
     // Load addon steps
@@ -108,6 +113,10 @@ export default async function (router: Application, options?: AppBootOptions): P
         logger.info(`Starting server`);
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
+            // Enable redis support
+            if (appConfig['use_redis'] == true) {
+                redis(ctx.manager);
+            }
         });
     }
     steps('BOOT', ctx, srv);

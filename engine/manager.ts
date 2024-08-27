@@ -170,6 +170,11 @@ export type ServiceManager = {
     getLastPowerError(id: string): Error|undefined;
 
     /**
+     * Get list of running services on this node.
+     */
+    getRunningServices(): string[];
+
+    /**
      * List all available services.
      *
      * @param page The page number (index)
@@ -614,6 +619,10 @@ export async function initEngineForcibly() {
     // I set it here to keep the exact reference if the engine
     // is changed in the future.
     engine.cast = () => engine as any;
+}
+
+export function getRunningServices() {
+    return [...started];
 }
 
 
