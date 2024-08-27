@@ -16,13 +16,14 @@ async function updateRedis() {
         .exec();
 }
 
-export default function (manager: ServiceManager) {
+export default async function (manager: ServiceManager) {
     mng = manager;
-    client = createClient();
+    client = await createClient();
     const interval = setInterval(updateRedis, 1000);
 
     bus.registerEventHandler('nsm:exit', () => {
         clearInterval(interval);
     });
+    return client;
 }
 

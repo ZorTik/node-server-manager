@@ -114,8 +114,14 @@ export default async function (router: Application, options?: AppBootOptions): P
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
             // Enable redis support
-            if (appConfig['use_redis'] == true) {
-                redis(ctx.manager);
+            if (appConfig['redis'] == "true") {
+                logger.info('Using redis');
+                redis(ctx.manager).then(cl => {
+                    logger.info('Redis connected');
+                }).catch(err => {
+                    logger.error(err);
+                    process.exit(1);
+                });
             }
         });
     }
