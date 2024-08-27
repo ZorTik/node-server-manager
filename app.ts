@@ -1,3 +1,9 @@
+import config from "./configuration/appConfig";
+
+// Preload app config here to set needed env variables
+// before some modules require them.
+config();
+
 import {Router} from 'express';
 import {Database} from "./database";
 import {ServiceManager} from "./engine";
@@ -5,7 +11,6 @@ import loadAddons from "./addon";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import initServiceManager from './engine';
-import config from "./configuration/appConfig";
 import loadSecurity from "./security";
 import redis from "./redis";
 import * as r from "./configuration/resources";
