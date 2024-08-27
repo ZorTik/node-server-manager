@@ -8,6 +8,8 @@ function url(host: string, port: number, user?: string, pass?: string) {
     return 'redis://' + prefix + host + ':' + port.toString();
 }
 
-export default createClient({
-    url: url(host, Number(port), process.env.CONFIG_REDIS_USER, process.env.CONFIG_REDIS_PASS)
-});
+export default function() {
+    return createClient({
+        url: url(host, Number(port), process.env.CONFIG_REDIS_USER, process.env.CONFIG_REDIS_PASS)
+    });
+}

@@ -1,3 +1,9 @@
+import config from "./configuration/appConfig";
+
+// Preload app config here to set needed env variables
+// before some modules require them.
+config();
+
 import app from "./app";
 import server from "./server";
 import cleanup from "./cleanup";

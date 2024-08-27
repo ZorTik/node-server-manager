@@ -1,8 +1,10 @@
-import client from "./client";
+import createClient from "./client";
 import * as bus from "../event/bus";
 import {ServiceManager} from "@nsm/engine";
+import {RedisClientType} from "redis";
 
 let mng: ServiceManager;
+let client: RedisClientType<any, any, any>;
 
 async function updateRedis() {
     const key = 'nsm:' + mng.nodeId;
@@ -16,6 +18,7 @@ async function updateRedis() {
 
 export default function (manager: ServiceManager) {
     mng = manager;
+    client = createClient();
     const interval = setInterval(updateRedis, 1000);
 
     bus.registerEventHandler('nsm:exit', () => {

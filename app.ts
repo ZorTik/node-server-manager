@@ -5,7 +5,7 @@ import loadAddons from "./addon";
 import loadAppRoutes from './router';
 import createDbManager from './database';
 import initServiceManager from './engine';
-import loadAppConfig from "./configuration/appConfig";
+import config from "./configuration/appConfig";
 import loadSecurity from "./security";
 import redis from "./redis";
 import * as r from "./configuration/resources";
@@ -78,7 +78,7 @@ export default async function (router: Application, options?: AppBootOptions): P
     const steps = await loadAddons(logger);
 
     steps('BEFORE_CONFIG', { logger });
-    const appConfig = loadAppConfig();
+    const appConfig = config();
 
     prepareServiceLogs(appConfig, logger);
 
