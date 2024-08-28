@@ -10,7 +10,7 @@ import DockerClient from "dockerode";
 import {DockerServiceEngine} from "@nsm/engine";
 import ds from "check-disk-space";
 
-function initDockerClient(appConfig: { docker_host: string }) {
+export function initDockerClient(appConfig: { docker_host: string }) {
     let client: DockerClient;
     if (appConfig.docker_host && (
         appConfig.docker_host.endsWith('.sock') ||
