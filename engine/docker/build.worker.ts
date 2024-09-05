@@ -1,6 +1,6 @@
 import {workerData, parentPort} from "worker_threads";
 import {initDockerClient} from "./index";
-import {currentContext as ctx} from "@nsm/app";
+import {currentContext as ctx} from "../../app";
 import fs from "fs";
 
 const appConfig = workerData['appConfig'] as any;
