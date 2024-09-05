@@ -8,7 +8,8 @@ import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
 import {lckStatusTp, lockBusyAction, reqNotPending, ulckStatusTp} from "./asyncp";
 import winston from "winston";
-import * as bus from "@nsm/event/bus";
+import * as bus from "../event/bus";
+import {isDebug} from "@nsm/helpers";
 
 export type Options = {
     /**
@@ -266,6 +267,18 @@ const errors = {};
 // Service IDs that are currently running
 const started = [];
 const noTTemplate = '__no_t__';
+
+["push", "splice"].forEach(funcName => {
+    started[funcName] = (...args: any[]) => {
+        // Emit services change within those methods
+        bus.callEvent('nsm:engine:startedserviceschange', [...started]).then(() => {
+            if (isDebug()) {
+                currentContext.logger.debug('Service registry changed');
+            }
+        });
+        return Array.prototype[funcName].apply(this, args);
+    };
+});
 
 async function init(db_: Database, appConfig_: any) {
     db = db_;
@@ -645,6 +658,9 @@ export default async function ({db, appConfig, logger}: {
 
     const unclearedSessions = await db.listSessions(nodeId);
     await init(db, appConfig);
+    if (unclearedSessions.length > 0) {
+        logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to stop the services...');
+    }
     // Perform startup cleanup
     for (const session of unclearedSessions) {
         await stopService(session.serviceId);

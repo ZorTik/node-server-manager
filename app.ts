@@ -1,5 +1,8 @@
+import dotenv from "dotenv";
 import config from "./configuration/appConfig";
 
+// Load .env
+dotenv.config();
 // Preload app config here to set needed env variables
 // before some modules require them.
 config();

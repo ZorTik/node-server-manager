@@ -63,6 +63,24 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
     });
 }
 
+async function prepareVolume(client: DockerClient, volumeId: string) {
+    try {
+        await client.getVolume(volumeId).inspect();
+    } catch (e) {
+        if (e.message.includes('No such')) {
+            await client.createVolume({
+                Name: volumeId,
+                Labels: {
+                    ...constructObjectLabels({ id: volumeId }),
+                    'nsm.volumeId': volumeId,
+                },
+            });
+            return true;
+        }
+    }
+    return false;
+}
+
 async function prepareNetwork(
     client: DockerClient,
     network: BuildOptions['network'],
@@ -164,20 +182,9 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     let creating = false;
                     try {
                         // Prepare volume
-                        try {
-                            await client.getVolume(volumeId).inspect();
-                        } catch (e) {
-                            if (e.message.includes('No such')) {
-                                ctx.logger.info(id + ': Creating volume');
-                                await client.createVolume({
-                                    Name: volumeId,
-                                    Labels: {
-                                        ...constructObjectLabels({ id: volumeId }),
-                                        'nsm.volumeId': volumeId,
-                                    },
-                                });
-                                creating = true;
-                            }
+                        creating = await prepareVolume(client, volumeId);
+                        if (creating) {
+                            serviceLogger.info('Created new volume');
                         }
                         serviceLogger.info('Preparing network');
                         const net = await prepareNetwork(client, network, meta, creating);

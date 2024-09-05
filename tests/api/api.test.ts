@@ -41,6 +41,8 @@ describe("Test v1 API models", () => {
         boot(server, { test: true }).then((ctx_) => {
             ctx = ctx_;
             done();
+        }).catch(err => {
+            console.log(err);
         });
     }, 20000);
 

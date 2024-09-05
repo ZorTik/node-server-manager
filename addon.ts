@@ -4,7 +4,7 @@ import * as fs from "fs";
 import npm from "npm";
 import * as http from "http";
 import {isDebug} from "./helpers";
-import {createLogger} from "@nsm/logger";
+import {createLogger} from "./logger";
 
 type FunctionTypes = {
     'BEFORE_CONFIG': (ctx: { logger: winston.Logger }) => Promise<void>;
