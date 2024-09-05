@@ -3,14 +3,14 @@ import {Worker} from "worker_threads";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
-import ignore from "../ignore";
-import {currentContext, currentContext as ctx} from "../../app";
-import {BuildOptions, ServiceEngine} from "../engine";
-import {MetaStorage} from "../manager";
-import {getActionType} from "../asyncp";
-import {accessNetwork, createNetwork} from "../../networking/manager";
-import {constructObjectLabels} from "../../util/services";
-import {createLogger} from "../../logger";
+import ignore from "../../ignore";
+import {currentContext, currentContext as ctx} from "../../../app";
+import {BuildOptions, ServiceEngine} from "../../engine";
+import {MetaStorage} from "../../manager";
+import {getActionType} from "../../asyncp";
+import {accessNetwork, createNetwork} from "../../../networking/manager";
+import {constructObjectLabels} from "../../../util/services";
+import {createLogger} from "../../../logger";
 import {clock} from "@nsm/util/clock";
 
 type PrepareImageOptions = {

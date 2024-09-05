@@ -1,33 +1,18 @@
-import build from './build';
-import stop from './stop';
-import deleteFunc from './delete';
-import deleteVolume from './deletev';
-import listContainers from './listc';
-import listAttachedPorts from './listp';
-import stat from "./stat";
-import statall from "./statall";
 import DockerClient from "dockerode";
-import {DockerServiceEngine} from "@nsm/engine";
 import ds from "check-disk-space";
+import {DockerServiceEngine} from "@nsm/engine";
+import {initDockerClient} from "@nsm/engine/docker/client";
 
-export function initDockerClient(appConfig: { docker_host: string }) {
-    let client: DockerClient;
-    if (appConfig.docker_host && (
-        appConfig.docker_host.endsWith('.sock') ||
-        appConfig.docker_host.startsWith('\\\\.\\pipe')
-    )) {
-        client = new DockerClient({ socketPath: appConfig.docker_host });
-    } else if (appConfig.docker_host) {
-        // http(s)://host:port
-        let host = appConfig.docker_host;
-        host = host.substring(host.lastIndexOf(':'));
-        let port = parseInt(appConfig.docker_host.replace(host, ''));
-        client = new DockerClient({host, port});
-    } else {
-        throw new Error('Docker engine configuration variable not found! Please set docker_host in resources/config.yml or override using env.');
-    }
-    return client;
-}
+// ---------- Actions ----------
+import build from './action/build';
+import stop from './action/stop';
+import del from './action/delete';
+import delVolume from './action/deletev';
+import listContainers from './action/listc';
+import listAttachedPorts from './action/listp';
+import stat from "./action/stat";
+import statAll from "./action/statall";
+// -----------------------------
 
 function calcHostUsageFunc(client: DockerClient) {
     return async () => {
@@ -69,8 +54,8 @@ export default async function buildDockerEngine(appConfig: any) {
     // engineImpl.cast - Being replaced in manager.
     engineImpl.build = build(engineImpl, client);
     engineImpl.stop = stop(engineImpl, client);
-    engineImpl.delete = deleteFunc(engineImpl, client);
-    engineImpl.deleteVolume = deleteVolume(engineImpl, client);
+    engineImpl.delete = del(engineImpl, client);
+    engineImpl.deleteVolume = delVolume(engineImpl, client);
     engineImpl.getAttachedVolume = async (id) => {
         const c = client.getContainer(id);
         try {
@@ -83,7 +68,7 @@ export default async function buildDockerEngine(appConfig: any) {
     engineImpl.listContainers = listContainers(engineImpl, client);
     engineImpl.listAttachedPorts = listAttachedPorts(engineImpl, client);
     engineImpl.stat = stat(engineImpl, client);
-    engineImpl.statAll = statall(engineImpl, client);
+    engineImpl.statAll = statAll(engineImpl, client);
     engineImpl.calcHostUsage = calcHostUsageFunc(client);
     engineImpl.listRunning = listRunningFunc(client);
     return engineImpl;

@@ -1,6 +1,6 @@
 import {workerData, parentPort} from "worker_threads";
-import {initDockerClient} from "./index";
 import fs from "fs";
+import {initDockerClient} from "../client";
 
 const appConfig = workerData['appConfig'] as any;
 const archive = workerData['archive'] as string;

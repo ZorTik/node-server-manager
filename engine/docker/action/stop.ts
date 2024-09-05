@@ -1,5 +1,5 @@
 import DockerClient from "dockerode";
-import {ServiceEngine} from "../engine";
+import {ServiceEngine} from "../../engine";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['stop'] {
     return async (id) => {
