@@ -276,7 +276,7 @@ const noTTemplate = '__no_t__';
                 currentContext.logger.debug('Service registry changed');
             }
         });
-        return Array.prototype[funcName].apply(this, args);
+        return Array.prototype[funcName].apply(started, args);
     };
 });
 
