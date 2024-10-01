@@ -6,9 +6,18 @@ const appConfig = workerData['appConfig'] as any;
 const archive = workerData['archive'] as string;
 const tag = workerData['imageTag'] as string;
 const env = workerData['env'] as any;
+const debug = workerData['debug'] as boolean;
+
+if (debug) {
+    console.log("Initializing docker client inside worker.");
+}
 
 const client = initDockerClient(appConfig);
 const logs = [];
+
+if (debug) {
+    console.log("Running image build inside worker.");
+}
 
 client.buildImage(archive, { t: tag, buildargs: env }).then(stream => {
     logs.push('--------- Begin Build Log ---------');

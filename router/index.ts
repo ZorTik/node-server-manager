@@ -1,6 +1,7 @@
 import {AppContext, currentContext} from "../app";
 import {json, RequestHandler, Router} from "express";
 import v1Routes from "./v1";
+import {measureEventLoop} from "@nsm/profiler";
 
 export type RouterHandler = {
     url: string;
@@ -21,6 +22,10 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
             } else {
                 currentContext.logger.debug('No body');
             }
+            next();
+        });
+        router.use((_, __, next) => {
+            measureEventLoop();
             next();
         });
     }

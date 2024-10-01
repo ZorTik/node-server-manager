@@ -50,7 +50,8 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
                 archive,
                 imageTag,
                 env,
-                appConfig: currentContext.appConfig
+                appConfig: currentContext.appConfig,
+                debug: ctx.debug
             }
         })
             .on('message', (msg) => {
