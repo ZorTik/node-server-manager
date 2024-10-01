@@ -41,3 +41,7 @@ client.buildImage(archive, { t: tag, buildargs: env }).then(stream => {
         }
     });
 });
+
+if (debug) {
+    console.log("End of worker.");
+}
