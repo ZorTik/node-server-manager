@@ -1,10 +1,9 @@
 import DockerClient from "dockerode";
-import {Worker} from "worker_threads";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
 import ignore from "../../ignore";
-import {currentContext, currentContext as ctx} from "../../../app";
+import {currentContext as ctx} from "../../../app";
 import {BuildOptions, ServiceEngine} from "../../engine";
 import {MetaStorage} from "../../manager";
 import {getActionType} from "../../asyncp";
@@ -43,24 +42,47 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
     }, [...ignore(buildDir)]).then(() => {
         // const imageTag = path.basename(buildDir) + ':' + volumeId;
         const imageTag = volumeId + ':latest';
-
-        // Build image
-        const w = new Worker(__dirname + path.sep + 'build.worker.js', {
-            workerData: {
-                archive,
-                imageTag,
-                env,
-                appConfig: currentContext.appConfig,
-                debug: ctx.debug
-            }
-        });
-        w.on('message', (msg) => {
+        const logs = [];
+        const msgHandler = (msg: any) => {
             if (Array.isArray(msg)) {
                 msg.forEach(m => logService(volumeId, m));
             } else {
                 cb(msg);
             }
+        }
+
+        // Build image
+        client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
+            logs.push('--------- Begin Build Log ---------');
+            client.modem.followProgress(stream, (err, res) => {
+                if (err) {
+                    console.error(err);
+                } else {
+                    res.forEach(r => {
+                        if (r.errorDetail) {
+                            console.error(new Error(r.errorDetail));
+                        } else {
+                            const msg = r.stream?.trim();
+                            //ctx.logger.info(msg);
+                            logs.push(msg);
+                        }
+                    });
+                    logs.push('--------- End Of Build Log ---------\n');
+                    fs.unlinkSync(archive);
+                    msgHandler(logs);
+                    msgHandler(imageTag);
+                }
+            });
         });
+        /*new Worker(__dirname + path.sep + 'build.worker.js', {
+            workerData: {
+                archive,
+                imageTag,
+                env,
+                appConfig: ctx.appConfig,
+                debug: ctx.debug
+            }
+        }).on('message', msgHandler);*/
     });
 }
 

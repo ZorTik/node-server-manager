@@ -34,6 +34,7 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
         // used specifically for this API version
         const handler = await init({ ...context, router });
         let reg = false;
+        //
         for (const method of ['get', 'post', 'put', 'delete']) {
             if (handler.routes[method]) {
                 // Register handler to express
