@@ -334,9 +334,40 @@ export async function createService(template: string, {
     const meta = metaStorageForService(serviceId);
     const unlock = lockBusyAction(serviceId, 'create');
 
-    (async () => {
+    new Promise<any>((resolve, reject) => {
+        //
+        const buildHandler = async (containerId?: string, err?: any) => {
+            try {
+                if (err) {
+                    throw err;
+                }
+                if (!containerId) {
+                    throw new _InternalError('Failed to create container. Service: ' + serviceId);
+                }
+                const rollback = async () => {
+                    await engine.delete(containerId, meta);
+                }
+                const options = {ram, cpu, ports};
+                // Save permanent info
+                if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
+                    await rollback();
+                    throw new _InternalError('Failed to save perma info to database');
+                }
+                // Save this session's info
+                if (!await db.saveSession({ serviceId, nodeId, containerId })) {
+                    await rollback();
+                    throw new _InternalError('Failed to save session info to database');
+                }
+                started.push(serviceId);
+            } catch (e) {
+                reject(e);
+                return;
+            }
+            resolve(undefined);
+        }
+
         // Container id
-        const containerId = await engine.build(
+        engine.build(
             noTAlternateSett ? undefined : buildDir(template),
             serviceId,
             {
@@ -352,36 +383,21 @@ export async function createService(template: string, {
                 network,
             },
             meta,
+            buildHandler,
             async () => {
                 await self.stopService(serviceId);
             }
         );
-        if (!containerId) {
-            throw new _InternalError('Failed to create container. Service: ' + serviceId);
-        }
-        const rollback = async () => {
-            await engine.delete(containerId, meta);
-        }
-        const options = {ram, cpu, ports};
-        // Save permanent info
-        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
-            await rollback();
-            throw new _InternalError('Failed to save perma info to database');
-        }
-        // Save this session's info
-        if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-            await rollback();
-            throw new _InternalError('Failed to save session info to database');
-        }
-        started.push(serviceId);
-    })().catch((e) => {
-        // Save to be later retrieved
-        errors[serviceId] = e;
-        currentContext.logger.error(e.message);
-        started.splice(started.indexOf(serviceId), 1);
-    }).finally(() => {
-        unlock();
-    });
+    })
+        .catch(e => {
+            // Save to be later retrieved
+            errors[serviceId] = e;
+            currentContext.logger.error(e.message);
+            started.splice(started.indexOf(serviceId), 1);
+        })
+        .finally(() => {
+            unlock();
+        });
     const e = errors[serviceId];
     if (e) {
         throw e;
@@ -419,10 +435,31 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
-    (async () => {
+    new Promise<boolean>((resolve, reject) => {
+        //
+        const buildHandler = async (containerId?: string, err?: any) => {
+            if (!containerId) {
+                currentContext.logger.error('Failed to create container. Service: ' + id);
+                resolve(false);
+                return;
+            }
+            const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
+            // Save new session info
+            if (saved) {
+                started.push(id);
+                resolve(true);
+                return;
+            } else {
+                // Cleanup if err with db
+                await engine.stop(containerId, meta);
+                resolve(false);
+                return;
+            }
+        }
+
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
-        const containerId = await engine.build(
+        engine.build(
             noTAlternateSett ? undefined : buildDir(template),
             id,
             {
@@ -435,34 +472,23 @@ export async function resumeService(id: string) {
                 network,
             },
             meta,
+            buildHandler,
             async () => {
                 await self.stopService(id);
             }
         );
-        if (!containerId) {
-            currentContext.logger.error('Failed to create container. Service: ' + id);
-            return false;
-        }
-        const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
-        // Save new session info
-        if (saved) {
-            started.push(id);
-            return true;
-        } else {
-            // Cleanup if err with db
-            await engine.stop(containerId, meta);
-            return false;
-        }
-    })().then((success) => {
-        if (success == true) {
-            currentContext.logger.info('Service ' + id + ' resumed');
-        } else {
-            errors[id] = new Error('Failed to resume service');
-            started.splice(started.indexOf(id), 1);
-        }
-    }).finally(() => {
-        unlock();
-    });
+    })
+        .then((success) => {
+            if (success == true) {
+                currentContext.logger.info('Service ' + id + ' resumed');
+            } else {
+                errors[id] = new Error('Failed to resume service');
+                started.splice(started.indexOf(id), 1);
+            }
+        })
+        .finally(() => {
+            unlock();
+        });
     return true;
 }
 
