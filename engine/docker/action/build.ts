@@ -11,6 +11,8 @@ import {accessNetwork, createNetwork} from "../../../networking/manager";
 import {constructObjectLabels} from "../../../util/services";
 import {createLogger} from "../../../logger";
 import {clock} from "@nsm/util/clock";
+import {Worker} from "worker_threads";
+import isDocker from "is-docker";
 
 type PrepareImageOptions = {
     client: DockerClient,
@@ -43,6 +45,7 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
         // const imageTag = path.basename(buildDir) + ':' + volumeId;
         const imageTag = volumeId + ':latest';
         const logs = [];
+        //
         const msgHandler = (msg: any) => {
             if (Array.isArray(msg)) {
                 msg.forEach(m => logService(volumeId, m));
@@ -52,37 +55,42 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
         }
 
         // Build image
-        client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
-            logs.push('--------- Begin Build Log ---------');
-            client.modem.followProgress(stream, (err, res) => {
-                if (err) {
-                    console.error(err);
-                } else {
-                    res.forEach(r => {
-                        if (r.errorDetail) {
-                            console.error(new Error(r.errorDetail));
-                        } else {
-                            const msg = r.stream?.trim();
-                            //ctx.logger.info(msg);
-                            logs.push(msg);
-                        }
-                    });
-                    logs.push('--------- End Of Build Log ---------\n');
-                    fs.unlinkSync(archive);
-                    msgHandler(logs);
-                    msgHandler(imageTag);
+        if (isDocker()) {
+            // In docker, worker threads are not supported.
+            client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
+                logs.push('--------- Begin Build Log ---------');
+                client.modem.followProgress(stream, (err, res) => {
+                    if (err) {
+                        console.error(err);
+                    } else {
+                        res.forEach(r => {
+                            if (r.errorDetail) {
+                                console.error(new Error(r.errorDetail));
+                            } else {
+                                const msg = r.stream?.trim();
+                                //ctx.logger.info(msg);
+                                logs.push(msg);
+                            }
+                        });
+                        logs.push('--------- End Of Build Log ---------\n');
+                        fs.unlinkSync(archive);
+                        msgHandler(logs);
+                        msgHandler(imageTag);
+                    }
+                });
+            });
+        } else {
+            const w = new Worker(__dirname + path.sep + 'build.worker.js', {
+                workerData: {
+                    archive,
+                    imageTag,
+                    env,
+                    appConfig: ctx.appConfig,
+                    debug: ctx.debug
                 }
             });
-        });
-        /*new Worker(__dirname + path.sep + 'build.worker.js', {
-            workerData: {
-                archive,
-                imageTag,
-                env,
-                appConfig: ctx.appConfig,
-                debug: ctx.debug
-            }
-        }).on('message', msgHandler);*/
+            w.on('message', msgHandler);
+        }
     });
 }
 
@@ -191,12 +199,12 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         options.env.SERVICE_DISK = options.disk.toString();
 
         const {network, env} = options;
-        const serviceLogger = createLogger({ label: volumeId.substring(0, 13) });
-        serviceLogger.info('Building image');
+        const srvLog = createLogger({ label: volumeId.substring(0, 13) });
+        srvLog.info('Building image');
         const imageBuildClock = clock();
 
         prepareImage({client, arDir, buildDir, volumeId, env}, (imageTag) => {
-            serviceLogger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
+            srvLog.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
 
             (async () => {
                 let container: DockerClient.Container;
@@ -206,16 +214,16 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     // Prepare volume
                     creating = await prepareVolume(client, volumeId);
                     if (creating) {
-                        serviceLogger.info('Created new volume');
+                        srvLog.info('Created new volume');
                     }
-                    serviceLogger.info('Preparing network');
+                    srvLog.info('Preparing network');
                     const net = await prepareNetwork(client, network, meta, creating);
                     // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-                    serviceLogger.info('Preparing container');
+                    srvLog.info('Preparing container');
                     container = await prepareContainer(client, imageTag, buildDir, volumeId, options, net);
-                    serviceLogger.info('Starting container');
+                    srvLog.info('Starting container');
                     await container.start();
-                    serviceLogger.info('Watching changes');
+                    srvLog.info('Watching changes');
                     // Watcher
                     setTimeout(async () => {
                         const attachOptions = { stream: true, stdout: true, hijack: true };
@@ -239,6 +247,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                         await client.getImage(imageTag).remove({ force: true });
                     }
                     await cb(undefined, e);
+                    return;
                 }
                 await cb(container.id, undefined);
             })();
