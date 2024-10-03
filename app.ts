@@ -22,7 +22,7 @@ import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
-import isDocker from "is-docker";
+import isDocker from "@nsm/lib/isDocker";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -132,7 +132,7 @@ export default async function (router: Application, options?: AppBootOptions): P
     steps('BEFORE_SERVER', ctx);
 
     if (isDocker()) {
-        logger.info('Running in Docker! Worker threads will be unavailable.');
+        logger.info('Running in container! Worker threads will be unavailable.');
     }
 
     let srv = undefined;

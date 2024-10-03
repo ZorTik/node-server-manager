@@ -12,7 +12,7 @@ import {constructObjectLabels} from "../../../util/services";
 import {createLogger} from "../../../logger";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
-import isDocker from "is-docker";
+import isDocker from "@nsm/lib/isDocker";
 
 type PrepareImageOptions = {
     client: DockerClient,
@@ -56,7 +56,7 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
 
         // Build image
         if (isDocker()) {
-            // In docker, worker threads are not supported.
+            // In container, worker threads are not supported.
             client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
                 logs.push('--------- Begin Build Log ---------');
                 client.modem.followProgress(stream, (err, res) => {
