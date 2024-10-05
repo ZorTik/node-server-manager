@@ -118,6 +118,15 @@ export type ServiceEngine = {
     stop(id: string, meta: MetaStorage): Promise<boolean>;
 
     /**
+     * Kills a container.
+     *
+     * @param id Container ID
+     * @param meta Meta storage for this unique context
+     * @return Success state
+     */
+    kill(id: string, meta: MetaStorage): Promise<boolean>;
+
+    /**
      * Deletes a container.
      *
      * @param id Container ID

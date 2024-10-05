@@ -6,6 +6,7 @@ import {initDockerClient} from "@nsm/engine/docker/client";
 // ---------- Actions ----------
 import build from './action/build';
 import stop from './action/stop';
+import kill from './action/kill';
 import del from './action/delete';
 import delVolume from './action/deletev';
 import listContainers from './action/listc';
@@ -47,16 +48,17 @@ function listRunningFunc(client: DockerClient) {
 export default async function buildDockerEngine(appConfig: any) {
     // Default engine implementation
     const client = initDockerClient(appConfig);
-    const engineImpl = {} as DockerServiceEngine;
-    engineImpl.dockerClient = client;
-    engineImpl.volumesMode = true; // Docker uses volumes strategy
-    engineImpl.supportsNoTemplateMode = false;
-    // engineImpl.cast - Being replaced in manager.
-    engineImpl.build = build(engineImpl, client);
-    engineImpl.stop = stop(engineImpl, client);
-    engineImpl.delete = del(engineImpl, client);
-    engineImpl.deleteVolume = delVolume(engineImpl, client);
-    engineImpl.getAttachedVolume = async (id) => {
+    const engine = {} as DockerServiceEngine;
+    engine.dockerClient = client;
+    engine.volumesMode = true; // Docker uses volumes strategy
+    engine.supportsNoTemplateMode = false;
+    // engine.cast - Being replaced in manager.
+    engine.build = build(engine, client);
+    engine.stop = stop(engine, client);
+    engine.kill = kill(engine, client);
+    engine.delete = del(engine, client);
+    engine.deleteVolume = delVolume(engine, client);
+    engine.getAttachedVolume = async (id) => {
         const c = client.getContainer(id);
         try {
             const i = await c.inspect();
@@ -65,11 +67,11 @@ export default async function buildDockerEngine(appConfig: any) {
             return undefined;
         }
     }
-    engineImpl.listContainers = listContainers(engineImpl, client);
-    engineImpl.listAttachedPorts = listAttachedPorts(engineImpl, client);
-    engineImpl.stat = stat(engineImpl, client);
-    engineImpl.statAll = statAll(engineImpl, client);
-    engineImpl.calcHostUsage = calcHostUsageFunc(client);
-    engineImpl.listRunning = listRunningFunc(client);
-    return engineImpl;
+    engine.listContainers = listContainers(engine, client);
+    engine.listAttachedPorts = listAttachedPorts(engine, client);
+    engine.stat = stat(engine, client);
+    engine.statAll = statAll(engine, client);
+    engine.calcHostUsage = calcHostUsageFunc(client);
+    engine.listRunning = listRunningFunc(client);
+    return engine;
 }
