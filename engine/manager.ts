@@ -541,6 +541,8 @@ export async function deleteService(id: string) {
             throw e;
         }
     }
+    // TODO: Use whenUnlocked to delete right after it stops
+    // TODO: and make stopService async.
     if (engine.volumesMode) {
         // Notify before the volume is being deleted so all can unregister their hooks
         // on this volume

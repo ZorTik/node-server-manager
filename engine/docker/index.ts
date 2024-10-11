@@ -9,6 +9,7 @@ import stop from './action/stop';
 import kill from './action/kill';
 import del from './action/delete';
 import delVolume from './action/deletev';
+import cmd from './action/cmd';
 import listContainers from './action/listc';
 import listAttachedPorts from './action/listp';
 import stat from "./action/stat";
@@ -52,12 +53,14 @@ export default async function buildDockerEngine(appConfig: any) {
     engine.dockerClient = client;
     engine.volumesMode = true; // Docker uses volumes strategy
     engine.supportsNoTemplateMode = false;
+    engine.rws = {};
     // engine.cast - Being replaced in manager.
     engine.build = build(engine, client);
     engine.stop = stop(engine, client);
     engine.kill = kill(engine, client);
     engine.delete = del(engine, client);
     engine.deleteVolume = delVolume(engine, client);
+    engine.cmd = cmd(engine, client);
     engine.getAttachedVolume = async (id) => {
         const c = client.getContainer(id);
         try {

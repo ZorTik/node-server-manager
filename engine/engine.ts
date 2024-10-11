@@ -43,6 +43,12 @@ export type DeleteOptions = {
 
 export type DockerServiceEngine = ServiceEngineI & {
     dockerClient: DockerClient;
+    /**
+     * Map of container IDs and attached watchers.
+     * IMPORTANT! Don't close or modify the streams, by any means! It
+     * would have unexpected fatal consequences.
+     */
+    rws: { [id: string]: NodeJS.ReadWriteStream };
 }
 
 export type ServiceEngineI = ServiceEngine & { // Internal
@@ -143,6 +149,14 @@ export type ServiceEngine = {
      * @param id The volume ID.
      */
     deleteVolume(id: string): Promise<boolean>;
+
+    /**
+     * Send a command to the container.
+     *
+     * @param id Container ID
+     * @param cmd The command, without new line
+     */
+    cmd(id: string, cmd: string): Promise<boolean>;
 
     /**
      * Get ID of volume that this container is attached to, or undefined

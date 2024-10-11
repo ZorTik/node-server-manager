@@ -4,7 +4,7 @@ import path from "path";
 import tar from "tar";
 import ignore from "../../ignore";
 import {currentContext as ctx} from "../../../app";
-import {BuildOptions, ServiceEngine} from "../../engine";
+import {BuildOptions, DockerServiceEngine, ServiceEngine} from "../../engine";
 import {MetaStorage} from "../../manager";
 import {getActionType} from "../../asyncp";
 import {accessNetwork, createNetwork} from "../../../networking/manager";
@@ -13,6 +13,7 @@ import {createLogger} from "../../../logger";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 import isDocker from "@nsm/lib/isDocker";
+import isInsideContainer from "@nsm/lib/isInsideContainer";
 
 type PrepareImageOptions = {
     client: DockerClient,
@@ -55,7 +56,7 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
         }
 
         // Build image
-        if (isDocker()) {
+        if (isInsideContainer()) {
             // In container, worker threads are not supported.
             client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
                 logs.push('--------- Begin Build Log ---------');
@@ -241,6 +242,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                                 ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
                             }
                         });
+                        (self as DockerServiceEngine).rws[container.id] = rws;
                     }, 500);
                 } catch (e) {
                     if (!container) {

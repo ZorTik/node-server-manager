@@ -23,6 +23,7 @@ import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
 import isDocker from "@nsm/lib/isDocker";
+import isInsideContainer from "@nsm/lib/isInsideContainer";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -131,7 +132,7 @@ export default async function (router: Application, options?: AppBootOptions): P
     // Start the server
     steps('BEFORE_SERVER', ctx);
 
-    if (isDocker()) {
+    if (isInsideContainer()) {
         logger.info('Running in container! Worker threads will be unavailable.');
     }
 
