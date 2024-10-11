@@ -12,8 +12,6 @@ import {constructObjectLabels} from "../../../util/services";
 import {createLogger} from "../../../logger";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
-import isDocker from "@nsm/lib/isDocker";
-import isInsideContainer from "@nsm/lib/isInsideContainer";
 
 type PrepareImageOptions = {
     client: DockerClient,
@@ -56,8 +54,20 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
         }
 
         // Build image
-        if (isInsideContainer()) {
-            // In container, worker threads are not supported.
+        if (ctx.workers) {
+            const w = new Worker(__dirname + path.sep + 'build.worker.js', {
+                workerData: {
+                    archive,
+                    imageTag,
+                    env,
+                    appConfig: ctx.appConfig,
+                    debug: ctx.debug
+                }
+            });
+            w.on('message', msgHandler);
+        } else {
+            // In container, worker threads are not supported. Or they
+            // are disabled.
             client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
                 logs.push('--------- Begin Build Log ---------');
                 client.modem.followProgress(stream, (err, res) => {
@@ -80,17 +90,6 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
                     }
                 });
             });
-        } else {
-            const w = new Worker(__dirname + path.sep + 'build.worker.js', {
-                workerData: {
-                    archive,
-                    imageTag,
-                    env,
-                    appConfig: ctx.appConfig,
-                    debug: ctx.debug
-                }
-            });
-            w.on('message', msgHandler);
         }
     });
 }
