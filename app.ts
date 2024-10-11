@@ -1,5 +1,8 @@
+import dotenv from "dotenv";
 import config from "./configuration/appConfig";
 
+// Load .env
+dotenv.config();
 // Preload app config here to set needed env variables
 // before some modules require them.
 config();
@@ -19,6 +22,7 @@ import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
+import isInsideContainer from "@nsm/lib/isInsideContainer";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -30,10 +34,12 @@ export type AppContext = {
     appConfig: any;
     logger: winston.Logger;
     debug: boolean;
+    workers: boolean;
 };
 
 export type AppBootOptions = {
     test?: boolean;
+    disableWorkers?: boolean;
 }
 
 let currentContext: AppContext;
@@ -106,8 +112,15 @@ export default async function (router: Application, options?: AppBootOptions): P
     const database = createDbManager();
 
     // Temporarily lock manager until it's initialized
-    let _manager = managerForUnsafeUse();
-    const ctx = currentContext = { router, manager: _manager, database, appConfig, logger, debug: process.env.DEBUG === 'true' };
+    const ctx = currentContext = {
+        router,
+        manager: managerForUnsafeUse(),
+        database,
+        appConfig,
+        logger,
+        debug: process.env.DEBUG === 'true',
+        workers: !options.disableWorkers && !isInsideContainer()
+    };
 
     // Service (virtualization) layer
     steps('BEFORE_ENGINE', ctx);
@@ -126,6 +139,12 @@ export default async function (router: Application, options?: AppBootOptions): P
 
     // Start the server
     steps('BEFORE_SERVER', ctx);
+
+    if (isInsideContainer()) {
+        logger.info('Running in container! Worker threads will be unavailable.');
+    } else if(!ctx.workers) {
+        logger.info('Worker threads are forcibly disabled.');
+    }
 
     let srv = undefined;
     if (options?.test == undefined || options.test == false) {

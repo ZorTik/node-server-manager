@@ -43,6 +43,12 @@ export type DeleteOptions = {
 
 export type DockerServiceEngine = ServiceEngineI & {
     dockerClient: DockerClient;
+    /**
+     * Map of container IDs and attached watchers.
+     * IMPORTANT! Don't close or modify the streams, by any means! It
+     * would have unexpected fatal consequences.
+     */
+    rws: { [id: string]: NodeJS.ReadWriteStream };
 }
 
 export type ServiceEngineI = ServiceEngine & { // Internal
@@ -96,6 +102,7 @@ export type ServiceEngine = {
      * @param volumeId The volume name
      * @param options Build options
      * @param meta Meta storage for this unique context
+     * @param cb The callback function
      * @param onclose Function on internal container close
      * @return ID of created container
      */
@@ -104,7 +111,8 @@ export type ServiceEngine = {
         volumeId: string,
         options: BuildOptions,
         meta: MetaStorage,
-        onclose?: () => Promise<void>|void): Promise<string>; // Container ID (local)
+        cb: (id?: string, err?: any) => Promise<void>|void, // Container ID (local)
+        onclose?: () => Promise<void>|void): void;
 
     /**
      * Stops a container.
@@ -114,6 +122,15 @@ export type ServiceEngine = {
      * @return Success state
      */
     stop(id: string, meta: MetaStorage): Promise<boolean>;
+
+    /**
+     * Kills a container.
+     *
+     * @param id Container ID
+     * @param meta Meta storage for this unique context
+     * @return Success state
+     */
+    kill(id: string, meta: MetaStorage): Promise<boolean>;
 
     /**
      * Deletes a container.
@@ -132,6 +149,14 @@ export type ServiceEngine = {
      * @param id The volume ID.
      */
     deleteVolume(id: string): Promise<boolean>;
+
+    /**
+     * Send a command to the container.
+     *
+     * @param id Container ID
+     * @param cmd The command, without new line
+     */
+    cmd(id: string, cmd: string): Promise<boolean>;
 
     /**
      * Get ID of volume that this container is attached to, or undefined

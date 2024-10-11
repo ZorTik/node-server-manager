@@ -1,5 +1,8 @@
+export type UnlockObserver = (id: string, status?: string) => void;
+
 const statuses = {};
 const status_types = {};
+const obs: Map<string, UnlockObserver[]> = new Map();
 
 let stopping = false;
 
@@ -17,6 +20,17 @@ export function lockBusyAction(id: string, tp: string) {
     return () => {
         delete statuses[id];
         delete status_types[id];
+        //
+        (obs.get(id) ?? []).forEach(o => o(id, tp));
+    }
+}
+
+export function whenUnlocked(id: string, cb: UnlockObserver) {
+    if (isServicePending(id)) {
+        obs.set(id, obs.get(id) ?? []);
+        obs.get(id).push(cb);
+    } else {
+        cb(id, undefined);
     }
 }
 

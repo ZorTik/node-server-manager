@@ -8,7 +8,8 @@ import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
 import {lckStatusTp, lockBusyAction, reqNotPending, ulckStatusTp} from "./asyncp";
 import winston from "winston";
-import * as bus from "@nsm/event/bus";
+import * as bus from "../event/bus";
+import {isDebug} from "@nsm/helpers";
 
 export type Options = {
     /**
@@ -267,6 +268,18 @@ const errors = {};
 const started = [];
 const noTTemplate = '__no_t__';
 
+["push", "splice"].forEach(funcName => {
+    started[funcName] = (...args: any[]) => {
+        // Emit services change within those methods
+        bus.callEvent('nsm:engine:startedserviceschange', [...started]).then(() => {
+            if (isDebug()) {
+                currentContext.logger.debug('Service registry changed');
+            }
+        });
+        return Array.prototype[funcName].apply(started, args);
+    };
+});
+
 async function init(db_: Database, appConfig_: any) {
     db = db_;
     appConfig = appConfig_;
@@ -321,9 +334,40 @@ export async function createService(template: string, {
     const meta = metaStorageForService(serviceId);
     const unlock = lockBusyAction(serviceId, 'create');
 
-    (async () => {
+    new Promise<any>((resolve, reject) => {
+        //
+        const buildHandler = async (containerId?: string, err?: any) => {
+            try {
+                if (err) {
+                    throw err;
+                }
+                if (!containerId) {
+                    throw new _InternalError('Failed to create container. Service: ' + serviceId);
+                }
+                const rollback = async () => {
+                    await engine.delete(containerId, meta);
+                }
+                const options = {ram, cpu, ports};
+                // Save permanent info
+                if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
+                    await rollback();
+                    throw new _InternalError('Failed to save perma info to database');
+                }
+                // Save this session's info
+                if (!await db.saveSession({ serviceId, nodeId, containerId })) {
+                    await rollback();
+                    throw new _InternalError('Failed to save session info to database');
+                }
+                started.push(serviceId);
+            } catch (e) {
+                reject(e);
+                return;
+            }
+            resolve(undefined);
+        }
+
         // Container id
-        const containerId = await engine.build(
+        engine.build(
             noTAlternateSett ? undefined : buildDir(template),
             serviceId,
             {
@@ -339,36 +383,21 @@ export async function createService(template: string, {
                 network,
             },
             meta,
+            buildHandler,
             async () => {
                 await self.stopService(serviceId);
             }
         );
-        if (!containerId) {
-            throw new _InternalError('Failed to create container. Service: ' + serviceId);
-        }
-        const rollback = async () => {
-            await engine.delete(containerId, meta);
-        }
-        const options = {ram, cpu, ports};
-        // Save permanent info
-        if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
-            await rollback();
-            throw new _InternalError('Failed to save perma info to database');
-        }
-        // Save this session's info
-        if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-            await rollback();
-            throw new _InternalError('Failed to save session info to database');
-        }
-        started.push(serviceId);
-    })().catch((e) => {
-        // Save to be later retrieved
-        errors[serviceId] = e;
-        currentContext.logger.error(e.message);
-        started.splice(started.indexOf(serviceId), 1);
-    }).finally(() => {
-        unlock();
-    });
+    })
+        .catch(e => {
+            // Save to be later retrieved
+            errors[serviceId] = e;
+            currentContext.logger.error(e.message);
+            started.splice(started.indexOf(serviceId), 1);
+        })
+        .finally(() => {
+            unlock();
+        });
     const e = errors[serviceId];
     if (e) {
         throw e;
@@ -406,10 +435,31 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
-    (async () => {
+    new Promise<boolean>((resolve, reject) => {
+        //
+        const buildHandler = async (containerId?: string, err?: any) => {
+            if (!containerId) {
+                currentContext.logger.error('Failed to create container. Service: ' + id);
+                resolve(false);
+                return;
+            }
+            const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
+            // Save new session info
+            if (saved) {
+                started.push(id);
+                resolve(true);
+                return;
+            } else {
+                // Cleanup if err with db
+                await engine.stop(containerId, meta);
+                resolve(false);
+                return;
+            }
+        }
+
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
-        const containerId = await engine.build(
+        engine.build(
             noTAlternateSett ? undefined : buildDir(template),
             id,
             {
@@ -422,34 +472,23 @@ export async function resumeService(id: string) {
                 network,
             },
             meta,
+            buildHandler,
             async () => {
                 await self.stopService(id);
             }
         );
-        if (!containerId) {
-            currentContext.logger.error('Failed to create container. Service: ' + id);
-            return false;
-        }
-        const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
-        // Save new session info
-        if (saved) {
-            started.push(id);
-            return true;
-        } else {
-            // Cleanup if err with db
-            await engine.stop(containerId, meta);
-            return false;
-        }
-    })().then((success) => {
-        if (success == true) {
-            currentContext.logger.info('Service ' + id + ' resumed');
-        } else {
-            errors[id] = new Error('Failed to resume service');
-            started.splice(started.indexOf(id), 1);
-        }
-    }).finally(() => {
-        unlock();
-    });
+    })
+        .then((success) => {
+            if (success == true) {
+                currentContext.logger.info('Service ' + id + ' resumed');
+            } else {
+                errors[id] = new Error('Failed to resume service');
+                started.splice(started.indexOf(id), 1);
+            }
+        })
+        .finally(() => {
+            unlock();
+        });
     return true;
 }
 
@@ -502,6 +541,8 @@ export async function deleteService(id: string) {
             throw e;
         }
     }
+    // TODO: Use whenUnlocked to delete right after it stops
+    // TODO: and make stopService async.
     if (engine.volumesMode) {
         // Notify before the volume is being deleted so all can unregister their hooks
         // on this volume
@@ -645,6 +686,9 @@ export default async function ({db, appConfig, logger}: {
 
     const unclearedSessions = await db.listSessions(nodeId);
     await init(db, appConfig);
+    if (unclearedSessions.length > 0) {
+        logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to stop the services...');
+    }
     // Perform startup cleanup
     for (const session of unclearedSessions) {
         await stopService(session.serviceId);

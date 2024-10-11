@@ -1,4 +1,4 @@
-import {ServiceEngine} from "../engine";
+import {ServiceEngine} from "../../engine";
 import DockerClient from "dockerode";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['statAll'] {

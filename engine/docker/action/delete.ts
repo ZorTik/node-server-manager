@@ -1,7 +1,7 @@
 import DockerClient from "dockerode";
-import {currentContext} from "../../app";
-import {ServiceEngine} from "../engine";
-import {deleteNetwork as doDeleteNetwork, isInNetwork} from "../../networking/manager";
+import {currentContext} from "../../../app";
+import {ServiceEngine} from "../../engine";
+import {deleteNetwork as doDeleteNetwork, isInNetwork} from "../../../networking/manager";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['delete'] {
     return async (id, meta, options) => {

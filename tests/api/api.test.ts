@@ -1,5 +1,5 @@
 import server from "../../server";
-import boot, {AppBootContext} from "../../app";
+import boot, {AppBootContext, AppBootOptions} from "../../app";
 import request from "supertest";
 import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
 import {isServicePending} from "../../engine/asyncp";
@@ -38,9 +38,15 @@ describe("Test v1 API models", () => {
     let ctx: AppBootContext|undefined = undefined;
 
     beforeAll((done) => {
-        boot(server, { test: true }).then((ctx_) => {
+        const options: AppBootOptions = {
+            test: true,
+            disableWorkers: true,
+        };
+        boot(server, options).then((ctx_) => {
             ctx = ctx_;
             done();
+        }).catch(err => {
+            console.log(err);
         });
     }, 20000);
 

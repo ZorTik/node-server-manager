@@ -1,6 +1,7 @@
 import {AppContext, currentContext} from "../app";
 import {json, RequestHandler, Router} from "express";
 import v1Routes from "./v1";
+import {measureEventLoop} from "@nsm/profiler";
 
 export type RouterHandler = {
     url: string;
@@ -23,12 +24,17 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
             }
             next();
         });
+        router.use((_, __, next) => {
+            measureEventLoop();
+            next();
+        });
     }
     for (let init of routes) {
         // Create handler with changed router to the sub-router that will be
         // used specifically for this API version
         const handler = await init({ ...context, router });
         let reg = false;
+        //
         for (const method of ['get', 'post', 'put', 'delete']) {
             if (handler.routes[method]) {
                 // Register handler to express

@@ -1,26 +1,10 @@
 services:
-  docker:
-    image: docker:18.09.0-dind
-    privileged: true
-    volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-    environment:
-      - DOCKER_HOST=unix:///var/run/docker.sock
-  mariadb:
-    image: mariadb:latest
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: nsm
-      MYSQL_USER: nsm
-      MYSQL_PASSWORD: nsm
-    ports:
-      - 3306
   nsm:
     build: .
-    ports:
-      - '3000:3000'
-    depends_on:
-      docker:
-        condition: service_started
-      mariadb:
-        condition: service_started
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    network_mode: host
+    extra_hosts:
+      - 'docker.host.internal:host-gateway'
+    environment:
+      - 'CONFIG_DOCKER_HOST=///var/run/docker.sock'
