@@ -1,8 +1,9 @@
-export type UnlockObserver = (id: string, status?: string) => void;
+export type UnlockObserver = (id: string, status?: string, err?: any) => void;
 
 const statuses = {};
 const status_types = {};
 const obs: Map<string, UnlockObserver[]> = new Map();
+const obsAll: (() => void)[] = [];
 
 let stopping = false;
 
@@ -17,11 +18,11 @@ export function lockBusyAction(id: string, tp: string) {
     reqNotPending(id);
     statuses[id] = true;
     status_types[id] = tp; // type of action
-    return () => {
+    return (err?: any) => {
         delete statuses[id];
         delete status_types[id];
         //
-        (obs.get(id) ?? []).forEach(o => o(id, tp));
+        (obs.get(id) ?? []).forEach(o => o(id, tp, err));
     }
 }
 
@@ -31,6 +32,14 @@ export function whenUnlocked(id: string, cb: UnlockObserver) {
         obs.get(id).push(cb);
     } else {
         cb(id, undefined);
+    }
+}
+
+export function whenUnlockedAll(cb: () => void) {
+    if (pendingCount() > 0) {
+        obsAll.push(cb);
+    } else {
+        cb();
     }
 }
 
@@ -58,4 +67,10 @@ export function reqNotPending(id: string) {
 
 export function setStopping() {
     stopping = true;
+}
+
+export function pendingCount() {
+    return Object.keys(statuses)
+        .filter(k => statuses[k])
+        .length;
 }

@@ -6,10 +6,19 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
-import {lckStatusTp, lockBusyAction, reqNotPending, ulckStatusTp} from "./asyncp";
+import {
+    lckStatusTp,
+    lockBusyAction,
+    pendingCount,
+    reqNotPending,
+    ulckStatusTp,
+    UnlockObserver,
+    whenUnlocked, whenUnlockedAll
+} from "./asyncp";
 import winston from "winston";
 import * as bus from "../event/bus";
 import {isDebug} from "@nsm/helpers";
+import {resolveSequentially} from "@nsm/util/promises";
 
 export type Options = {
     /**
@@ -216,6 +225,8 @@ export type ServiceManager = {
      * Whether the no-template mode is enabled.
      */
     noTemplateMode(): boolean;
+
+    isRunning(id: string): boolean;
 
     // DON'T call those until you really know what you are doing.
     expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
@@ -493,6 +504,10 @@ export async function resumeService(id: string) {
 }
 
 export async function stopService(id: string, fromDeleteFunc?: boolean) {
+    if (!await db.getPerma(id)) {
+        throw new _InternalError("Service not found.", 3);
+    }
+
     const session = await db.getSession(id);
     if (!session) {
         throw new _InternalError("This service is not running.", 2);
@@ -501,57 +516,77 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     lckStatusTp(session.containerId, 'stop');
     const unlock = lockBusyAction(id, 'stop');
 
-    let success = false;
-    try {
-        success = await (async () => {
-            const meta = metaStorageForService(id);
+    (async () => {
+        const meta = metaStorageForService(id);
 
-            await engine.stop(session.containerId, meta);
+        await engine.stop(session.containerId, meta);
 
-            let serviceSucc: boolean = true;
-            if (engine.volumesMode) {
-                serviceSucc = fromDeleteFunc == true
-                    ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
-                    : await engine.delete(session.containerId, meta);
-            } else if (fromDeleteFunc) {
-                serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
-            }
-            const sessionSucc = await db.deleteSession(id);
+        let serviceSucc: boolean = true;
+        if (engine.volumesMode) {
+            serviceSucc = fromDeleteFunc == true
+                ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
+                : await engine.delete(session.containerId, meta);
+        } else if (fromDeleteFunc) {
+            serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
+        }
+        const sessionSucc = await db.deleteSession(id);
 
-            if (serviceSucc && sessionSucc) {
-                started.splice(started.indexOf(id), 1);
-                return true;
-            } else {
-                return false;
-            }
-        })();
-    } finally {
-        unlock();
-        ulckStatusTp(session.containerId);
-    }
-    return success;
+        if (serviceSucc && sessionSucc) {
+            started.splice(started.indexOf(id), 1);
+            return true;
+        } else {
+            return false;
+        }
+    })()
+        .then(() => {
+            unlock();
+        })
+        .catch(e => {
+            currentContext.logger.error(e);
+            unlock(e);
+        })
+        .finally(() => {
+            ulckStatusTp(session.containerId);
+        });
+    return true;
 }
 
 export async function deleteService(id: string) {
     try {
-        await this.stopService(id, true);
+        await stopService(id, true);
     } catch (e) {
         // Skip not running error
         if (!(e.code && e.code == 2)) {
             throw e;
         }
     }
-    // TODO: Use whenUnlocked to delete right after it stops
-    // TODO: and make stopService async.
-    if (engine.volumesMode) {
-        // Notify before the volume is being deleted so all can unregister their hooks
-        // on this volume
-        await bus.callEvent('nsm:engine:deletev', { id });
-        await engine.deleteVolume(id);
-    } else {
-        // If the useVolumes is false, service is deleted inside stopService
-    }
-    return db.deletePerma(id);
+
+    const unlockHandler: UnlockObserver = (_, __, err) => {
+        let task = undefined as Promise<void>|undefined;
+        //
+        if (engine.volumesMode) {
+            // Notify before the volume is being deleted so all can unregister their hooks
+            // on this volume
+            task = resolveSequentially(
+                async () => bus.callEvent('nsm:engine:deletev', { id }),
+                async () => engine.deleteVolume(id)
+            );
+        } else {
+            // If the useVolumes is false, service is deleted inside stopService
+        }
+
+        const onFinish = () => {
+            currentContext.logger.info(`Service ${id} deleted.`);
+        }
+
+        resolveSequentially(
+            task,
+            async () => db.deletePerma(id)
+        ).then(onFinish);
+    };
+
+    whenUnlocked(id, unlockHandler);
+    return true;
 }
 
 export async function updateOptions(id: string, options: Options) {
@@ -630,6 +665,10 @@ export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettin
     currentContext.logger.info("No-template mode has been enabled.");
 }
 
+export function isRunning(id: string) {
+    return started.includes(id);
+}
+
 function metaStorageForService(id: string): MetaStorage { // service id
     return {
         set: async (key, value) => {
@@ -693,6 +732,9 @@ export default async function ({db, appConfig, logger}: {
     for (const session of unclearedSessions) {
         await stopService(session.serviceId);
     }
+    //
+    await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
+    //
     const running = await engine.listRunning();
     for (const id of running) {
         const volumeId = await engine.getAttachedVolume(id);

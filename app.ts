@@ -119,7 +119,7 @@ export default async function (router: Application, options?: AppBootOptions): P
         appConfig,
         logger,
         debug: process.env.DEBUG === 'true',
-        workers: !options.disableWorkers && !isInsideContainer()
+        workers: !options?.disableWorkers && !isInsideContainer()
     };
 
     // Service (virtualization) layer
