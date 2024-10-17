@@ -23,6 +23,10 @@ export function lockBusyAction(id: string, tp: string) {
         delete status_types[id];
         //
         (obs.get(id) ?? []).forEach(o => o(id, tp, err));
+        //
+        if (pendingCount() == 0) {
+            obsAll.forEach(o => o());
+        }
     }
 }
 

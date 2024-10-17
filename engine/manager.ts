@@ -228,6 +228,8 @@ export type ServiceManager = {
 
     isRunning(id: string): boolean;
 
+    waitForBusyAction(id: string): Promise<void>;
+
     // DON'T call those until you really know what you are doing.
     expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
 
@@ -657,12 +659,34 @@ export function listTemplates(): Promise<string[]> {
 }
 
 export async function stopRunning() {
-    await Promise.all(started.map(this.stopService));
+    await Promise.all(started.map(id => (
+        new Promise((resolve, reject) => {
+            whenUnlocked(id, () => {
+                stopService(id)
+                    .catch(e => console.log(e))
+                    .then(() => {
+                        whenUnlocked(id, () => resolve(null));
+                    });
+            });
+        })
+    )));
 }
 
 export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettings) {
     noTAlternateSett = alternateSettings;
     currentContext.logger.info("No-template mode has been enabled.");
+}
+
+export async function waitForBusyAction(id: string) {
+    return new Promise<void>((resolve, reject) => {
+        whenUnlocked(id, (_, __, err) => {
+            if (!err) {
+                resolve(null);
+            } else {
+                reject(err);
+            }
+        });
+    });
 }
 
 export function isRunning(id: string) {

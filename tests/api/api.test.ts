@@ -32,6 +32,7 @@ async function miniService(ctx: AppBootContext) {
 
 async function stopMini(ctx: AppBootContext, id: string) {
     await ctx.manager.stopService(id);
+    await ctx.manager.waitForBusyAction(id); // Await stop
 }
 
 describe("Test v1 API models", () => {
