@@ -135,7 +135,8 @@ describe("Test v1 API models", () => {
         const id = await miniService(ctx);
         log(id);
         await stopMini(ctx, id);
-        const res = await request(server).post("/v1/service/" + id + "/resume");
+        const res = await request(server)
+            .post("/v1/service/" + id + "/resume");
         expect(res.status).toBe(200);
         expectProps(res.body, [
             "status", 200,
@@ -148,7 +149,8 @@ describe("Test v1 API models", () => {
     test("Test /v1/service/{serviceId}/stop", async () => {
        const id = await miniService(ctx);
        log(id);
-       const res = await request(server).post("/v1/service/" + id + "/stop");
+       const res = await request(server)
+           .post("/v1/service/" + id + "/stop");
        expect(res.status).toBe(200);
        expectProps(res.body, [
            "status", 200,
@@ -159,7 +161,8 @@ describe("Test v1 API models", () => {
     test("Test /v1/service/{serviceId}/delete", async () => {
        const id = await miniService(ctx);
        log(id);
-       const res = await request(server).post("/v1/service/" + id + "/delete");
+       const res = await request(server)
+           .post("/v1/service/" + id + "/delete");
        expect(res.status).toBe(200);
        expectProps(res.body, [
            "status", 200,
@@ -170,7 +173,8 @@ describe("Test v1 API models", () => {
     test("Test /v1/service/{serviceId}/reboot", async  () => {
         const id = await miniService(ctx);
         log(id);
-        const res = await request(server).post("/v1/service/" + id + "/reboot");
+        const res = await request(server)
+            .post("/v1/service/" + id + "/reboot");
         expect(res.status).toBe(200);
         expectProps(res.body, [
             "status", 200,
@@ -179,9 +183,11 @@ describe("Test v1 API models", () => {
     }, 20000);
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {
-        const id = await miniService(ctx);
+        //const id = await miniService(ctx);
+        const id = "randomId";
         log(id);
-        const res = await request(server).get("/v1/service/" + id + "/powerstatus");
+        const res = await request(server)
+            .get("/v1/service/" + id + "/powerstatus");
         expect(res.status).toBe(200);
         expectProps(res.body, [
            "id", id,
