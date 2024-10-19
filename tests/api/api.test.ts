@@ -183,8 +183,7 @@ describe("Test v1 API models", () => {
     }, 20000);
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {
-        //const id = await miniService(ctx);
-        const id = "randomId";
+        const id = await miniService(ctx);
         log(id);
         const res = await request(server)
             .get("/v1/service/" + id + "/powerstatus");
