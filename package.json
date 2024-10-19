@@ -20,6 +20,7 @@
     "babel-preset-env": "^1.7.0",
     "check-disk-space": "^3.4.0",
     "express-ws": "^5.0.2",
+    "jest-ctrf-json-reporter": "^0.0.9",
     "prisma": "^5.10.2",
     "superagent": "^9.0.2",
     "supertest": "^7.0.0",
