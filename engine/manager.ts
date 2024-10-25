@@ -103,7 +103,22 @@ export type EngineExpansion = {
     [k in keyof ServiceEngineI | string]: any;
 };
 
-export type ServiceManager = {
+type ServiceEvent = {
+    id: string;
+    error?: Error;
+}
+
+type ServiceManagerEvents = {
+    resume: ServiceEvent;
+}
+
+type EventHandler<T extends keyof ServiceManagerEvents> = (event: ServiceManagerEvents[T]) => boolean|void;
+
+type ServiceManagerEventBus = {
+    on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler<T>): void;
+}
+
+export type ServiceManager = ServiceManagerEventBus & {
     /**
      * This NSM instance ID
      */
@@ -235,7 +250,9 @@ export type ServiceManager = {
 
     initEngineForcibly(): Promise<void>;
     //
-}
+} & {
+    whenUnlocked: typeof whenUnlocked
+};
 
 export type ServiceInfo = PermaModel & {
     optionsRam: number, // From options.ram
@@ -280,6 +297,7 @@ const errors = {};
 // Service IDs that are currently running
 const started = [];
 const noTTemplate = '__no_t__';
+const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
     started[funcName] = (...args: any[]) => {
@@ -494,9 +512,11 @@ export async function resumeService(id: string) {
         .then((success) => {
             if (success == true) {
                 currentContext.logger.info('Service ' + id + ' resumed');
+                callManagerEvent('resume', { id });
             } else {
                 errors[id] = new Error('Failed to resume service');
                 started.splice(started.indexOf(id), 1);
+                callManagerEvent('resume', { id, error: errors[id] });
             }
         })
         .finally(() => {
@@ -679,12 +699,12 @@ export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettin
 
 export async function waitForBusyAction(id: string) {
     return new Promise<void>((resolve, reject) => {
-        whenUnlocked(id, (_, __, err) => {
-            if (!err) {
-                resolve(null);
-            } else {
+        whenUnlocked(id, (_, status, err) => {
+            if (err) {
                 reject(err);
+                return;
             }
+            resolve(null);
         });
     });
 }
@@ -729,6 +749,17 @@ export function getRunningServices() {
     return [...started];
 }
 
+export function on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler<T>) {
+    if (!evtHandlers.has(evt)) {
+        evtHandlers.set(evt, []);
+    }
+    evtHandlers.get(evt).push(h);
+}
+
+export {
+    whenUnlocked
+}
+
 
 // Utils
 
@@ -736,6 +767,18 @@ function reqCompatibleEngine() {
     if (noTAlternateSett && !engine.supportsNoTemplateMode) {
         throw new Error('No-template mode is enabled, but current engine does not support it! Please switch to different engine.');
     }
+}
+
+function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: ServiceManagerEvents[T]) {
+    if (!evtHandlers.has(e)) {
+        return;
+    }
+    const newArray = evtHandlers.get(e)
+        .filter(handler => {
+            const result = handler(event);
+            return typeof result != 'boolean' || !result;
+        });
+    evtHandlers.set(e, newArray);
 }
 
 export default async function ({db, appConfig, logger}: {

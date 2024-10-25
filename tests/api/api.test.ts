@@ -180,6 +180,19 @@ describe("Test v1 API models", () => {
             "status", 200,
             "message", undefined,
         ]);
+        // Wait for it to be started
+        await new Promise((resolve, reject) => {
+            ctx.manager.on('resume', (event) => {
+                if (event.id == id) {
+                    if (event.error) {
+                        reject(event.error);
+                    } else {
+                        resolve(null);
+                    }
+                    return true;
+                }
+            });
+        });
     }, 20000);
 
     test("Test /v1/service/{serviceId}/powerstatus", async () => {

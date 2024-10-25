@@ -1,6 +1,5 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
-import {whenUnlocked} from "@nsm/engine/asyncp";
 import {handleErr} from "@nsm/util/routes";
 
 export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
@@ -15,7 +14,7 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                 }
                 try {
                     await manager.stopService(id);
-                    whenUnlocked(id, (_, __, err) => {
+                    manager.whenUnlocked(id, (_, __, err) => {
                         if (err) {
                             logger.error(err);
                         } else {

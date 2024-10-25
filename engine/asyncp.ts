@@ -37,7 +37,7 @@ export function whenUnlocked(id: string, cb: UnlockObserver) {
         obs.set(id, obs.get(id) ?? []);
         obs.get(id).push(cb);
     } else {
-        cb(id, undefined);
+        cb(id, undefined, undefined);
     }
 }
 
