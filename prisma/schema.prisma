@@ -27,6 +27,7 @@ model Service {
   template  String
   port      Int
   options   Json
+  meta      Json   @default("{}")
   env       Json
   network   Json?
 }

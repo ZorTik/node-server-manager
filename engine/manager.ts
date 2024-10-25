@@ -42,6 +42,7 @@ export type Options = {
      * (optional)
      */
     ports?: number[], // Optional ports to expose
+    meta?: {[key: string]: any},
     /**
      * The optional environment variables (template options) to set.
      * These are custom variables that the specific template uses to correctly
@@ -88,15 +89,18 @@ export type MetaStorage = {
 export type NoTAlternateSettings = {
     port_range: {
         min: number,
-        max: number
+        max: number,
     },
     defaults: {
         ram: number,
         cpu: number,
-        disk: number
+        disk: number,
+    },
+    meta: {
+        stopCmd: string,
     },
     env: {
-    }
+    },
 }
 
 export type EngineExpansion = {
@@ -152,6 +156,14 @@ export type ServiceManager = ServiceManagerEventBus & {
      * @returns Whether the service was stopped
      */
     stopService(id: string): Promise<boolean>;
+
+    /**
+     * Send pre-configured stop signal to the service.
+     *
+     * @param id The service ID
+     * @returns Whether the signal has been sent
+     */
+    sendStopSignal(id: string): Promise<boolean>;
 
     /**
      * Delete a service.
@@ -353,7 +365,7 @@ export async function createService(template: string, {
 }) {
     reqCompatibleEngine();
     template = noTAlternateSett ? noTTemplate : template;
-    const {defaults, port_range} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    const {defaults, port_range, meta = undefined} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
     // Pick random main port from the range specified in settings.yml
     const port = await retrieveRandomPort(
         engine,
@@ -361,9 +373,12 @@ export async function createService(template: string, {
         port_range.max as number
     );
     const serviceId = crypto.randomUUID(); // Create new unique service id
-    const self = this;
-    const meta = metaStorageForService(serviceId);
+    const metaStorage = metaStorageForService(serviceId);
     const unlock = lockBusyAction(serviceId, 'create');
+
+    if (!meta || !meta.stopCmd) {
+        throw new _InternalError('Invalid template meta for ' + template);
+    }
 
     new Promise<any>((resolve, reject) => {
         //
@@ -376,11 +391,11 @@ export async function createService(template: string, {
                     throw new _InternalError('Failed to create container. Service: ' + serviceId);
                 }
                 const rollback = async () => {
-                    await engine.delete(containerId, meta);
+                    await engine.delete(containerId, metaStorage);
                 }
                 const options = {ram, cpu, ports};
                 // Save permanent info
-                if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
+                if (!await db.savePerma({ serviceId, template, nodeId, port, options, meta, env: env ?? {}, network })) {
                     await rollback();
                     throw new _InternalError('Failed to save perma info to database');
                 }
@@ -413,10 +428,10 @@ export async function createService(template: string, {
                 ports: ports ?? [],
                 network,
             },
-            meta,
+            metaStorage,
             buildHandler,
             async () => {
-                await self.stopService(serviceId);
+                await stopService(serviceId);
             }
         );
     })
@@ -438,11 +453,7 @@ export async function createService(template: string, {
 
 export async function resumeService(id: string) {
     reqCompatibleEngine();
-    const perma_ = await db.getPerma(id);
-    // Service does not exist
-    if (!perma_) {
-        throw new _InternalError('Not found.', 3);
-    }
+    const perma_ = await getPermaModel(id);
     // Service is already running
     if (await db.getSession(id)) {
         throw new _InternalError('Already running.', 2);
@@ -462,7 +473,6 @@ export async function resumeService(id: string) {
 
     const {defaults} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
 
-    const self = this;
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
@@ -505,7 +515,7 @@ export async function resumeService(id: string) {
             meta,
             buildHandler,
             async () => {
-                await self.stopService(id);
+                await stopService(id);
             }
         );
     })
@@ -573,6 +583,19 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     return true;
 }
 
+export async function sendStopSignal(id: string) {
+    const perma_ = await getPermaModel(id);
+    const session = await getServiceSession(id);
+    const stopCmd = perma_.meta?.stopCmd;
+    if (!stopCmd) {
+        throw new _InternalError('Service does not have stop command set.');
+    }
+
+    await engine.cmd(session.containerId, stopCmd);
+
+    return true;
+}
+
 export async function deleteService(id: string) {
     try {
         await stopService(id, true);
@@ -617,10 +640,14 @@ export async function updateOptions(id: string, options: Options) {
     const data: PermaModel = {
         ...perma,
         ...options,
+        meta: {
+            ...perma.meta,
+            ...options.meta,
+        },
         env: {
             ...perma.env,
-            ...options.env
-        }
+            ...options.env,
+        },
     };
     return db.savePerma(data);
 }
@@ -779,6 +806,25 @@ function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: Ser
             return typeof result != 'boolean' || !result;
         });
     evtHandlers.set(e, newArray);
+}
+
+async function getPermaModel(id: string) {
+    const perma_ = await db.getPerma(id);
+    // Service does not exist
+    if (!perma_) {
+        throw new _InternalError('Not found.', 3);
+    }
+
+    return perma_;
+}
+
+async function getServiceSession(id: string) {
+    const session = await db.getSession(id);
+    if (!session) {
+        throw new _InternalError("This service is not running.", 2);
+    }
+
+    return session;
 }
 
 export default async function ({db, appConfig, logger}: {

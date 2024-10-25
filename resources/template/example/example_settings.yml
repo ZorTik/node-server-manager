@@ -3,10 +3,14 @@ description: 'An Example template'
 port_range:
   min: 25565
   max: 35565
+# Default parameters for build
 defaults:
   ram: 1024000000 # bytes
   cpu: 2 # cores
   disk: 2000000000 # bytes
+meta:
+  # Stop command to be sent in stop signal endpoint
+  stopCmd: 'stop'
 # Optional ENV vars, and their default values
 env:
   STARTUP_FILE: 'server.jar'

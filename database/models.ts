@@ -15,13 +15,13 @@ export type Database = {
     count(nodeId: string): Promise<number>;
     setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean>;
     getServiceMeta(serviceId: string, key: string): Promise<any>;
-}
+};
 
 export type SessionModel = {
     serviceId: string,
     nodeId: string,
     containerId: string,
-}
+};
 
 export type PermaModel = {
     serviceId: string,
@@ -29,13 +29,16 @@ export type PermaModel = {
     nodeId: string,
     port: number,
     options: {
-        [key: string]: any
+        [key: string]: any,
     },
+    meta?: {
+        stopCmd?: string,
+    }
     env: {
-        [key: string]: string
+        [key: string]: string,
     },
     network?: {
         address: string,
         portsOnly: boolean,
     }
-}
+};
