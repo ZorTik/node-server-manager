@@ -1,3 +1,0 @@
-# TODO: Jde vyvolat stop těsně po vytvoření (resume) kontejneru a vznikne chyba ???
-# TODO: SIGINT nevyvolává handler v index.ts, který by měl vypínat běžící služby
-# TODO: Předělat stop, aby se pro každou šablonu poslal specifický command, počkalo se zde v nodejs a pak vyvolal kill.

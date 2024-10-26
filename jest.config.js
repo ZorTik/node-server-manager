@@ -6,4 +6,8 @@ module.exports = {
         "<rootDir>/tests/"
     ],
     moduleNameMapper,
+    reporters: [
+        'default',
+        ['jest-ctrf-json-reporter', {}],
+    ],
 }

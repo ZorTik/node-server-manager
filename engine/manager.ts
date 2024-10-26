@@ -6,10 +6,18 @@ import {randomPort as retrieveRandomPort} from "../util/port";
 import {loadYamlFile} from "../util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
-import {lckStatusTp, lockBusyAction, reqNotPending, ulckStatusTp} from "./asyncp";
+import {
+    lckStatusTp,
+    lockBusyAction,
+    reqNotPending,
+    ulckStatusTp,
+    UnlockObserver,
+    whenUnlocked, whenUnlockedAll
+} from "./asyncp";
 import winston from "winston";
 import * as bus from "../event/bus";
 import {isDebug} from "@nsm/helpers";
+import {resolveSequentially} from "@nsm/util/promises";
 
 export type Options = {
     /**
@@ -33,6 +41,7 @@ export type Options = {
      * (optional)
      */
     ports?: number[], // Optional ports to expose
+    meta?: {[key: string]: any},
     /**
      * The optional environment variables (template options) to set.
      * These are custom variables that the specific template uses to correctly
@@ -79,22 +88,41 @@ export type MetaStorage = {
 export type NoTAlternateSettings = {
     port_range: {
         min: number,
-        max: number
+        max: number,
     },
     defaults: {
         ram: number,
         cpu: number,
-        disk: number
+        disk: number,
+    },
+    meta: {
+        stopCmd: string,
     },
     env: {
-    }
+    },
 }
 
 export type EngineExpansion = {
     [k in keyof ServiceEngineI | string]: any;
 };
 
-export type ServiceManager = {
+type ServiceEvent = {
+    id: string;
+    error?: Error;
+}
+
+type ServiceManagerEvents = {
+    resume: ServiceEvent;
+    stop: ServiceEvent;
+}
+
+type EventHandler<T extends keyof ServiceManagerEvents> = (event: ServiceManagerEvents[T]) => boolean|void;
+
+type ServiceManagerEventBus = {
+    on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler<T>): void;
+}
+
+export type ServiceManager = ServiceManagerEventBus & {
     /**
      * This NSM instance ID
      */
@@ -128,6 +156,22 @@ export type ServiceManager = {
      * @returns Whether the service was stopped
      */
     stopService(id: string): Promise<boolean>;
+
+    /**
+     * Stop a service forcibly (kill).
+     *
+     * @param id The service ID
+     * @returns Whether the service was killed
+     */
+    stopServiceForcibly(id: string): Promise<boolean>;
+
+    /**
+     * Send pre-configured stop signal to the service.
+     *
+     * @param id The service ID
+     * @returns Whether the signal has been sent
+     */
+    sendStopSignal(id: string): Promise<boolean>;
 
     /**
      * Delete a service.
@@ -217,12 +261,18 @@ export type ServiceManager = {
      */
     noTemplateMode(): boolean;
 
+    isRunning(id: string): boolean;
+
+    waitForBusyAction(id: string): Promise<void>;
+
     // DON'T call those until you really know what you are doing.
     expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
 
     initEngineForcibly(): Promise<void>;
     //
-}
+} & {
+    whenUnlocked: typeof whenUnlocked
+};
 
 export type ServiceInfo = PermaModel & {
     optionsRam: number, // From options.ram
@@ -267,6 +317,7 @@ const errors = {};
 // Service IDs that are currently running
 const started = [];
 const noTTemplate = '__no_t__';
+const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
     started[funcName] = (...args: any[]) => {
@@ -322,7 +373,7 @@ export async function createService(template: string, {
 }) {
     reqCompatibleEngine();
     template = noTAlternateSett ? noTTemplate : template;
-    const {defaults, port_range} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    const {defaults, port_range, meta = undefined} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
     // Pick random main port from the range specified in settings.yml
     const port = await retrieveRandomPort(
         engine,
@@ -330,9 +381,12 @@ export async function createService(template: string, {
         port_range.max as number
     );
     const serviceId = crypto.randomUUID(); // Create new unique service id
-    const self = this;
-    const meta = metaStorageForService(serviceId);
+    const metaStorage = metaStorageForService(serviceId);
     const unlock = lockBusyAction(serviceId, 'create');
+
+    if (!meta || !meta.stopCmd) {
+        throw new _InternalError('Invalid template meta for ' + template);
+    }
 
     new Promise<any>((resolve, reject) => {
         //
@@ -345,11 +399,11 @@ export async function createService(template: string, {
                     throw new _InternalError('Failed to create container. Service: ' + serviceId);
                 }
                 const rollback = async () => {
-                    await engine.delete(containerId, meta);
+                    await engine.delete(containerId, metaStorage);
                 }
                 const options = {ram, cpu, ports};
                 // Save permanent info
-                if (!await db.savePerma({ serviceId, template, nodeId, port, options, env: env ?? {}, network })) {
+                if (!await db.savePerma({ serviceId, template, nodeId, port, options, meta, env: env ?? {}, network })) {
                     await rollback();
                     throw new _InternalError('Failed to save perma info to database');
                 }
@@ -382,10 +436,10 @@ export async function createService(template: string, {
                 ports: ports ?? [],
                 network,
             },
-            meta,
+            metaStorage,
             buildHandler,
             async () => {
-                await self.stopService(serviceId);
+                await stopService(serviceId);
             }
         );
     })
@@ -407,11 +461,7 @@ export async function createService(template: string, {
 
 export async function resumeService(id: string) {
     reqCompatibleEngine();
-    const perma_ = await db.getPerma(id);
-    // Service does not exist
-    if (!perma_) {
-        throw new _InternalError('Not found.', 3);
-    }
+    const perma_ = await getPermaModel(id);
     // Service is already running
     if (await db.getSession(id)) {
         throw new _InternalError('Already running.', 2);
@@ -431,7 +481,6 @@ export async function resumeService(id: string) {
 
     const {defaults} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
 
-    const self = this;
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
@@ -474,16 +523,18 @@ export async function resumeService(id: string) {
             meta,
             buildHandler,
             async () => {
-                await self.stopService(id);
+                await stopService(id);
             }
         );
     })
         .then((success) => {
             if (success == true) {
                 currentContext.logger.info('Service ' + id + ' resumed');
+                callManagerEvent('resume', { id });
             } else {
                 errors[id] = new Error('Failed to resume service');
                 started.splice(started.indexOf(id), 1);
+                callManagerEvent('resume', { id, error: errors[id] });
             }
         })
         .finally(() => {
@@ -492,7 +543,11 @@ export async function resumeService(id: string) {
     return true;
 }
 
-export async function stopService(id: string, fromDeleteFunc?: boolean) {
+export async function stopService(id: string, fromDeleteFunc?: boolean, force?: boolean) {
+    if (!await db.getPerma(id)) {
+        throw new _InternalError("Service not found.", 3);
+    }
+
     const session = await db.getSession(id);
     if (!session) {
         throw new _InternalError("This service is not running.", 2);
@@ -501,57 +556,100 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     lckStatusTp(session.containerId, 'stop');
     const unlock = lockBusyAction(id, 'stop');
 
-    let success = false;
-    try {
-        success = await (async () => {
-            const meta = metaStorageForService(id);
+    (async () => {
+        const meta = metaStorageForService(id);
 
+        if (force) {
+            await engine.kill(session.containerId, meta);
+        } else {
             await engine.stop(session.containerId, meta);
+        }
 
-            let serviceSucc: boolean = true;
-            if (engine.volumesMode) {
-                serviceSucc = fromDeleteFunc == true
-                    ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
-                    : await engine.delete(session.containerId, meta);
-            } else if (fromDeleteFunc) {
-                serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
-            }
-            const sessionSucc = await db.deleteSession(id);
+        let serviceSucc: boolean = true;
+        if (engine.volumesMode) {
+            serviceSucc = fromDeleteFunc == true
+                ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
+                : await engine.delete(session.containerId, meta);
+        } else if (fromDeleteFunc) {
+            serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
+        }
+        const sessionSucc = await db.deleteSession(id);
 
-            if (serviceSucc && sessionSucc) {
-                started.splice(started.indexOf(id), 1);
-                return true;
-            } else {
-                return false;
-            }
-        })();
-    } finally {
-        unlock();
-        ulckStatusTp(session.containerId);
+        if (serviceSucc && sessionSucc) {
+            started.splice(started.indexOf(id), 1);
+            return true;
+        } else {
+            return false;
+        }
+    })()
+        .then(() => {
+            unlock();
+            callManagerEvent('stop', { id });
+        })
+        .catch(e => {
+            currentContext.logger.error(e);
+            unlock(e);
+            callManagerEvent('stop', { id, error: e });
+        })
+        .finally(() => {
+            ulckStatusTp(session.containerId);
+        });
+    return true;
+}
+
+export async function stopServiceForcibly(id: string) {
+    return stopService(id, false, true);
+}
+
+export async function sendStopSignal(id: string) {
+    const perma_ = await getPermaModel(id);
+    const session = await getServiceSession(id);
+    const stopCmd = perma_.meta?.stopCmd;
+    if (!stopCmd) {
+        throw new _InternalError('Service does not have stop command set.');
     }
-    return success;
+
+    await engine.cmd(session.containerId, stopCmd);
+
+    return true;
 }
 
 export async function deleteService(id: string) {
     try {
-        await this.stopService(id, true);
+        await stopService(id, true);
     } catch (e) {
         // Skip not running error
         if (!(e.code && e.code == 2)) {
             throw e;
         }
     }
-    // TODO: Use whenUnlocked to delete right after it stops
-    // TODO: and make stopService async.
-    if (engine.volumesMode) {
-        // Notify before the volume is being deleted so all can unregister their hooks
-        // on this volume
-        await bus.callEvent('nsm:engine:deletev', { id });
-        await engine.deleteVolume(id);
-    } else {
-        // If the useVolumes is false, service is deleted inside stopService
-    }
-    return db.deletePerma(id);
+
+    const unlockHandler: UnlockObserver = (_, __, err) => {
+        let task = undefined as Promise<void>|undefined;
+        //
+        if (engine.volumesMode) {
+            // Notify before the volume is being deleted so all can unregister their hooks
+            // on this volume
+            task = resolveSequentially(
+                async () => bus.callEvent('nsm:engine:deletev', { id }),
+                async () => engine.deleteVolume(id)
+            );
+        } else {
+            // If the useVolumes is false, service is deleted inside stopService
+        }
+
+        const onFinish = () => {
+            currentContext.logger.info(`Service ${id} deleted.`);
+        }
+
+        resolveSequentially(
+            task,
+            async () => db.deletePerma(id)
+        ).then(onFinish);
+    };
+
+    whenUnlocked(id, unlockHandler);
+    return true;
 }
 
 export async function updateOptions(id: string, options: Options) {
@@ -560,10 +658,14 @@ export async function updateOptions(id: string, options: Options) {
     const data: PermaModel = {
         ...perma,
         ...options,
+        meta: {
+            ...perma.meta,
+            ...options.meta,
+        },
         env: {
             ...perma.env,
-            ...options.env
-        }
+            ...options.env,
+        },
     };
     return db.savePerma(data);
 }
@@ -622,12 +724,38 @@ export function listTemplates(): Promise<string[]> {
 }
 
 export async function stopRunning() {
-    await Promise.all(started.map(this.stopService));
+    await Promise.all(started.map(id => (
+        new Promise((resolve, reject) => {
+            whenUnlocked(id, () => {
+                stopService(id)
+                    .catch(e => console.log(e))
+                    .then(() => {
+                        whenUnlocked(id, () => resolve(null));
+                    });
+            });
+        })
+    )));
 }
 
 export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettings) {
     noTAlternateSett = alternateSettings;
     currentContext.logger.info("No-template mode has been enabled.");
+}
+
+export async function waitForBusyAction(id: string) {
+    return new Promise<void>((resolve, reject) => {
+        whenUnlocked(id, (_, status, err) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(null);
+        });
+    });
+}
+
+export function isRunning(id: string) {
+    return started.includes(id);
 }
 
 function metaStorageForService(id: string): MetaStorage { // service id
@@ -666,6 +794,17 @@ export function getRunningServices() {
     return [...started];
 }
 
+export function on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler<T>) {
+    if (!evtHandlers.has(evt)) {
+        evtHandlers.set(evt, []);
+    }
+    evtHandlers.get(evt).push(h);
+}
+
+export {
+    whenUnlocked
+}
+
 
 // Utils
 
@@ -673,6 +812,37 @@ function reqCompatibleEngine() {
     if (noTAlternateSett && !engine.supportsNoTemplateMode) {
         throw new Error('No-template mode is enabled, but current engine does not support it! Please switch to different engine.');
     }
+}
+
+function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: ServiceManagerEvents[T]) {
+    if (!evtHandlers.has(e)) {
+        return;
+    }
+    const newArray = evtHandlers.get(e)
+        .filter(handler => {
+            const result = handler(event);
+            return typeof result != 'boolean' || !result;
+        });
+    evtHandlers.set(e, newArray);
+}
+
+async function getPermaModel(id: string) {
+    const perma_ = await db.getPerma(id);
+    // Service does not exist
+    if (!perma_) {
+        throw new _InternalError('Not found.', 3);
+    }
+
+    return perma_;
+}
+
+async function getServiceSession(id: string) {
+    const session = await db.getSession(id);
+    if (!session) {
+        throw new _InternalError("This service is not running.", 2);
+    }
+
+    return session;
 }
 
 export default async function ({db, appConfig, logger}: {
@@ -693,6 +863,9 @@ export default async function ({db, appConfig, logger}: {
     for (const session of unclearedSessions) {
         await stopService(session.serviceId);
     }
+    //
+    await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
+    //
     const running = await engine.listRunning();
     for (const id of running) {
         const volumeId = await engine.getAttachedVolume(id);

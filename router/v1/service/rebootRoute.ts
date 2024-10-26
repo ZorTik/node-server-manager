@@ -1,7 +1,8 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
+import {handleErr} from "@nsm/util/routes";
 
-export default async function ({manager}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/reboot',
         routes: {
@@ -12,13 +13,20 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    if (await manager.stopService(id) && await manager.resumeService(id)) {
-                        res.status(200).json({status: 200, message: 'Service reboot action successfully registered to be completed in a moment.'});
-                    } else {
-                        res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});
-                    }
+                    await manager.stopService(id);
+                    manager.whenUnlocked(id, (_, __, err) => {
+                        if (err) {
+                            logger.error(err);
+                        } else {
+                            manager.resumeService(id);
+                        }
+                    });
+                    res.status(200).json({
+                        status: 200,
+                        message: 'Service reboot action successfully registered to be completed in a moment.'
+                    });
                 } catch (e) {
-                    res.status(500).json({status: 500, message: e.message});
+                    handleErr(e, res);
                 }
             }
         },

@@ -1,11 +1,11 @@
-import {AppContext} from "../../../app";
-import {RouterHandler} from "../../index";
-import {handleErr} from "../../../util/routes";
-import {isServicePending} from "../../../engine/asyncp";
+import {AppContext} from "@nsm/app";
+import {RouterHandler} from "@nsm/router";
+import {isServicePending} from "@nsm/engine/asyncp";
+import {handleErr} from "@nsm/util/routes";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
-        url: '/service/:id/stop',
+        url: '/service/:id/stopcmd',
         routes: {
             post: async (req, res) => {
                 const id = req.params.id;
@@ -22,11 +22,9 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    const result = req.query.force === 'true'
-                        ? await manager.stopServiceForcibly(id)
-                        : await manager.stopService(id);
+                    const result = await manager.sendStopSignal(id);
                     if (result) {
-                        res.status(200).json({status: 200, message: 'Service stopped.'});
+                        res.status(200).json({status: 200, message: 'Service stop signal sent.'});
                     } else {
                         res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});
                     }

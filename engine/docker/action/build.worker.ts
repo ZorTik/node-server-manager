@@ -8,10 +8,6 @@ const tag = workerData['imageTag'] as string;
 const env = workerData['env'] as any;
 const debug = workerData['debug'] as boolean;
 
-if (debug) {
-    console.log("Initializing docker client inside worker.");
-}
-
 const client = initDockerClient(appConfig);
 const logs = [];
 

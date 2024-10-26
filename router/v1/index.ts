@@ -7,6 +7,7 @@ import stopRoute from "./service/stopRoute";
 import createRoute from "./service/createRoute";
 import rebootRoute from "./service/rebootRoute";
 import powerStatusRoute from "./service/powerStatusRoute";
+import stopCmdRoute from "@nsm/router/v1/service/stopCmdRoute";
 
 export default [
     // v1 routes
@@ -16,6 +17,7 @@ export default [
     deleteRoute,
     resumeRoute,
     rebootRoute,
+    stopCmdRoute,
     stopRoute,
     powerStatusRoute,
     listRoute,

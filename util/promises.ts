@@ -1,5 +1,9 @@
-export async function resolveSequentially(...funcs: (() => any)[]) {
+export async function resolveSequentially(...funcs: any[]) {
     for (const func of funcs) {
-        await func();
+        if (typeof func == "function") {
+            await (func());
+        } else {
+            await (func as Promise<any>);
+        }
     }
 }

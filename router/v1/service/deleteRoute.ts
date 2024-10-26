@@ -1,5 +1,6 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
+import {handleErr} from "@nsm/util/routes";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
@@ -19,7 +20,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                         res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});
                     }
                 } catch (e) {
-                    res.status(500).json({status: 500, message: e.message});
+                    handleErr(e, res);
                 }
             }
         },

@@ -359,9 +359,54 @@ paths:
           required: true
           schema:
             type: "string"
+        - name: "force"
+          in: "query"
+          required: false
+          schema:
+            type: boolean
       responses:
         "200":
           description: "Successfully stopped service."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "400":
+          description: "Invalid request"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "404":
+          description: "Service not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "409":
+          description: "Conflict, service is not running"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+        "500":
+          description: "Internal server error"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Result"
+  /v1/service/{serviceId}/stopcmd:
+    post:
+      description: "Stop a service using cmd"
+      parameters:
+        - name: "serviceId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "200":
+          description: "Stop command successfully sent."
           content:
             application/json:
               schema:
