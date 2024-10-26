@@ -585,7 +585,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     return true;
 }
 
-export async function sendStopSignal(id: string) {
+export async function sendStopSignal(id: string) { // TODO: Stále nefunguje, možná není povolený in stream
     const perma_ = await getPermaModel(id);
     const session = await getServiceSession(id);
     const stopCmd = perma_.meta?.stopCmd;

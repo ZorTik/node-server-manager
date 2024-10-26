@@ -6,7 +6,7 @@ export default function (self: ServiceEngine, _: DockerClient): ServiceEngine['c
         const watchers = (self as DockerServiceEngine).rws;
         //
         if (id in watchers) {
-            watchers[id].write(cmd);
+            watchers[id].write(cmd + '\n');
             return true;
         } else {
             return false;

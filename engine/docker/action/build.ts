@@ -226,7 +226,7 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                     srvLog.info('Watching changes');
                     // Watcher
                     setTimeout(async () => {
-                        const attachOptions = { stream: true, stdout: true, hijack: true };
+                        const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
                         const rws = await client.getContainer(container.id).attach(attachOptions);
                         rws.on('data', (data) => {
                             logService(volumeId, data);
