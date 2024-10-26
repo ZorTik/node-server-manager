@@ -158,6 +158,14 @@ export type ServiceManager = ServiceManagerEventBus & {
     stopService(id: string): Promise<boolean>;
 
     /**
+     * Stop a service forcibly (kill).
+     *
+     * @param id The service ID
+     * @returns Whether the service was killed
+     */
+    stopServiceForcibly(id: string): Promise<boolean>;
+
+    /**
      * Send pre-configured stop signal to the service.
      *
      * @param id The service ID
@@ -535,7 +543,7 @@ export async function resumeService(id: string) {
     return true;
 }
 
-export async function stopService(id: string, fromDeleteFunc?: boolean) {
+export async function stopService(id: string, fromDeleteFunc?: boolean, force?: boolean) {
     if (!await db.getPerma(id)) {
         throw new _InternalError("Service not found.", 3);
     }
@@ -551,7 +559,11 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     (async () => {
         const meta = metaStorageForService(id);
 
-        await engine.stop(session.containerId, meta);
+        if (force) {
+            await engine.kill(session.containerId, meta);
+        } else {
+            await engine.stop(session.containerId, meta);
+        }
 
         let serviceSucc: boolean = true;
         if (engine.volumesMode) {
@@ -585,7 +597,11 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     return true;
 }
 
-export async function sendStopSignal(id: string) { // TODO: Stále nefunguje, možná není povolený in stream
+export async function stopServiceForcibly(id: string) {
+    return stopService(id, false, true);
+}
+
+export async function sendStopSignal(id: string) {
     const perma_ = await getPermaModel(id);
     const session = await getServiceSession(id);
     const stopCmd = perma_.meta?.stopCmd;

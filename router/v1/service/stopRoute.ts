@@ -22,7 +22,9 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    const result = await manager.stopService(id);
+                    const result = req.query.force === 'true'
+                        ? await manager.stopServiceForcibly(id)
+                        : await manager.stopService(id);
                     if (result) {
                         res.status(200).json({status: 200, message: 'Service stopped.'});
                     } else {
