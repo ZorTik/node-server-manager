@@ -9,7 +9,6 @@ import {PermaModel, SessionModel} from "../database";
 import {
     lckStatusTp,
     lockBusyAction,
-    pendingCount,
     reqNotPending,
     ulckStatusTp,
     UnlockObserver,
@@ -114,6 +113,7 @@ type ServiceEvent = {
 
 type ServiceManagerEvents = {
     resume: ServiceEvent;
+    stop: ServiceEvent;
 }
 
 type EventHandler<T extends keyof ServiceManagerEvents> = (event: ServiceManagerEvents[T]) => boolean|void;
@@ -572,10 +572,12 @@ export async function stopService(id: string, fromDeleteFunc?: boolean) {
     })()
         .then(() => {
             unlock();
+            callManagerEvent('stop', { id });
         })
         .catch(e => {
             currentContext.logger.error(e);
             unlock(e);
+            callManagerEvent('stop', { id, error: e });
         })
         .finally(() => {
             ulckStatusTp(session.containerId);
