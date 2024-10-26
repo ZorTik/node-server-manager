@@ -212,6 +212,8 @@ describe("Test v1 API models", () => {
     }, 60000);
 
     // TODO: /v1/service/<id>/options
+    // TODO: /v1/service/<id>/stopcmd
+    // TODO: /v1/service/<id>/stop?force=true
 
     // TODO: Add missing API tests
 });
