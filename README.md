@@ -14,6 +14,9 @@ NSM is a robust service manager built on Docker Engine. Its primary purpose is t
 - **Cluster-ready (in development)**: NSM is built to be used in a cluster. For more reference, head up to the wiki (soon).
 - **Redis support (in development)**: The system is able to share information about state via redis.
 
+## API Specification
+[Specification is hosted on external repository here](https://zortik.github.io/nsm-spec/)
+
 ## Prerequisites
 
 Ensure you have the following installed before proceeding with the installation:
