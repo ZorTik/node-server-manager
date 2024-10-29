@@ -1,3 +1,5 @@
+![nsmlogopracovni2-better](https://github.com/user-attachments/assets/ea250212-6e89-489f-b582-9d6be1997524)
+
 # Node Server Manager (NSM)
 
 NSM is a robust service manager built on Docker Engine. Its primary purpose is to facilitate dynamic service generation using REST protocol from predefined templates, making it an essential tool for large game networks, service hosting providers and basically everyone whose goal is to scale on the run.
