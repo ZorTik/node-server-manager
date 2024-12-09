@@ -1,4 +1,4 @@
-![nsmlogopracovni2-better](https://github.com/user-attachments/assets/ea250212-6e89-489f-b582-9d6be1997524)
+<!--![nsmlogopracovni2-better](https://github.com/user-attachments/assets/ea250212-6e89-489f-b582-9d6be1997524)-->
 
 # Node Server Manager (NSM)
 
