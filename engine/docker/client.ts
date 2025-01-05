@@ -11,7 +11,10 @@ export function initDockerClient(appConfig: { docker_host: string }) {
         // http(s)://host:port
         let host = appConfig.docker_host;
         host = host.substring(0, host.lastIndexOf(':') + 1);
+
         let port = parseInt(appConfig.docker_host.replace(host, ''));
+
+        host = host.substring(0, host.length - 1);
 
         if (!host.includes(':') || isNaN(port)) {
             throw new Error('Docker host must be in this format: protocol://host:port');
