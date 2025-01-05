@@ -16,11 +16,15 @@ export function initDockerClient(appConfig: { docker_host: string }) {
 
         host = host.substring(0, host.length - 1);
 
-        if (!host.includes(':') || isNaN(port)) {
+        let protocol = host.substring(0, host.indexOf('://')) as "http" | "https" | "ssh";
+
+        host = host.substring(host.indexOf('://') + 3);
+
+        if (isNaN(port)) {
             throw new Error('Docker host must be in this format: protocol://host:port');
         }
 
-        client = new DockerClient({host, port});
+        client = new DockerClient({protocol, host, port});
     } else {
         throw new Error('Docker engine configuration variable not found! Please set docker_host in resources/config.yml or override using env.');
     }
