@@ -1,10 +1,9 @@
 import server from "../../server";
-import {AppBootContext, AppBootOptions} from "../../app";
+import boot, {AppBootContext, AppBootOptions} from "../../app";
 import request from "supertest";
 import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
 import {isServicePending} from "../../engine/asyncp";
 import {log} from "console";
-import boot from "@nsm/app";
 
 function expectProps(obj: any, model: any[]) {
     for (let i = 0; i < model.length; i += 2) {
@@ -51,7 +50,7 @@ describe("Test v1 API models", () => {
             console.log(err);
         });
     }, 20000);
-    
+
     test("Test /v1/status", async () => {
         const res = await request(server).get("/v1/status");
         expect(res.status).toBe(200);
