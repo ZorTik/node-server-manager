@@ -8,13 +8,12 @@ export default async function ({manager, database}: AppContext): Promise<RouterH
             post: async (req, res) => {
                 const page = req.body.page ?? 0;
                 const pageSize = req.body.pageSize ?? 10;
-                const all = req.body.all != undefined && req.body.all.toString() == "true"; // TODO: Test???
                 if (typeof page !== 'number' || typeof pageSize !== 'number' || page < 0 || pageSize < 1) {
                     res.status(400).json({status: 400, message: 'Invalid page or pageSize.'}).end();
                     return;
                 }
                 res.status(200).json({
-                    services: await manager.listServices(page, pageSize, all),
+                    services: await manager.listServices(page, pageSize),
                     meta: {
                         page,
                         pageSize,

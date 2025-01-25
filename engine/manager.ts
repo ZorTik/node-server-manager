@@ -224,10 +224,9 @@ export type ServiceManager = ServiceManagerEventBus & {
      *
      * @param page The page number (index)
      * @param pageSize The page size
-     * @param all Include services from other nodes, default false
      * @returns The list of service IDs
      */
-    listServices(page: number, pageSize: number, all?: boolean): Promise<string[]>;
+    listServices(page: number, pageSize: number): Promise<string[]>;
 
     /**
      * List all available templates.
@@ -706,8 +705,8 @@ export function getLastPowerError(id: string) {
     return errors[id];
 }
 
-export async function listServices(page: number, pageSize: number, all?: boolean) {
-    const data = await db.list((all ?? false) ? undefined : nodeId, page, pageSize);
+export async function listServices(page: number, pageSize: number) {
+    const data = await db.list(nodeId, page, pageSize);
     return data.map(d => d.serviceId);
 }
 

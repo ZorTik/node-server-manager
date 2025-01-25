@@ -12,8 +12,12 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
                 await self.stop(id, meta);
             }
             const c = client.getContainer(id);
-            const {Config, } = await c.inspect();
-            await c.remove({ force: true });
+            const {Config,} = await c.inspect();
+            try {
+                await c.remove({ force: true });
+            } catch (e) {
+                currentContext.logger.error("Unable to delete container " + id);
+            }
             const volumeIdUsed = Config.Labels['nsm.volumeId'];
             await client.getImage(volumeIdUsed + ':latest').remove({ force: true });
             // Delete network if it's associated with any.
