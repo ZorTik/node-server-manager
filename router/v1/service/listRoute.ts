@@ -22,26 +22,28 @@ export default async function ({manager, database}: AppContext): Promise<RouterH
                     pageSize,
                 };
 
-                const metaParse = z
-                    .object({})
-                    // Pass unrecognized keys
-                    .passthrough()
-                    // Meta filter is not required in req body
-                    .optional()
-                    .refine((data) => {
-                        // Allow only primitives (no nested objects)
-                        return Object.keys(data).every((key) => (typeof data[key]) !== "object")
-                    }, {
-                        message: "Meta should contain only primitives."
-                    })
-                    .safeParse(meta);
-                if (metaParse.success) {
-                    listOptions.filter = { meta: metaParse.data };
-                } else {
-                    res.status(400)
-                        .json({status: 400, message: 'Invalid meta filter format.', error: metaParse.error})
-                        .end();
-                    return;
+                // Meta is optional in req body
+                if (meta) {
+                    // Validate and parse meta
+                    const metaParse = z
+                        .object({})
+                        // Pass unrecognized keys
+                        .passthrough()
+                        .refine((data) => {
+                            // Allow only primitives (no nested objects)
+                            return Object.keys(data).every((key) => (typeof data[key]) !== "object")
+                        }, {
+                            message: "Meta should contain only primitives."
+                        })
+                        .safeParse(meta);
+                    if (metaParse.success) {
+                        listOptions.filter = { meta: metaParse.data };
+                    } else {
+                        res.status(400)
+                            .json({status: 400, message: 'Invalid meta filter format.', error: metaParse.error})
+                            .end();
+                        return;
+                    }
                 }
 
                 // Response body
