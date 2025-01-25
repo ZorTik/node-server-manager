@@ -1,4 +1,4 @@
-import {AppContext, currentContext} from "../app";
+import {AppContext} from "../app";
 import {json, RequestHandler, Router} from "express";
 import v1Routes from "./v1";
 import {measureEventLoop} from "@nsm/profiler";
@@ -11,19 +11,20 @@ export type RouterHandler = {
 type RouterInit = (context: AppContext) => Promise<RouterHandler>;
 
 // Load API by version
-async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
+async function api(ver: string, context: AppContext, routes: RouterInit[]) {
     context.logger.info(`API ${ver} routes`);
     const router = Router();
     router.use(json());
-    if (currentContext.debug) {
+    if (context.debug) {
         router.use((req, res, next) => {
             if (req.body) {
-                currentContext.logger.debug(`Body: ${JSON.stringify(req.body)}`);
+                context.logger.debug(`Body: ${JSON.stringify(req.body)}`);
             } else {
-                currentContext.logger.debug('No body');
+                context.logger.debug('No body');
             }
             next();
         });
+        // Measure event loop process time if in debug mode
         router.use((_, __, next) => {
             measureEventLoop();
             next();
@@ -53,5 +54,5 @@ async function loadApi(ver: string, context: AppContext, routes: RouterInit[]) {
 }
 
 export default async function (context: AppContext) {
-    await loadApi('v1', context, v1Routes); // v1
+    await api('v1', context, v1Routes); // v1
 }
