@@ -76,7 +76,7 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
                     } else {
                         res.forEach(r => {
                             if (r.errorDetail) {
-                                console.error(new Error(r.errorDetail));
+                                console.error(r.errorDetail);
                             } else {
                                 const msg = r.stream?.trim();
                                 //ctx.logger.info(msg);
@@ -204,9 +204,21 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         const imageBuildClock = clock();
 
         prepareImage({client, arDir, buildDir, volumeId, env}, (imageTag) => {
-            srvLog.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
+            // Tracked time
+            const imageBuildTime = imageBuildClock.durFromCreation();
 
+            // Asynchronously continue
             (async () => {
+                try {
+                    // Check if the image exists
+                    await client.getImage(imageTag).inspect();
+                } catch (e) {
+                    cb(undefined, new Error("Failed to build image."));
+                    return;
+                }
+
+                srvLog.info('Image built in ' + imageBuildTime + 'ms');
+
                 let container: DockerClient.Container;
                 // Whether, or not we're creating a brand-new service
                 let creating = false;

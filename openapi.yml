@@ -211,6 +211,9 @@ paths:
                   type: "integer"
                   format: "int32"
                   description: "The page size"
+                meta:
+                  type: object
+                  default: "Meta filter"
       responses:
         "200":
           description: "List of service IDs"

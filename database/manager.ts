@@ -1,4 +1,4 @@
-import {PrismaClient} from "@prisma/client";
+import {Prisma, PrismaClient} from "@prisma/client";
 import {PermaModel, SessionModel} from "./models";
 
 export const client = new PrismaClient();
@@ -112,21 +112,38 @@ export async function getMetaVal(key: string, defaultVal?: string): Promise<stri
     }
 }
 
-export async function list(nodeId: string|undefined, page?: number, pageSize?: number): Promise<PermaModel[]> {
+export async function list(nodeId: string|undefined, page?: number, pageSize?: number, meta?: {[key: string]: any}): Promise<PermaModel[]> {
     try {
-        let services: any[];
-        if (page != undefined && pageSize != undefined) {
-            services = await client.service.findMany({
-                ...nodeId ? { where: { nodeId } } : {},
-                skip: page * pageSize,
-                take: pageSize,
-            });
-        } else {
-            services = await client.service.findMany({
-                ...nodeId ? { where: { nodeId } } : {},
-            })
+        // SELECT * FROM Service WHERE JSON_EXTRACT(Meta, "$.tag1") IS NOT NULL;
+        let where = " WHERE 1";
+        // Pagination part
+        let pg = "";
+        // Values for prepared statement
+        let values = [];
+
+        if (nodeId != undefined) {
+            where += " AND nodeId = ?";
+            // Store for prepare statement
+            values.push(nodeId);
         }
-        return services as PermaModel[];
+        if (page != undefined && pageSize != undefined) {
+            // Insert pagination
+            pg += " LIMIT " + pageSize;
+            pg += " OFFSET " + page * pageSize;
+        }
+        if (meta != undefined) {
+            // AND clause for every key,value pair
+            for (const key in meta) {
+                // Add another AND clause for specific key,value pair
+                where += " AND JSON_EXTRACT(meta, ?) = ?";
+
+                // Push key and value to be replaced in prepared statement
+                values.push("$." + key, meta[key]);
+            }
+        }
+        return client
+            .$queryRawUnsafe<PermaModel[]>(`SELECT * FROM Service${where}${pg};`, ...values)
+            .then(result => result as PermaModel[]);
     } catch (e) {
         console.log(e);
         return [];

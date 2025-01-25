@@ -3,8 +3,18 @@ services:
     build: .
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
-    network_mode: host
+    ports:
+      - '3000:3000'
     extra_hosts:
       - 'docker.host.internal:host-gateway'
     environment:
       - 'CONFIG_DOCKER_HOST=///var/run/docker.sock'
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          ignore:
+            - ./service_logs
+            - ./logs
+            - ./node_packages
+            - ./package-lock.json

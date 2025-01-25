@@ -49,10 +49,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     }
                 }
                 // Build options
-                const options: Options = {};
-                for (const key of Object.keys(req.body)) {
-                    options[key] = req.body[key];
-                }
+                const options: Options = req.body;
                 options.env = env;
                 // Create the service
                 manager.createService(template.id, options)

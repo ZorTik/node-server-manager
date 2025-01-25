@@ -122,6 +122,28 @@ type ServiceManagerEventBus = {
     on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler<T>): void;
 }
 
+
+export type ListServicesOptions = {
+    /**
+     * The page number (index).
+     */
+    page: number;
+    /**
+     * The page size.
+     */
+    pageSize: number;
+
+    /**
+     * Filter options.
+     */
+    filter?: {
+        /**
+         * Filter services by their meta attributes.
+         */
+        meta?: {[key: string]: any};
+    }
+}
+
 export type ServiceManager = ServiceManagerEventBus & {
     /**
      * This NSM instance ID
@@ -222,11 +244,10 @@ export type ServiceManager = ServiceManagerEventBus & {
     /**
      * List all available services.
      *
-     * @param page The page number (index)
-     * @param pageSize The page size
+     * @param options The list options
      * @returns The list of service IDs
      */
-    listServices(page: number, pageSize: number): Promise<string[]>;
+    listServices(options: ListServicesOptions): Promise<string[]>;
 
     /**
      * List all available templates.
@@ -362,17 +383,29 @@ export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<
     return engine as any;
 }
 
-export async function createService(template: string, {
-    ram,
-    cpu,
-    disk,
-    ports,
-    env,
-    network,
-}) {
+export async function createService(template: string, options: Parameters<ServiceManager["createService"]>[1]) {
     reqCompatibleEngine();
     template = noTAlternateSett ? noTTemplate : template;
-    const {defaults, port_range, meta = undefined} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+
+    const {
+        ram,
+        cpu,
+        disk,
+        ports,
+        env,
+        network
+    } = options;
+
+    const serviceSettings = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+
+    const defaults = serviceSettings.defaults;
+    const port_range = serviceSettings.port_range;
+    // Join meta supplied by user and template meta
+    const meta = {
+        ...(options.meta ?? {}),
+        ...(serviceSettings.meta ?? {})
+    };
+
     // Pick random main port from the range specified in settings.yml
     const port = await retrieveRandomPort(
         engine,
@@ -705,9 +738,11 @@ export function getLastPowerError(id: string) {
     return errors[id];
 }
 
-export async function listServices(page: number, pageSize: number) {
-    const data = await db.list(nodeId, page, pageSize);
-    return data.map(d => d.serviceId);
+export async function listServices(options: ListServicesOptions) {
+    const meta = options.filter?.meta;
+    return db
+        .list(nodeId, options.page, options.pageSize, meta)
+        .then(list => list.map(d => d.serviceId));
 }
 
 export function listTemplates(): Promise<string[]> {
