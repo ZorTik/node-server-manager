@@ -6,7 +6,7 @@ import {setStopping} from "@nsm/engine/asyncp";
 
 let active = false;
 
-export default function (ctx: AppBootContext, exit?: boolean) {
+const cleanup = (ctx: AppBootContext, exit?: boolean) => {
     const { manager, logger, steps } = ctx;
 
     if (active == true) {
@@ -32,4 +32,18 @@ export default function (ctx: AppBootContext, exit?: boolean) {
             process.exit(0);
         }
     });
+}
+
+export const postInit = (ctx: AppBootContext) => {
+    // Cleanup on start
+    cleanup(ctx);
+
+    // Handle exit
+    process.on('exit', () => {
+        // Cleanup on exit
+        cleanup(ctx, true);
+    });
+
+    // Debug info
+    ctx.logger.debug('Signal handlers');
 }

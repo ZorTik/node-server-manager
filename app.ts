@@ -94,7 +94,7 @@ function managerForUnsafeUse() {
 }
 
 // App orchestration code
-export default async function (router: Application, options?: AppBootOptions): Promise<AppBootContext> {
+export const init = async (router: Application, options?: AppBootOptions): Promise<AppBootContext> => {
     // Prepare logging
     const logger = initGlobalLogger();
     r.prepareResources(options?.test === true); // Copy resources, etc.
@@ -151,6 +151,7 @@ export default async function (router: Application, options?: AppBootOptions): P
         logger.info(`Starting server`);
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
+
             // Enable redis support
             initRedis(ctx);
         });
@@ -159,4 +160,8 @@ export default async function (router: Application, options?: AppBootOptions): P
     return { ...ctx, steps };
 }
 
-export { Database, ServiceManager, currentContext }
+export {
+    Database,
+    ServiceManager,
+    currentContext
+}
