@@ -1,5 +1,5 @@
 import server from "../../server";
-import boot, {AppBootContext, AppBootOptions} from "../../app";
+import {init as boot, AppBootContext, AppBootOptions} from "../../app";
 import request from "supertest";
 import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
 import {isServicePending} from "../../engine/asyncp";
