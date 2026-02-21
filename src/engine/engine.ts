@@ -104,7 +104,6 @@ export type ServiceEngine = {
      * @param meta Meta storage for this unique context
      * @param cb The callback function
      * @param onclose Function on internal container close
-     * @return ID of created container
      */
     build(
         buildDir: string|undefined,

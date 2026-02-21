@@ -79,7 +79,7 @@ function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOp
                                 console.error(r.errorDetail);
                             } else {
                                 const msg = r.stream?.trim();
-                                //ctx.logger.info(msg);
+
                                 logs.push(msg);
                             }
                         });
@@ -209,14 +209,6 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
 
             // Asynchronously continue
             (async () => {
-                try {
-                    // Check if the image exists
-                    await client.getImage(imageTag).inspect();
-                } catch (e) {
-                    cb(undefined, new Error("Failed to build image."));
-                    return;
-                }
-
                 srvLog.info('Image built in ' + imageBuildTime + 'ms');
 
                 let container: DockerClient.Container;
