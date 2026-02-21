@@ -420,75 +420,76 @@ export async function createService(template: string, options: Parameters<Servic
         throw new _InternalError('Invalid template meta for ' + template);
     }
 
-    new Promise<any>((resolve, reject) => {
-        //
-        const buildHandler = async (containerId?: string, err?: any) => {
-            try {
-                if (err) {
-                    throw err;
-                }
-                if (!containerId) {
-                    throw new _InternalError('Failed to create container. Service: ' + serviceId);
-                }
-                const rollback = async () => {
-                    await engine.delete(containerId, metaStorage);
-                }
-                const options = {ram, cpu, ports};
-                // Save permanent info
-                if (!await db.savePerma({ serviceId, template, nodeId, port, options, meta, env: env ?? {}, network })) {
-                    await rollback();
-                    throw new _InternalError('Failed to save perma info to database');
-                }
-                // Save this session's info
-                if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-                    await rollback();
-                    throw new _InternalError('Failed to save session info to database');
-                }
-                started.push(serviceId);
-            } catch (e) {
-                reject(e);
-                return;
-            }
-            resolve(undefined);
-        }
 
-        // Container id
-        engine.build(
-            noTAlternateSett ? undefined : buildDir(template),
-            serviceId,
-            {
-                ram: ram ?? defaults.ram as number,
-                cpu: cpu ?? defaults.cpu as number,
-                disk: disk ?? defaults.disk as number,
-                env: {
-                    ...(env ?? {}),
-                    SERVICE_ID: serviceId
-                },
-                port: port,
-                ports: ports ?? [],
-                network,
-            },
-            metaStorage,
-            buildHandler,
-            async () => {
-                await stopService(serviceId);
-            }
+    let containerId: string|undefined;
+    let err: any;
+    try {
+        containerId = await engine.build(
+          noTAlternateSett ? undefined : buildDir(template),
+          serviceId,
+          {
+              ram: ram ?? defaults.ram as number,
+              cpu: cpu ?? defaults.cpu as number,
+              disk: disk ?? defaults.disk as number,
+              env: {
+                  ...(env ?? {}),
+                  SERVICE_ID: serviceId
+              },
+              port: port,
+              ports: ports ?? [],
+              network,
+          },
+          metaStorage,
+          async () => {
+              await stopService(serviceId);
+          }
         );
-    })
-        .catch(e => {
-            // Save to be later retrieved
-            errors[serviceId] = e;
-            currentContext.logger.error(e.message);
-            started.splice(started.indexOf(serviceId), 1);
-        })
-        .finally(() => {
-            unlock();
-        });
-    const e = errors[serviceId];
-    if (e) {
-        throw e;
+    } catch (e) {
+        err = e;
     }
-    return serviceId;
+
+    if (!err) {
+        if (!containerId) {
+            err = new _InternalError('Failed to create container. Service: ' + serviceId);
+        }
+    }
+    const rollback = async () => {
+        await engine.delete(containerId, metaStorage);
+    }
+    if (!err) {
+        const options = {ram, cpu, ports};
+        // Save permanent info
+        if (!await db.savePerma({ serviceId, template, nodeId, port, options, meta, env: env ?? {}, network })) {
+            await rollback();
+            err = new _InternalError('Failed to save perma info to database');
+        }
+    }
+    if (!err) {
+        // Save this session's info
+        if (!await db.saveSession({ serviceId, nodeId, containerId })) {
+            await rollback();
+            err = new _InternalError('Failed to save session info to database');
+        }
+    }
+    if (!err) {
+        // No error, the service has been started
+        started.push(serviceId);
+    }
+
+    if (err) {
+        // Save to be later retrieved
+        errors[serviceId] = err;
+        currentContext.logger.error(err.message);
+        started.splice(started.indexOf(serviceId), 1);
+    }
+
+    unlock();
+
+    if (err) {
+        throw err;
+    } else {
+        return serviceId;
+    }
 }
 
 export async function resumeService(id: string) {
@@ -516,62 +517,57 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
-    new Promise<boolean>((resolve, reject) => {
-        //
-        const buildHandler = async (containerId?: string, err?: any) => {
-            if (!containerId) {
-                currentContext.logger.error('Failed to create container. Service: ' + id);
-                resolve(false);
-                return;
-            }
-            const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
-            // Save new session info
-            if (saved) {
-                started.push(id);
-                resolve(true);
-                return;
-            } else {
-                // Cleanup if err with db
-                await engine.stop(containerId, meta);
-                resolve(false);
-                return;
-            }
-        }
-
+    let containerId: string|undefined;
+    try {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
-        engine.build(
-            noTAlternateSett ? undefined : buildDir(template),
-            id,
-            {
-                ram: options.ram ?? defaults.ram as number,
-                cpu: options.cpu ?? defaults.cpu as number,
-                disk: options.disk ?? defaults.disk as number,
-                env: env ?? defaults.env as {[key: string]: string},
-                port: perma_.port,
-                ports: options.ports ?? [],
-                network,
-            },
-            meta,
-            buildHandler,
-            async () => {
-                await stopService(id);
-            }
+        containerId = await engine.build(
+          noTAlternateSett ? undefined : buildDir(template),
+          id,
+          {
+              ram: options.ram ?? defaults.ram as number,
+              cpu: options.cpu ?? defaults.cpu as number,
+              disk: options.disk ?? defaults.disk as number,
+              env: env ?? defaults.env as {[key: string]: string},
+              port: perma_.port,
+              ports: options.ports ?? [],
+              network,
+          },
+          meta,
+          async () => {
+              await stopService(id);
+          }
         );
-    })
-        .then((success) => {
-            if (success == true) {
-                currentContext.logger.info('Service ' + id + ' resumed');
-                callManagerEvent('resume', { id });
-            } else {
-                errors[id] = new Error('Failed to resume service');
-                started.splice(started.indexOf(id), 1);
-                callManagerEvent('resume', { id, error: errors[id] });
-            }
-        })
-        .finally(() => {
-            unlock();
-        });
+    } catch (e) {
+        // TODO: handle
+    }
+
+    let success: boolean = false;
+    if (!containerId) {
+        currentContext.logger.error('Failed to create container. Service: ' + id);
+    } else {
+        const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
+        // Save new session info
+        if (saved) {
+            started.push(id);
+            success = true;
+        } else {
+            // Cleanup if err with db
+            await engine.stop(containerId, meta);
+        }
+    }
+
+    if (success == true) {
+        currentContext.logger.info('Service ' + id + ' resumed');
+        callManagerEvent('resume', { id });
+    } else {
+        errors[id] = new Error('Failed to resume service');
+        started.splice(started.indexOf(id), 1);
+        callManagerEvent('resume', { id, error: errors[id] });
+    }
+
+    unlock();
+
     return true;
 }
 

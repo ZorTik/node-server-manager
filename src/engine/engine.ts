@@ -102,16 +102,15 @@ export type ServiceEngine = {
      * @param volumeId The volume name
      * @param options Build options
      * @param meta Meta storage for this unique context
-     * @param cb The callback function
      * @param onclose Function on internal container close
+     * @return The container ID (local)
      */
     build(
         buildDir: string|undefined,
         volumeId: string,
         options: BuildOptions,
         meta: MetaStorage,
-        cb: (id?: string, err?: any) => Promise<void>|void, // Container ID (local)
-        onclose?: () => Promise<void>|void): void;
+        onclose?: () => Promise<void>|void): Promise<string>;
 
     /**
      * Stops a container.
