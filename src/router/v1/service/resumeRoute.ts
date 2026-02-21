@@ -1,6 +1,6 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
-import {handleErr} from "../../../util/routes";
+import {handleErr} from "@nsm/util/routes";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {

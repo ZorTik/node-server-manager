@@ -1,5 +1,5 @@
 import createClient from "./client";
-import * as bus from "../event/bus";
+import * as bus from "@nsm/event/bus";
 import {ServiceManager} from "@nsm/engine";
 import {RedisClientType} from "@redis/client";
 

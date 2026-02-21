@@ -1,8 +1,8 @@
-import server from "../../server";
-import {init as boot, AppBootContext, AppBootOptions} from "../../app";
+import server from "@nsm/server";
+import {init as boot, AppBootContext, AppBootOptions} from "@nsm/app";
 import request from "supertest";
 import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
-import {isServicePending} from "../../engine/asyncp";
+import {isServicePending} from "@nsm/engine/asyncp";
 import {log} from "console";
 
 function expectProps(obj: any, model: any[]) {

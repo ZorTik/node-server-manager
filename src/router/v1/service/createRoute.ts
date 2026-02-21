@@ -1,8 +1,8 @@
 
 import {RouterHandler} from "../../index";
 import {AppContext} from "../../../app";
-import {Options} from "../../../engine";
-import {clock} from "../../../util/clock";
+import {Options} from "@nsm/engine";
+import {clock} from "@nsm/util/clock";
 
 // Defines if the value inside template settings.yml env represents required option.
 function checkRequired(value: any) {

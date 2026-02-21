@@ -1,5 +1,5 @@
 import {describe, expect, test} from "@jest/globals";
-import {callEvent, registerEventHandler} from "../../event/bus";
+import {callEvent, registerEventHandler} from "@nsm/event/bus";
 
 describe('Test Event Bus', () => {
     test('Test catches event', async () => {

@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import config from "./configuration/appConfig";
+import config from "@nsm/configuration/appConfig";
 
 // Load .env
 dotenv.config();
@@ -8,16 +8,16 @@ dotenv.config();
 config();
 
 import {Router} from 'express';
-import {Database} from "./database";
-import {ServiceManager} from "./engine";
+import {Database} from "@nsm/database";
+import {ServiceManager} from "@nsm/engine";
 import loadAddons from "./addon";
-import loadAppRoutes from './router';
-import createDbManager from './database';
-import initServiceManager from './engine';
-import loadSecurity from "./security";
-import redis from "./redis";
-import * as r from "./configuration/resources";
-import * as manager from "./engine";
+import loadAppRoutes from '@nsm/router';
+import createDbManager from '@nsm/database';
+import initServiceManager from '@nsm/engine';
+import loadSecurity from "@nsm/security";
+import redis from "@nsm/redis";
+import * as r from "@nsm/configuration/resources";
+import * as manager from "@nsm/engine";
 import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";

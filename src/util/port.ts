@@ -1,5 +1,5 @@
 import net from 'net';
-import {ServiceEngine} from "../engine";
+import {ServiceEngine} from "@nsm/engine";
 
 export async function isPortAvailable(engine: ServiceEngine, port: number, a_ports: number[] = undefined) {
     if (a_ports === undefined) {

@@ -60,8 +60,8 @@ export default async function (logger: winston.Logger) {
     // Loop addon dirs
     for (const dir of (
         // Directories array
-        fs.readdirSync(__dirname + '/addons')
-            .map((dir) => __dirname + '/addons/' + dir)
+        fs.readdirSync(__dirname + '/../addons')
+            .map((dir) => __dirname + '/../addons/' + dir)
             .filter((file) => fs.existsSync(file + '/index.js'))
     )) {
         if (dir.endsWith('example_addon')) {

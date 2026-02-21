@@ -1,4 +1,4 @@
-import {loadYamlFile} from "../util/yaml";
+import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
 
 export type Template = {

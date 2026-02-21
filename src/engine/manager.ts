@@ -2,8 +2,8 @@ import {currentContext, Database} from "../app";
 import createEngine, {ServiceEngineI} from "./engine";
 import loadTemplate, {Template} from "./template";
 import crypto from "crypto";
-import {randomPort as retrieveRandomPort} from "../util/port";
-import {loadYamlFile} from "../util/yaml";
+import {randomPort as retrieveRandomPort} from "@nsm/util/port";
+import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
 import {
@@ -15,8 +15,8 @@ import {
     whenUnlocked, whenUnlockedAll
 } from "./asyncp";
 import winston from "winston";
-import * as bus from "../event/bus";
-import {isDebug} from "@nsm/helpers";
+import * as bus from "@nsm/event/bus";
+import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
 
 export type Options = {

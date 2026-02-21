@@ -1,7 +1,7 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
-import {handleErr} from "../../../util/routes";
-import {isServicePending} from "../../../engine/asyncp";
+import {handleErr} from "@nsm/util/routes";
+import {isServicePending} from "@nsm/engine/asyncp";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
