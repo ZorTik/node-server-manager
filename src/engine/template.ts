@@ -1,5 +1,6 @@
 import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
+import {Database, TemplateMetaModel} from "@nsm/database";
 
 export type Template = {
     id: string,
@@ -9,6 +10,12 @@ export type Template = {
 }
 
 const templateCache = {};
+
+let db: Database;
+
+export const init = (db_: Database) => {
+    db = db_;
+}
 
 /**
  * Returns a template by ID.
@@ -33,4 +40,20 @@ export const getTemplate = (id: string) => {
     };
     templateCache[id] = template;
     return template;
+}
+
+export const setTemplateMeta = async (meta: TemplateMetaModel) => {
+    return db.saveTemplateMeta(meta);
+}
+
+export const getTemplateMeta = async (id: string) => {
+    let meta = await db.getTemplateMeta(id);
+    if (!meta) {
+        meta = {
+            id
+        };
+        await db.saveTemplateMeta(meta);
+    }
+
+    return meta;
 }

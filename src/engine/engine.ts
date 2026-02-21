@@ -87,30 +87,19 @@ export type ServiceEngine = {
     supportsNoTemplateMode: boolean;
 
     /**
-     * (Re)builds a container from provided build dir and volume dir.
+     * Builds an image from build dir.
      *
-     * If it's fresh build, it should do the following:
-     * - Build the container and store its ID somewhere since NSM will identify it
-     *   using the provided ID.
-     * - Store the volume ID attached to this container since it is needed in #getAttachedVolume
-     *
-     * and also on every run:
-     * - Behave in compatibility with selected volumesMode
-     *
-     * @param buildDir The image build dir, or undefined if no-template mode is enabled.
-     *                 Should throw error if no-t mode is not supported by this engine.
-     * @param volumeId The volume name
-     * @param options Build options
-     * @param meta Meta storage for this unique context
-     * @param onclose Function on internal container close
-     * @return The container ID (local)
+     * @param buildDir The build dir path
      */
     build(
-        buildDir: string|undefined,
-        volumeId: string,
-        options: BuildOptions,
-        meta: MetaStorage,
-        onclose?: () => Promise<void>|void): Promise<string>;
+      buildDir: string|undefined): Promise<string>;
+
+    run(
+      imageId: string,
+      volumeId: string,
+      options: BuildOptions,
+      meta: MetaStorage,
+      onclose?: () => Promise<void>|void): Promise<string>;
 
     /**
      * Stops a container.
@@ -129,16 +118,6 @@ export type ServiceEngine = {
      * @return Success state
      */
     kill(id: string, meta: MetaStorage): Promise<boolean>;
-
-    /**
-     * Deletes a container.
-     *
-     * @param id Container ID
-     * @param meta Meta storage for this unique context
-     * @param options The delete options
-     * @return Success state
-     */
-    delete(id: string, meta: MetaStorage, options?: DeleteOptions): Promise<boolean>;
 
     /**
      * Deletes a volume by ID.

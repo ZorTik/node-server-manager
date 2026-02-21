@@ -1,6 +1,6 @@
 import {currentContext, Database} from "../app";
 import createEngine, {ServiceEngineI} from "./engine";
-import {Template, getTemplate as loadTemplate} from "./template";
+import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
@@ -398,92 +398,36 @@ export async function createService(template: string, options: Parameters<Servic
 
     const serviceSettings = noTAlternateSett ? {...noTAlternateSett} : settings(template);
 
-    const defaults = serviceSettings.defaults;
-    const port_range = serviceSettings.port_range;
     // Join meta supplied by user and template meta
     const meta = {
         ...(options.meta ?? {}),
         ...(serviceSettings.meta ?? {})
     };
 
-    // Pick random main port from the range specified in settings.yml
-    const port = await retrieveRandomPort(
-        engine,
-        port_range.min as number,
-        port_range.max as number
-    );
-    const serviceId = crypto.randomUUID(); // Create new unique service id
-    const metaStorage = metaStorageForService(serviceId);
-    const unlock = lockBusyAction(serviceId, 'create');
-
     if (!meta || !meta.stopCmd) {
         throw new _InternalError('Invalid template meta for ' + template);
     }
 
+    const serviceId = crypto.randomUUID(); // Create new unique service id
+    // Pick random main port from the range specified in settings.yml
+    const portRange = serviceSettings.port_range;
+    const port = await retrieveRandomPort(
+      engine,
+      portRange.min as number,
+      portRange.max as number
+    );
 
-    let containerId: string|undefined;
     let err: any;
-    try {
-        containerId = await engine.build(
-          noTAlternateSett ? undefined : buildDir(template),
-          serviceId,
-          {
-              ram: ram ?? defaults.ram as number,
-              cpu: cpu ?? defaults.cpu as number,
-              disk: disk ?? defaults.disk as number,
-              env: {
-                  ...(env ?? {}),
-                  SERVICE_ID: serviceId
-              },
-              port: port,
-              ports: ports ?? [],
-              network,
-          },
-          metaStorage,
-          async () => {
-              await stopService(serviceId);
-          }
-        );
-    } catch (e) {
-        err = e;
-    }
-
-    if (!err) {
-        if (!containerId) {
-            err = new _InternalError('Failed to create container. Service: ' + serviceId);
-        }
-    }
-    const rollback = async () => {
-        await engine.delete(containerId, metaStorage);
-    }
-    if (!err) {
-        const options = {ram, cpu, ports};
-        // Save permanent info
-        if (!await db.savePerma({ serviceId, template, nodeId, port, options, meta, env: env ?? {}, network })) {
-            await rollback();
-            err = new _InternalError('Failed to save perma info to database');
-        }
-    }
-    if (!err) {
-        // Save this session's info
-        if (!await db.saveSession({ serviceId, nodeId, containerId })) {
-            await rollback();
-            err = new _InternalError('Failed to save session info to database');
-        }
-    }
-    if (!err) {
-        // No error, the service has been started
-        started.push(serviceId);
+    // Save permanent info
+    if (!await db.savePerma({ serviceId, template, nodeId, port, options: {ram, cpu, disk, ports}, meta, env: env ?? {}, network })) {
+        err = new _InternalError('Failed to save perma info to database');
     }
 
     if (err) {
         // Save to be later retrieved
         errors[serviceId] = err;
         currentContext.logger.error(err.message);
-        started.splice(started.indexOf(serviceId), 1);
     }
-
-    unlock();
 
     if (err) {
         throw err;
@@ -494,13 +438,19 @@ export async function createService(template: string, options: Parameters<Servic
 
 export async function resumeService(id: string) {
     reqCompatibleEngine();
-    const perma_ = await getPermaModel(id);
     // Service is already running
     if (await db.getSession(id)) {
         throw new _InternalError('Already running.', 2);
     }
 
-    const {template, options, env, network} = perma_;
+    const {
+        template,
+        options,
+        env,
+        network,
+        port,
+        nodeId: permaNodeId,
+    } = await getPermaModel(id);
 
     if (noTAlternateSett && template !== noTTemplate) {
         throw new Error('Tried to resume template-based service from within no-template mode.');
@@ -508,7 +458,7 @@ export async function resumeService(id: string) {
         throw new Error('Tried to resume no-t service from within template mode.');
     }
 
-    if (noTAlternateSett && perma_.nodeId !== nodeId) {
+    if (noTAlternateSett && permaNodeId !== nodeId) {
         throw new Error('In no-template mode, only services that came from this node can be resumed here.');
     }
 
@@ -517,19 +467,28 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
+    const templateMeta = await getTemplateMeta(template);
+    if (templateMeta.image == undefined) {
+        templateMeta.image = await engine.build(buildDir(template));
+
+        // Save built image to template meta for later use.
+        // This is an optimization to avoid rebuilding the same template every time.
+        await setTemplateMeta(templateMeta);
+    }
+
     let containerId: string|undefined;
     try {
         // Rebuild container using existing volume directory,
         // stored options and custom env variables.
-        containerId = await engine.build(
-          noTAlternateSett ? undefined : buildDir(template),
+        containerId = await engine.run(
+          templateMeta.image,
           id,
           {
               ram: options.ram ?? defaults.ram as number,
               cpu: options.cpu ?? defaults.cpu as number,
               disk: options.disk ?? defaults.disk as number,
               env: env ?? defaults.env as {[key: string]: string},
-              port: perma_.port,
+              port,
               ports: options.ports ?? [],
               network,
           },
@@ -593,17 +552,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean, force?: 
             await engine.stop(session.containerId, meta);
         }
 
-        let serviceSucc: boolean = true;
-        if (engine.volumesMode) {
-            serviceSucc = fromDeleteFunc == true
-                ? await engine.delete(session.containerId, meta, { deleteNetwork: true })
-                : await engine.delete(session.containerId, meta);
-        } else if (fromDeleteFunc) {
-            serviceSucc = await engine.delete(session.containerId, meta, { deleteNetwork: true });
-        }
-        const sessionSucc = await db.deleteSession(id);
-
-        if (serviceSucc && sessionSucc) {
+        if (await db.deleteSession(id)) {
             started.splice(started.indexOf(id), 1);
             return true;
         } else {
