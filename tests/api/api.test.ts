@@ -17,6 +17,8 @@ function expectProps(obj: any, model: any[]) {
 
 async function miniService(ctx: AppBootContext) {
     const id = await ctx.manager.createService("test", {});
+    await ctx.manager.resumeService(id);
+
     do {
         await new Promise((resolve) => {
             setTimeout(() => resolve(null), 300);
