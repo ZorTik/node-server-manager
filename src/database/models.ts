@@ -15,6 +15,9 @@ export type Database = {
     count(nodeId: string): Promise<number>;
     setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean>;
     getServiceMeta(serviceId: string, key: string): Promise<any>;
+
+    saveTemplateMeta(info: TemplateMetaModel): Promise<boolean>;
+    getTemplateMeta(id: string): Promise<TemplateMetaModel|undefined>;
 };
 
 export type SessionModel = {
@@ -42,3 +45,8 @@ export type PermaModel = {
         portsOnly: boolean,
     }
 };
+
+export type TemplateMetaModel = {
+    id: string,
+    image?: string,
+}

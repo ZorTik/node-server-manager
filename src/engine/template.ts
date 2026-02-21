@@ -8,9 +8,15 @@ export type Template = {
     settings: any;
 }
 
-const templateCache= {};
+const templateCache = {};
 
-export default function (id: string) {
+/**
+ * Returns a template by ID.
+ *
+ * @param id The ID of the template
+ * @return The template, or null if not exists
+ */
+export const getTemplate = (id: string) => {
     if (templateCache[id]) {
         return templateCache[id];
     }

@@ -4,30 +4,31 @@ import path from "path";
 import tar from "tar";
 import ignore from "../../ignore";
 import {currentContext as ctx} from "../../../app";
-import {BuildOptions, DockerServiceEngine, ServiceEngine} from "@nsm/engine";
-import {MetaStorage} from "@nsm/engine";
+import {BuildOptions, DockerServiceEngine, MetaStorage, ServiceEngine} from "@nsm/engine";
 import {getActionType} from "../../asyncp";
 import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
-import {createLogger} from "@nsm/logger";
+import {createLogger, logService} from "@nsm/logger";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 
-type PrepareImageOptions = {
-    client: DockerClient,
-    arDir: string,
-    buildDir: string,
-    volumeId: string,
-    env: any
-}
+async function prepareImage(
+  options: {
+      client: DockerClient,
+      arDir: string,
+      buildDir: string,
+      volumeId: string,
+      env: any
+  }
+): Promise<string> {
+    const {
+        client,
+        arDir,
+        buildDir,
+        volumeId,
+        env
+    } = options;
 
-function logService(id: string, str: any) {
-    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
-    const log_path = process.cwd() + '/service_logs/' + id + '.log';
-    fs.appendFileSync(log_path, (str ?? '').toString() + '\n');
-}
-
-async function prepareImage({ client, arDir, buildDir, volumeId, env }: PrepareImageOptions): Promise<string> {
     const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
     try {
         fs.unlinkSync(archive);

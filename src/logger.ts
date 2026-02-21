@@ -1,5 +1,5 @@
 import winston from "winston";
-import * as fs from "fs";
+import fs from "fs";
 
 const { combine, timestamp, label, printf } = winston.format;
 
@@ -28,4 +28,10 @@ export function createLogger(options?: { label?: string }) {
             new winston.transports.File({dirname: 'logs', filename: 'latest.log'})
         ]
     });
+}
+
+export function logService(id: string, str: any) {
+    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
+    const log_path = process.cwd() + '/service_logs/' + id + '.log';
+    fs.appendFileSync(log_path, (str ?? '').toString() + '\n');
 }

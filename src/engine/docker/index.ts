@@ -1,50 +1,19 @@
-import DockerClient from "dockerode";
-import ds from "check-disk-space";
 import {DockerServiceEngine} from "@nsm/engine";
 import {initDockerClient} from "@nsm/engine/docker/client";
 
-// ---------- Actions ----------
 import build from './action/build';
 import stop from './action/stop';
 import kill from './action/kill';
 import del from './action/delete';
 import delVolume from './action/deletev';
 import cmd from './action/cmd';
+import getAttachedVolume from "./action/getAttachedVolume";
 import listContainers from './action/listc';
 import listAttachedPorts from './action/listp';
 import stat from "./action/stat";
 import statAll from "./action/statall";
-// -----------------------------
-
-function calcHostUsageFunc(client: DockerClient) {
-    return async () => {
-        const { Volumes } = await client.listVolumes();
-        let free_ = 0;
-        let size_ = 0;
-        for (const vol of Volumes) {
-            if (!vol.Labels || !('nsm' in vol.Labels)) {
-                // Not a NSM volume.
-                continue;
-            }
-            const { free, size } = await ds(vol.Mountpoint);
-            free_ += free;
-            size_ += size;
-        }
-        return [free_, size_];
-    }
-}
-
-function listRunningFunc(client: DockerClient) {
-    return async () => {
-        const list = await client.listContainers({
-            all: true,
-            filters: JSON.stringify({ 'label': ['nsm=true'] }) }
-        );
-        return list
-            .filter(c => c.State === 'running')
-            .map(c => c.Id);
-    }
-}
+import calcHostUsage from "./action/calcHostUsage";
+import listRunning from "./action/listRunning";
 
 export default async function buildDockerEngine(appConfig: any) {
     // Default engine implementation
@@ -61,20 +30,12 @@ export default async function buildDockerEngine(appConfig: any) {
     engine.delete = del(engine, client);
     engine.deleteVolume = delVolume(engine, client);
     engine.cmd = cmd(engine, client);
-    engine.getAttachedVolume = async (id) => {
-        const c = client.getContainer(id);
-        try {
-            const i = await c.inspect();
-            return i.Config.Labels['nsm.volumeId'];
-        } catch (e) {
-            return undefined;
-        }
-    }
+    engine.getAttachedVolume = getAttachedVolume(client);
     engine.listContainers = listContainers(engine, client);
     engine.listAttachedPorts = listAttachedPorts(engine, client);
     engine.stat = stat(engine, client);
     engine.statAll = statAll(engine, client);
-    engine.calcHostUsage = calcHostUsageFunc(client);
-    engine.listRunning = listRunningFunc(client);
+    engine.calcHostUsage = calcHostUsage(client);
+    engine.listRunning = listRunning(client);
     return engine;
 }

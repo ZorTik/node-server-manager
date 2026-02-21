@@ -1,6 +1,6 @@
 import {currentContext, Database} from "../app";
 import createEngine, {ServiceEngineI} from "./engine";
-import loadTemplate, {Template} from "./template";
+import {Template, getTemplate as loadTemplate} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
