@@ -13,19 +13,24 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     return;
                 }
                 try {
-                    const result = await manager.resumeService(id);
-                    if (result) {
-                        res.status(200).json({
-                            status: 200,
-                            message: 'Service resume action successfully registered to be completed in a moment.',
-                            statusPath: '/v1/service/' + id + '/powerstatus',
-                        });
-                    } else {
+                    if (!await manager.getService(id)) {
                         res.status(404).json({
                             status: 404,
-                            message: 'Service not found or unknown error occured.'
+                            message: 'Service not found.'
                         });
+                        return;
                     }
+
+                    manager.resumeService(id)
+                      .then(() => {
+                          // Service resumed successfully, do nothing here for now.
+                      });
+
+                    res.status(200).json({
+                        status: 200,
+                        message: 'Service resume action successfully registered to be completed in a moment.',
+                        statusPath: '/v1/service/' + id + '/powerstatus',
+                    });
                 } catch (e) {
                     handleErr(e, res);
                 }

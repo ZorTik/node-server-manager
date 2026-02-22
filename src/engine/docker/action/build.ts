@@ -44,7 +44,7 @@ async function prepareImage(
     const imageTag = imageName + ':latest';
     const logs = [];
     return (
-      new Promise<string>((resolve) => {
+      new Promise<string>((resolve, reject) => {
           const msgHandler = (msg: any) => {
               if (Array.isArray(msg)) {
                   msg.forEach(m => {
@@ -76,15 +76,22 @@ async function prepareImage(
                       if (err) {
                           console.error(err);
                       } else {
+                          let errorOccurred = false;
                           res.forEach(r => {
                               if (r.errorDetail) {
-                                  console.error(r.errorDetail);
+                                  errorOccurred = true;
+
+                                  reject(r.errorDetail);
                               } else {
                                   const msg = r.stream?.trim();
+                                  console.log(msg);
 
                                   logs.push(msg);
                               }
                           });
+                          if (errorOccurred) {
+                              return;
+                          }
                           logs.push('--------- End Of Build Log ---------\n');
                           fs.unlinkSync(archive);
                           msgHandler(logs);

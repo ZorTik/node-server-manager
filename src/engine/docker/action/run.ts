@@ -1,8 +1,6 @@
 import DockerClient from "dockerode";
-import {BuildOptions, DockerServiceEngine, MetaStorage, ServiceEngine} from "@nsm/engine";
-import {currentContext as ctx, currentContext} from "@nsm/app";
-import {accessNetwork, createNetwork, deleteNetwork as doDeleteNetwork, isInNetwork} from "@nsm/networking/manager";
-import {getActionType} from "@nsm/engine/asyncp";
+import {BuildOptions, MetaStorage, ServiceEngine} from "@nsm/engine";
+import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
 import path from "path";
 import {buildDir} from "@nsm/engine/monitoring/util";
@@ -94,39 +92,6 @@ async function prepareContainer(
   return container;
 }
 
-async function deleteContainer(id: string, client: DockerClient, options: { deleteNetwork?: boolean }) {
-  try {
-    const c = client.getContainer(id);
-    const {Config,} = await c.inspect();
-    try {
-      await c.remove({ force: true });
-    } catch (e) {
-      currentContext.logger.error("Unable to delete container " + id);
-    }
-    const volumeIdUsed = Config.Labels['nsm.volumeId'];
-    await client.getImage(volumeIdUsed + ':latest').remove({ force: true });
-    // Delete network if it's associated with any.
-    const networkId = await isInNetwork(client, id);
-    if (networkId) {
-      // Disconnect this container from the attached network.
-      await client.getNetwork(networkId).disconnect({ Container: id, Force: true });
-      if (options.deleteNetwork == true) {
-        // Delete network if requested.
-        await doDeleteNetwork(client, id);
-      }
-    }
-    return true;
-  } catch (e) {
-    if (e.message.includes('No such container:') || e.message.includes('removal of container')) {
-      currentContext?.logger.warn('Ignoring error: ' + e.message);
-      return true;
-    }
-
-    currentContext.logger.error(e);
-    return false;
-  }
-}
-
 export default function run(self: ServiceEngine, client: DockerClient): ServiceEngine["run"] {
   return async (templateId, imageId, volumeId, options, meta, listener) => {
     let container: DockerClient.Container;
@@ -138,37 +103,17 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
       if (creating) {
         listener.onStateMessage('Created new volume');
       }
+
       listener.onStateMessage('Preparing network');
       const net = await prepareNetwork(client, options.network, meta, creating);
       // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
       listener.onStateMessage('Preparing container');
       container = await prepareContainer(client, imageId, buildDir(templateId), volumeId, options, net);
       listener.onStateMessage('Starting container');
+
       await container.start();
-      listener.onStateMessage('Watching changes');
-      // Watcher
-      setTimeout(async () => {
-        const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
-        const rws = await client.getContainer(container.id).attach(attachOptions);
-        rws.on('data', (data) => {
-          listener.onMessage(data);
-        }); // no-op, keepalive
-        rws.on('end', async () => {
-          // I only want to trigger close when the container is not being
-          // stopped by nsm to prevent loops.
-          if (getActionType(container.id) != 'stop') {
-            ctx.logger.info('Container ' + container.id + ' stopped from the inside.');
 
-            await listener.onclose();
-          } else {
-            ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
-          }
-
-          // Clean up resources
-          await deleteContainer(container.id, client, { deleteNetwork: true });
-        });
-        (self as DockerServiceEngine).rws[container.id] = rws;
-      }, 500);
+      await self.reattach(container.id, listener);
     } catch (e) {
       if (!container) {
         await client.getImage(imageId).remove({ force: true });

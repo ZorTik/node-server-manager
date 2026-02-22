@@ -487,42 +487,40 @@ export async function resumeService(id: string) {
             currentContext.logger.warn(`Building template ${template}...`);
         }
 
-        templateMeta.image = await engine.build(buildDir(template), buildOptions);
-        templateMeta.hash = templateHash;
+        try {
+            templateMeta.image = await engine.build(buildDir(template), buildOptions);
+            templateMeta.hash = templateHash;
+        } catch (e) {
+            templateMeta.image = undefined;
+            templateMeta.hash = undefined;
+
+            currentContext.logger.error('Failed to build image for template ' + template, e);
+        }
 
         // Save built image to template meta for later use.
         // This is an optimization to avoid rebuilding the same template every time.
         await setTemplateMeta(templateMeta);
     }
 
-    const listener: RunListener = {
-        onStateMessage: (msg) => {
-            // TODO: handle state messages in a better way
-        },
-        onMessage: (msg) => {
-            logService(id, msg);
-        },
-    };
-
     let containerId: string|undefined;
     try {
         // Run the container with the built image and save the container id for later use.
-        containerId = await engine.run(
-          templateMeta.id,
-          templateMeta.image,
-          id,
-          buildOptions,
-          meta,
-          listener
-        );
+        if (templateMeta.image) {
+            containerId = await engine.run(
+              templateMeta.id,
+              templateMeta.image,
+              id,
+              buildOptions,
+              meta,
+              buildRunListener(id)
+            );
+        }
     } catch (e) {
-        // TODO: handle
+        currentContext.logger.error('Failed to run container for service ' + id, e);
     }
 
     let success: boolean = false;
-    if (!containerId) {
-        currentContext.logger.error('Failed to create container. Service: ' + id);
-    } else {
+    if (containerId) {
         const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
         // Save new session info
         if (saved) {
@@ -815,6 +813,20 @@ function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: Ser
     evtHandlers.set(e, newArray);
 }
 
+function buildRunListener(serviceId: string): RunListener {
+    return {
+        onStateMessage: (msg) => {
+            // TODO: handle state messages in a better way
+        },
+        onMessage: (msg) => {
+            logService(serviceId, msg);
+        },
+        onclose: () => {
+            // Do nothing for now
+        }
+    };
+}
+
 async function getPermaModel(id: string) {
     const perma_ = await db.getPerma(id);
     // Service does not exist
@@ -846,11 +858,17 @@ export default async function ({db, appConfig, logger}: {
     const unclearedSessions = await db.listSessions(nodeId);
     await init(db, appConfig);
     if (unclearedSessions.length > 0) {
-        logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to stop the services...');
+        logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to reattach to them...');
     }
-    // Perform startup cleanup
     for (const session of unclearedSessions) {
-        await stopService(session.serviceId);
+        try {
+            // Reattach to the container
+            await engine.reattach(
+              session.containerId, buildRunListener(session.serviceId));
+        } catch (e) {
+            // Delete session if failed to reattach, probably the container is not running anymore
+            await db.deleteSession(session.serviceId);
+        }
     }
     //
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));

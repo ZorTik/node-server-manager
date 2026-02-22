@@ -133,6 +133,14 @@ export type ServiceEngine = {
     kill(id: string, meta: MetaStorage): Promise<boolean>;
 
     /**
+     * Reattaches to a container.
+     *
+     * @param id Container ID
+     * @param listener Listener for container messages and state changes
+     */
+    reattach(id: string, listener: RunListener): Promise<void>;
+
+    /**
      * Deletes a volume by ID.
      * This is NEVER called if ServiceEngine#useVolumes is false.
      *

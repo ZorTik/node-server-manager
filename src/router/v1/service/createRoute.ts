@@ -56,7 +56,10 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     const serviceId = await manager.createService(template.id, options);
 
                     // Resume right afterward
-                    await manager.resumeService(serviceId);
+                    manager.resumeService(serviceId)
+                      .then(() => {
+                          // Service resumed successfully, do nothing here for now.
+                      })
 
                     res.status(200).json({
                         status: 200,

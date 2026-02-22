@@ -40,7 +40,7 @@ async function api(ver: string, context: AppContext, routes: RouterInit[]) {
             if (handler.routes[method]) {
                 // Register handler to express
                 router[method](handler.url, (req, res, next) => {
-                    context.logger.info(`${method.toUpperCase()} ${req.url}`);
+                    context.logger.debug(`${method.toUpperCase()} ${req.url}`);
                     next();
                 }, handler.routes[method]);
                 reg = true;
