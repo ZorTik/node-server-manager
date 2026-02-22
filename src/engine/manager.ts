@@ -546,7 +546,7 @@ export async function resumeService(id: string) {
     return true;
 }
 
-export async function stopService(id: string, fromDeleteFunc?: boolean, force?: boolean) {
+export async function stopService(id: string, force?: boolean) {
     if (!await db.getPerma(id)) {
         throw new _InternalError("Service not found.", 3);
     }
@@ -591,7 +591,7 @@ export async function stopService(id: string, fromDeleteFunc?: boolean, force?: 
 }
 
 export async function stopServiceForcibly(id: string) {
-    return stopService(id, false, true);
+    return stopService(id, true);
 }
 
 export async function sendStopSignal(id: string) {
@@ -618,18 +618,10 @@ export async function deleteService(id: string) {
     }
 
     const unlockHandler: UnlockObserver = (_, __, err) => {
-        let task = undefined as Promise<void>|undefined;
-        //
-        if (engine.volumesMode) {
-            // Notify before the volume is being deleted so all can unregister their hooks
-            // on this volume
-            task = resolveSequentially(
-                async () => bus.callEvent('nsm:engine:deletev', { id }),
-                async () => engine.deleteVolume(id)
-            );
-        } else {
-            // If the useVolumes is false, service is deleted inside stopService
-        }
+        let task = resolveSequentially(
+          async () => bus.callEvent('nsm:engine:deletev', { id }),
+          async () => engine.deleteVolume(id)
+        );
 
         const onFinish = () => {
             currentContext.logger.info(`Service ${id} deleted.`);
