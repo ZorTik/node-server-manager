@@ -488,7 +488,7 @@ export async function resumeService(id: string) {
         }
 
         try {
-            templateMeta.image = await engine.build(buildDir(template), buildOptions);
+            templateMeta.image = await engine.build(buildDir(template), buildOptions); // TODO: make image per-container and cache it in db because the build options are per-container
             templateMeta.hash = templateHash;
         } catch (e) {
             templateMeta.image = undefined;
