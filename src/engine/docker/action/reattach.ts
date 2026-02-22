@@ -7,14 +7,12 @@ import {deleteNetwork as doDeleteNetwork, isInNetwork} from "@nsm/networking/man
 async function deleteContainer(id: string, client: DockerClient, options: { deleteNetwork?: boolean }) {
   try {
     const c = client.getContainer(id);
-    const {Config,} = await c.inspect();
     try {
       await c.remove({ force: true });
     } catch (e) {
       currentContext.logger.error("Unable to delete container " + id);
     }
-    const volumeIdUsed = Config.Labels['nsm.volumeId'];
-    await client.getImage(volumeIdUsed + ':latest').remove({ force: true });
+
     // Delete network if it's associated with any.
     const networkId = await isInNetwork(client, id);
     if (networkId) {
@@ -53,8 +51,6 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
         (async () => {
           const info = await container.inspect();
           if (!info.State.Running) {
-            ctx.logger.warn('Container ' + container.id + ' is not running. Cannot reattach.');
-
             // If the container is not running, we can delete it right after
             await handleClosed();
             reject(new Error("Container is not running."));

@@ -95,32 +95,22 @@ async function prepareContainer(
 export default function run(self: ServiceEngine, client: DockerClient): ServiceEngine["run"] {
   return async (templateId, imageId, volumeId, options, meta, listener) => {
     let container: DockerClient.Container;
-    // Whether, or not we're creating a brand-new service
-    let creating = false;
-    try {
-      // Prepare volume
-      creating = await prepareVolume(client, volumeId);
-      if (creating) {
-        listener.onStateMessage('Created new volume');
-      }
-
-      listener.onStateMessage('Preparing network');
-      const net = await prepareNetwork(client, options.network, meta, creating);
-      // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-      listener.onStateMessage('Preparing container');
-      container = await prepareContainer(client, imageId, buildDir(templateId), volumeId, options, net);
-      listener.onStateMessage('Starting container');
-
-      await container.start();
-
-      await self.reattach(container.id, listener);
-    } catch (e) {
-      if (!container) {
-        await client.getImage(imageId).remove({ force: true });
-      }
-
-      throw e;
+    // Prepare volume
+    let creating = await prepareVolume(client, volumeId);
+    if (creating) {
+      listener.onStateMessage('Created new volume');
     }
+
+    listener.onStateMessage('Preparing network');
+    const net = await prepareNetwork(client, options.network, meta, creating);
+    // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
+    listener.onStateMessage('Preparing container');
+    container = await prepareContainer(client, imageId, buildDir(templateId), volumeId, options, net);
+    listener.onStateMessage('Starting container');
+
+    await container.start();
+
+    await self.reattach(container.id, listener);
 
     return container.id;
   }
