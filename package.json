@@ -46,7 +46,7 @@
     "@types/winston": "^2.4.4",
     "@types/yaml": "^1.9.7",
     "basic-ftp": "^5.0.5",
-    "chokidar": "^5.0.0",
+    "chokidar": "^4.0.3",
     "cors": "^2.8.5",
     "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
