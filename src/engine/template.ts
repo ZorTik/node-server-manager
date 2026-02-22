@@ -23,7 +23,7 @@ export const init = (db_: Database) => {
  * @param id The ID of the template
  * @return The template, or null if not exists
  */
-export const getTemplate = (id: string) => {
+export const getTemplate = (id: string): Template|null => {
     if (templateCache[id]) {
         return templateCache[id];
     }
@@ -40,6 +40,20 @@ export const getTemplate = (id: string) => {
     };
     templateCache[id] = template;
     return template;
+}
+
+export const getAllTemplates = () => {
+    const templatesDir = `${process.cwd()}/templates`;
+    if (!fs.existsSync(templatesDir)) {
+        return [];
+    }
+
+    const templateIds = fs.readdirSync(templatesDir)
+      .filter(file => fs.statSync(`${templatesDir}/${file}`).isDirectory());
+
+    return templateIds
+      .map(id => getTemplate(id))
+      .filter(template => template !== null);
 }
 
 export const setTemplateMeta = async (meta: TemplateMetaModel) => {

@@ -1,10 +1,9 @@
 import {currentContext, Database} from "../app";
-import createEngine, {ServiceEngineI} from "./engine";
-import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta} from "./template";
+import createEngine, {BuildOptions, RunListener, ServiceEngineI} from "./engine";
+import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta, getAllTemplates} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
-import * as fs from "fs";
 import {PermaModel, SessionModel} from "../database";
 import {
     lckStatusTp,
@@ -18,6 +17,9 @@ import winston from "winston";
 import * as bus from "@nsm/event/bus";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
+import {buildDir} from "@nsm/engine/monitoring/util";
+import {getTemplateHash, watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
+import {logService} from "@nsm/logger";
 
 export type Options = {
     /**
@@ -322,10 +324,6 @@ let db: Database;
 let appConfig: any;
 let noTAlternateSett: NoTAlternateSettings|undefined = undefined;
 
-// Returns the build directory for the template
-function buildDir(template: string) {
-    return `${process.cwd()}/templates/${template}`;
-}
 // Returns the settings.yml file for the template
 function settings(template: string) {
     return loadYamlFile(buildDir(template) + '/settings.yml');
@@ -359,6 +357,8 @@ async function init(db_: Database, appConfig_: any) {
         await initEngineForcibly();
     }
     nodeId = appConfig['node_id'] as string;
+
+    await watchTemplateDirChanges(currentContext.logger);
 }
 
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {
@@ -467,35 +467,52 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
+    const buildOptions: BuildOptions = {
+        ram: options.ram ?? defaults.ram as number,
+        cpu: options.cpu ?? defaults.cpu as number,
+        disk: options.disk ?? defaults.disk as number,
+        env: env ?? defaults.env as {[key: string]: string},
+        port,
+        ports: options.ports ?? [],
+        network,
+    };
+
     const templateMeta = await getTemplateMeta(template);
-    if (templateMeta.image == undefined) {
-        templateMeta.image = await engine.build(buildDir(template));
+    const templateHash = getTemplateHash(template);
+    if (templateMeta.hash != templateHash) {
+        if (templateMeta.hash) {
+            currentContext.logger.warn(`Template ${template} has changed since last build, rebuilding...`);
+        } else {
+            currentContext.logger.warn(`Building template ${template}...`);
+        }
+
+        templateMeta.image = await engine.build(buildDir(template), buildOptions);
+        templateMeta.hash = templateHash;
 
         // Save built image to template meta for later use.
         // This is an optimization to avoid rebuilding the same template every time.
         await setTemplateMeta(templateMeta);
     }
 
+    const listener: RunListener = {
+        onStateMessage: (msg) => {
+            // TODO: handle state messages in a better way
+        },
+        onMessage: (msg) => {
+            logService(id, msg);
+        },
+    };
+
     let containerId: string|undefined;
     try {
-        // Rebuild container using existing volume directory,
-        // stored options and custom env variables.
+        // Run the container with the built image and save the container id for later use.
         containerId = await engine.run(
+          templateMeta.id,
           templateMeta.image,
           id,
-          {
-              ram: options.ram ?? defaults.ram as number,
-              cpu: options.cpu ?? defaults.cpu as number,
-              disk: options.disk ?? defaults.disk as number,
-              env: env ?? defaults.env as {[key: string]: string},
-              port,
-              ports: options.ports ?? [],
-              network,
-          },
+          buildOptions,
           meta,
-          async () => {
-              await stopService(id);
-          }
+          listener
         );
     } catch (e) {
         // TODO: handle
@@ -690,16 +707,8 @@ export async function listServices(options: ListServicesOptions) {
         .then(list => list.map(d => d.serviceId));
 }
 
-export function listTemplates(): Promise<string[]> {
-    return new Promise((resolve, reject) => {
-        fs.readdir(`${process.cwd()}/templates`, (err, files) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(files);
-            }
-        });
-    });
+export async function listTemplates(): Promise<string[]> {
+    return getAllTemplates().map(template => template.id);
 }
 
 export async function stopRunning() {

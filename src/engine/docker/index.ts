@@ -2,9 +2,9 @@ import {DockerServiceEngine} from "@nsm/engine";
 import {initDockerClient} from "@nsm/engine/docker/client";
 
 import build from './action/build';
+import run from "./action/run";
 import stop from './action/stop';
 import kill from './action/kill';
-import del from './action/delete';
 import delVolume from './action/deletev';
 import cmd from './action/cmd';
 import getAttachedVolume from "./action/getAttachedVolume";
@@ -24,10 +24,10 @@ export default async function buildDockerEngine(appConfig: any) {
     engine.supportsNoTemplateMode = false;
     engine.rws = {};
     // engine.cast - Being replaced in manager.
-    engine.build = build(engine, client);
-    engine.stop = stop(engine, client);
-    engine.kill = kill(engine, client);
-    engine.delete = del(engine, client);
+    engine.build = build(client);
+    engine.run = run(engine, client);
+    engine.stop = stop(client);
+    engine.kill = kill(client);
     engine.deleteVolume = delVolume(engine, client);
     engine.cmd = cmd(engine, client);
     engine.getAttachedVolume = getAttachedVolume(client);

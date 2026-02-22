@@ -2,22 +2,17 @@ import DockerClient from "dockerode";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
-import ignore from "../../ignore";
-import {currentContext as ctx} from "../../../app";
-import {BuildOptions, DockerServiceEngine, MetaStorage, ServiceEngine} from "@nsm/engine";
-import {getActionType} from "../../asyncp";
-import {accessNetwork, createNetwork} from "@nsm/networking/manager";
-import {constructObjectLabels} from "@nsm/util/services";
-import {createLogger, logService} from "@nsm/logger";
+import {currentContext, currentContext as ctx} from "../../../app";
+import {ServiceEngine} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
+import {getRootFilesFiltered} from "@nsm/engine/ignore";
 
 async function prepareImage(
   options: {
       client: DockerClient,
       arDir: string,
       buildDir: string,
-      volumeId: string,
       env: any
   }
 ): Promise<string> {
@@ -25,11 +20,13 @@ async function prepareImage(
         client,
         arDir,
         buildDir,
-        volumeId,
         env
     } = options;
 
-    const archive = arDir + '/' + path.basename(buildDir) + '-' + volumeId + '.tar';
+    const imageName = "nsm-template-" + path.basename(buildDir);
+
+    // TODO: make this in temp folder
+    const archive = arDir + '/' + imageName + '.tar';
     try {
         fs.unlinkSync(archive);
     } catch (e) {
@@ -42,155 +39,80 @@ async function prepareImage(
         gzip: false,
         file: archive,
         cwd: buildDir
-    }, [...ignore(buildDir)]);
+    }, [...getRootFilesFiltered(buildDir)]);
 
-    // const imageTag = path.basename(buildDir) + ':' + volumeId;
-    const imageTag = volumeId + ':latest';
+    const imageTag = imageName + ':latest';
     const logs = [];
+    return (
+      new Promise<string>((resolve) => {
+          const msgHandler = (msg: any) => {
+              if (Array.isArray(msg)) {
+                  msg.forEach(m => {
+                      // TODO: log message line into service logs?
+                  });
+              } else {
+                  // Final message, resolve the promise with the image tag.
+                  resolve(msg);
+              }
+          }
+          if (ctx.workers) {
+              // Build using workers
+              const w = new Worker(__dirname + path.sep + 'build.worker.js', {
+                  workerData: {
+                      archive,
+                      imageTag,
+                      env,
+                      appConfig: ctx.appConfig,
+                      debug: ctx.debug
+                  }
+              });
+              w.on('message', msgHandler);
+          } else {
+              // In container, worker threads are not supported. Or they
+              // are disabled.
+              client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
+                  logs.push('--------- Begin Build Log ---------');
+                  client.modem.followProgress(stream, (err, res) => {
+                      if (err) {
+                          console.error(err);
+                      } else {
+                          res.forEach(r => {
+                              if (r.errorDetail) {
+                                  console.error(r.errorDetail);
+                              } else {
+                                  const msg = r.stream?.trim();
 
-    return new Promise((resolve) => {
-        const msgHandler = (msg: any) => {
-            if (Array.isArray(msg)) {
-                msg.forEach(m => logService(volumeId, m));
-            } else {
-                // Final message, resolve the promise with the image tag.
-                resolve(msg);
-            }
-        }
-        if (ctx.workers) {
-            // Build using workers
-            const w = new Worker(__dirname + path.sep + 'build.worker.js', {
-                workerData: {
-                    archive,
-                    imageTag,
-                    env,
-                    appConfig: ctx.appConfig,
-                    debug: ctx.debug
-                }
-            });
-            w.on('message', msgHandler);
-        } else {
-            // In container, worker threads are not supported. Or they
-            // are disabled.
-            client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
-                logs.push('--------- Begin Build Log ---------');
-                client.modem.followProgress(stream, (err, res) => {
-                    if (err) {
-                        console.error(err);
-                    } else {
-                        res.forEach(r => {
-                            if (r.errorDetail) {
-                                console.error(r.errorDetail);
-                            } else {
-                                const msg = r.stream?.trim();
-
-                                logs.push(msg);
-                            }
-                        });
-                        logs.push('--------- End Of Build Log ---------\n');
-                        fs.unlinkSync(archive);
-                        msgHandler(logs);
-                        msgHandler(imageTag);
-                    }
-                });
-            });
-        }
-    });
+                                  logs.push(msg);
+                              }
+                          });
+                          logs.push('--------- End Of Build Log ---------\n');
+                          fs.unlinkSync(archive);
+                          msgHandler(logs);
+                          msgHandler(imageTag);
+                      }
+                  });
+              });
+          }
+      }).finally(() => {
+          // Clean up archive file if it still exists
+          try {
+              fs.unlinkSync(archive);
+          } catch (e) {
+              if (!e.message.includes('ENOENT')) {
+                  console.error('Error cleaning up archive file:', e);
+              }
+          }
+      })
+    );
 }
 
-async function prepareVolume(client: DockerClient, volumeId: string) {
-    try {
-        await client.getVolume(volumeId).inspect();
-    } catch (e) {
-        if (e.message.includes('No such')) {
-            await client.createVolume({
-                Name: volumeId,
-                Labels: {
-                    ...constructObjectLabels({ id: volumeId }),
-                    'nsm.volumeId': volumeId,
-                },
-            });
-            return true;
-        }
-    }
-    return false;
-}
-
-async function prepareNetwork(
-    client: DockerClient,
-    network: BuildOptions['network'],
-    meta: MetaStorage,
-    creatingContainer: boolean
-) {
-    let net: DockerClient.Network|undefined = undefined;
-    if (network && !network.portsOnly) {
-        const metaKey = "net-id";
-        let netId = await meta.get<string>(metaKey);
-        if (creatingContainer || !netId) {
-            net = await createNetwork(client, network.address);
-            netId = net.id;
-            if (!await meta.set(metaKey, netId)) {
-                throw new Error("Could not save network data.");
-            }
-        } else {
-            net = await accessNetwork(client, network.address, netId);
-        }
-    }
-    return net;
-}
-
-async function prepareContainer(
-    client: DockerClient,
-    imageTag: string,
-    buildDir: string,
-    volumeId: string,
-    options: BuildOptions,
-    net: DockerClient.Network|undefined
-) {
-    const {ram, cpu, disk, port, network, env} = options;
-    const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
-    // Create container
-    const container = await client.createContainer({
-        Image: imageTag,
-        Labels: {
-            ...constructObjectLabels({ id: volumeId }),
-            'nsm.buildDir': buildDir,
-            'nsm.volumeId': volumeId,
-            'nsm.templateId': buildDir ? path.basename(buildDir) : '__no_t__'
-        },
-        HostConfig: {
-            Memory: ram,
-            CpuShares: cpu,
-            PortBindings: { [port + '/tcp']: [{HostPort: fullPortDef(port)}] },
-            DiskQuota: disk,
-            Mounts: [
-                {
-                    Type: 'volume',
-                    Source: client.getVolume(volumeId).name,
-                    Target: '/data',
-                    ReadOnly: false,
-                }
-            ],
-        },
-        Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-        ExposedPorts: { [fullPortDef(port)]: {} },
-        AttachStdin: true,
-        OpenStdin: true,
-    });
-    if (net != null) {
-        await net.connect({ Container: container.id }); // Implement EndpointConfig?? TODO: Test
-    }
-    return container;
-}
-
-export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['build'] {
+export default function (client: DockerClient): ServiceEngine['build'] {
     const arDir = process.cwd() + '/archives';
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
     }
-    return async (buildDir, volumeId, options, meta, onclose) => {
-        const id = volumeId;
 
+    return async (buildDir, options) => {
         if (!buildDir) {
             throw new Error('Docker engine does not support no-template mode!');
         }
@@ -202,62 +124,11 @@ export default function (self: ServiceEngine, client: DockerClient): ServiceEngi
         options.env.SERVICE_CPU = options.cpu.toString();
         options.env.SERVICE_DISK = options.disk.toString();
 
-        const {network, env} = options;
-        const srvLog = createLogger({ label: id.substring(0, 13) });
-        srvLog.info('Building image');
+        currentContext.logger.info("Building image for " + arDir + "...");
         const imageBuildClock = clock();
+        const imageTag = await prepareImage({client, arDir, buildDir, env: options.env});
+        currentContext.logger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
 
-        const imageTag = await prepareImage({client, arDir, buildDir, volumeId: id, env});
-
-        // Tracked time
-        const imageBuildTime = imageBuildClock.durFromCreation();
-
-        srvLog.info('Image built in ' + imageBuildTime + 'ms');
-
-        let container: DockerClient.Container;
-        // Whether, or not we're creating a brand-new service
-        let creating = false;
-        try {
-            // Prepare volume
-            creating = await prepareVolume(client, volumeId);
-            if (creating) {
-                srvLog.info('Created new volume');
-            }
-            srvLog.info('Preparing network');
-            const net = await prepareNetwork(client, network, meta, creating);
-            // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-            srvLog.info('Preparing container');
-            container = await prepareContainer(client, imageTag, buildDir, id, options, net);
-            srvLog.info('Starting container');
-            await container.start();
-            srvLog.info('Watching changes');
-            // Watcher
-            setTimeout(async () => {
-                const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
-                const rws = await client.getContainer(container.id).attach(attachOptions);
-                rws.on('data', (data) => {
-                    logService(id, data);
-                }); // no-op, keepalive
-                rws.on('end', async () => {
-                    // I only want to trigger close when the container is not being
-                    // stopped by nsm to prevent loops.
-                    if (getActionType(container.id) != 'stop') {
-                        ctx.logger.info('Container ' + container.id + ' stopped from the inside.');
-                        await onclose();
-                    } else {
-                        ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
-                    }
-                });
-                (self as DockerServiceEngine).rws[container.id] = rws;
-            }, 500);
-        } catch (e) {
-            if (!container) {
-                await client.getImage(imageTag).remove({ force: true });
-            }
-
-            throw e;
-        }
-
-        return container.id;
+        return imageTag;
     }
 }

@@ -1,5 +1,5 @@
 import {Prisma, PrismaClient} from "@prisma/client";
-import {PermaModel, SessionModel} from "./models";
+import {PermaModel, SessionModel, TemplateMetaModel} from "./models";
 
 export const client = new PrismaClient();
 
@@ -189,4 +189,11 @@ export async function getServiceMeta(serviceId: string, key: string): Promise<an
     } else {
         return undefined;
     }
+}
+
+export async function saveTemplateMeta(info: TemplateMetaModel): Promise<boolean> {
+    // TODO
+}
+export async function getTemplateMeta(id: string): Promise<TemplateMetaModel|undefined> {
+    // TODO
 }

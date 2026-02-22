@@ -49,4 +49,5 @@ export type PermaModel = {
 export type TemplateMetaModel = {
     id: string,
     image?: string,
+    hash?: string,
 }

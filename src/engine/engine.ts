@@ -32,13 +32,24 @@ export type ContainerStat = {
     },
 }
 
-export type DeleteOptions = {
+export type RunListener = {
     /**
-     * If this is true, it indicates that the service should be also
-     * disconnected from any custom network it is connected to and the
-     * network should be deleted.
+     * Called when there is a state change in the container, with the message of the state change.
+     * This is used to update the logs in NSM.
+     *
+     * @param message The message of the state change, e.g. "Creating container", etc.
      */
-    deleteNetwork?: boolean;
+    onStateMessage?: (message: string) => Promise<void>|void;
+    /**
+     * Called when there is a message from the container, with the message.
+     *
+     * @param message The message from the container
+     */
+    onMessage?: (message: string) => Promise<void>|void;
+    /**
+     * Called when the container is closed, either by stop or kill, or by itself.
+     */
+    onclose?: () => Promise<void>|void;
 }
 
 export type DockerServiceEngine = ServiceEngineI & {
@@ -90,16 +101,18 @@ export type ServiceEngine = {
      * Builds an image from build dir.
      *
      * @param buildDir The build dir path
+     * @param options The build options, including env vars.
      */
     build(
-      buildDir: string|undefined): Promise<string>;
+      buildDir: string|undefined, options: BuildOptions): Promise<string>;
 
     run(
+      templateId: string,
       imageId: string,
       volumeId: string,
       options: BuildOptions,
       meta: MetaStorage,
-      onclose?: () => Promise<void>|void): Promise<string>;
+      listener?: RunListener): Promise<string>;
 
     /**
      * Stops a container.
