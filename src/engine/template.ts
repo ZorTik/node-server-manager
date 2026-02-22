@@ -1,6 +1,7 @@
 import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
 import {Database, TemplateMetaModel} from "@nsm/database";
+import {baseTemplatesDir} from "@nsm/engine/monitoring/util";
 
 export type Template = {
     id: string,
@@ -27,7 +28,7 @@ export const getTemplate = (id: string): Template|null => {
     if (templateCache[id]) {
         return templateCache[id];
     }
-    const settingsPath = `${process.cwd()}/templates/${id}/settings.yml`;
+    const settingsPath = `${baseTemplatesDir()}/${id}/settings.yml`;
     if (!fs.existsSync(settingsPath)) {
         return null;
     }
@@ -43,15 +44,14 @@ export const getTemplate = (id: string): Template|null => {
 }
 
 export const getAllTemplates = () => {
-    const templatesDir = `${process.cwd()}/templates`;
+    const templatesDir = baseTemplatesDir();
     if (!fs.existsSync(templatesDir)) {
         return [];
     }
 
-    const templateIds = fs.readdirSync(templatesDir)
-      .filter(file => fs.statSync(`${templatesDir}/${file}`).isDirectory());
-
-    return templateIds
+    return fs
+      .readdirSync(templatesDir)
+      .filter(file => fs.statSync(`${templatesDir}/${file}`).isDirectory())
       .map(id => getTemplate(id))
       .filter(template => template !== null);
 }

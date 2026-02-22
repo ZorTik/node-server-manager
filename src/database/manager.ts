@@ -1,4 +1,4 @@
-import {Prisma, PrismaClient} from "@prisma/client";
+import {PrismaClient} from "@prisma/client";
 import {PermaModel, SessionModel, TemplateMetaModel} from "./models";
 
 export const client = new PrismaClient();
@@ -192,8 +192,44 @@ export async function getServiceMeta(serviceId: string, key: string): Promise<an
 }
 
 export async function saveTemplateMeta(info: TemplateMetaModel): Promise<boolean> {
-    // TODO
+    const {
+        id,
+        image,
+        hash,
+    } = info;
+
+    try {
+        await client.templateMeta.upsert({
+            where: { templateId: info.id },
+            update: { image, hash },
+            create: { templateId: id, image, hash }
+        });
+
+        return true;
+    } catch (e) {
+        console.log(e);
+
+        return false;
+    }
 }
-export async function getTemplateMeta(id: string): Promise<TemplateMetaModel|undefined> {
-    // TODO
+
+export async function getTemplateMeta(templateId: string): Promise<TemplateMetaModel|undefined> {
+    try {
+        const meta = await client.templateMeta.findUnique({ where: { templateId } });
+        if (!meta) {
+            return undefined;
+        }
+
+        const {
+            templateId: id,
+            image,
+            hash,
+        } = meta;
+
+        return { id, image, hash };
+    } catch (e) {
+        console.log(e);
+
+        return undefined;
+    }
 }
