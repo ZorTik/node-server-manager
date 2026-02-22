@@ -4,6 +4,8 @@ import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
 import path from "path";
 import {buildDir} from "@nsm/engine/monitoring/util";
+import {currentContext as ctx} from "@nsm/app";
+import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 async function prepareVolume(client: DockerClient, volumeId: string) {
   try {
@@ -56,7 +58,10 @@ async function prepareContainer(
   options: BuildOptions,
   net: DockerClient.Network|undefined
 ) {
-  const {ram, cpu, disk, port, network, env} = options;
+  const {ram, cpu, disk, port, network} = options;
+  const env = {...options.env};
+  propagateOptionsToEnv(options, env);
+
   const fullPortDef = (port: number) => (network?.portsOnly ? network.address + ":" : "") + port + "";
   // Create container
   const container = await client.createContainer({
@@ -109,6 +114,28 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
     listener.onStateMessage('Starting container');
 
     await container.start();
+    const info = await container.inspect();
+    if (!info.State.Running) {
+      // Wait a bit for logs to be available
+      await new Promise(r => setTimeout(r, 300));
+
+      // Container failed to start, try to get logs and error message
+      // The necessary error will be thrown by reattach call
+      try {
+        const logs = await container.logs({
+          stdout: true,
+          stderr: true,
+          timestamps: false,
+          tail: 100,
+        });
+        const msg = logs.toString("utf8");
+
+        listener.onStateMessage("Container failed to start");
+        listener.onMessage(msg);
+      } catch (e) {
+        ctx.logger.error("Error while fetching logs for failed container " + container.id, e);
+      }
+    }
 
     await self.reattach(container.id, listener);
 

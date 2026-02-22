@@ -7,6 +7,7 @@ import {ServiceEngine} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 import {getRootFilesFiltered} from "@nsm/engine/ignore";
+import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 async function prepareImage(
   options: {
@@ -84,7 +85,6 @@ async function prepareImage(
                                   reject(r.errorDetail);
                               } else {
                                   const msg = r.stream?.trim();
-                                  console.log(msg);
 
                                   logs.push(msg);
                               }
@@ -125,11 +125,7 @@ export default function (client: DockerClient): ServiceEngine['build'] {
         }
 
         // Populate env with built-in vars
-        options.env.SERVICE_PORT = options.port.toString();
-        options.env.SERVICE_PORTS = options.ports.join(' ');
-        options.env.SERVICE_RAM = options.ram.toString();
-        options.env.SERVICE_CPU = options.cpu.toString();
-        options.env.SERVICE_DISK = options.disk.toString();
+        propagateOptionsToEnv(options, options.env);
 
         currentContext.logger.info("Building image for " + arDir + "...");
         const imageBuildClock = clock();

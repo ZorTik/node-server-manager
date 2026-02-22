@@ -821,8 +821,9 @@ function buildRunListener(serviceId: string): RunListener {
         onMessage: (msg) => {
             logService(serviceId, msg);
         },
-        onclose: () => {
-            // Do nothing for now
+        onclose: async () => {
+            // Remove session when container is closed, because the service is not running anymore
+            await db.deleteSession(serviceId);
         }
     };
 }
