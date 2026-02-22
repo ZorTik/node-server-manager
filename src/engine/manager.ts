@@ -1,6 +1,6 @@
 import {currentContext, Database} from "../app";
 import createEngine, {BuildOptions, RunListener, ServiceEngineI} from "./engine";
-import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta, getAllTemplates} from "./template";
+import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta, getAllTemplates, init as initTemplateEngine} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
@@ -358,6 +358,7 @@ async function init(db_: Database, appConfig_: any) {
     }
     nodeId = appConfig['node_id'] as string;
 
+    initTemplateEngine(db_);
     await watchTemplateDirChanges(currentContext.logger);
 }
 
