@@ -47,6 +47,10 @@ export const processImage = async (
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
+    if (imageOutdated) {
+      // TODO: check if the image has added some options. if so, we need to recheck if the provided buildOptions are still compatible with the image.
+    }
+
     if (optionsChanged) {
       logger.info(`The target has changed options, finding or building a new compatible image...`);
       id = await pickImageOrBuild(templateId, buildOptions);
@@ -155,6 +159,8 @@ const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<
 }
 
 const rebuildImage = async (image: ImageModel) => {
+
+
   return buildImage(image.templateId, image.buildOptions, image.id);
 }
 
