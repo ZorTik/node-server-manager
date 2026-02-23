@@ -1,10 +1,12 @@
+import path from 'path';
+
 export function baseTemplatesDir() {
-  return `${process.cwd()}/templates`;
+  return `${process.cwd()}${path.sep}templates`;
 }
 
 // Returns the build directory for the template
 export function buildDir(template: string) {
-  return `${baseTemplatesDir()}/${template}`;
+  return `${baseTemplatesDir()}${path.sep}${template}`;
 }
 
 /**

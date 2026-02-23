@@ -14,6 +14,7 @@ import {
     whenUnlocked, whenUnlockedAll
 } from "./asyncp";
 import winston from "winston";
+import path from "path";
 import * as bus from "@nsm/event/bus";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
@@ -328,7 +329,7 @@ let noTAlternateSett: NoTAlternateSettings|undefined = undefined;
 
 // Returns the settings.yml file for the template
 function settings(template: string) {
-    return loadYamlFile(buildDir(template) + '/settings.yml');
+    return loadYamlFile(buildDir(template) + path.sep + 'settings.yml');
 }
 
 // Save errors somewhere else?
