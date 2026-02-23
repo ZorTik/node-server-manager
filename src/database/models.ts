@@ -11,25 +11,28 @@ export type Database = {
     getPerma(serviceId: string): Promise<PermaModel|undefined>;
     getMetaVal(key: string, defaultVal?: string): Promise<string>;
     list(nodeId: string, page?: number, pageSize?: number, meta?: {[key: string]: any}): Promise<PermaModel[]>;
+    listAllUsingImage(imageId: string): Promise<PermaModel[]>;
     listSessions(nodeId: string): Promise<SessionModel[]>;
     count(nodeId: string): Promise<number>;
     setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean>;
     getServiceMeta(serviceId: string, key: string): Promise<any>;
-
-    saveTemplateMeta(info: TemplateMetaModel): Promise<boolean>;
-    getTemplateMeta(id: string): Promise<TemplateMetaModel|undefined>;
+    saveImage(info: ImageModel): Promise<boolean>;
+    getImage(id: string): Promise<ImageModel|undefined>;
+    deleteImage(id: string): Promise<boolean>;
+    listImagesByOptions(buildOptions: {[key: string]: string}): Promise<ImageModel[]>;
 };
 
 export type SessionModel = {
     serviceId: string,
     nodeId: string,
-    containerId: string,
+    containerId: string
 };
 
 export type PermaModel = {
     serviceId: string,
     template: string,
     nodeId: string,
+    imageId?: string, // TODO: implement this
     port: number,
     options: {
         [key: string]: any,
@@ -46,8 +49,11 @@ export type PermaModel = {
     }
 };
 
-export type TemplateMetaModel = {
+export type ImageModel = {
     id: string,
-    image?: string,
-    hash?: string,
+    templateId: string,
+    hash: string,
+    buildOptions: {
+        [key: string]: string,
+    }
 }

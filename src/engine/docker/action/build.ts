@@ -7,24 +7,28 @@ import {ServiceEngine} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 import {getRootFilesFiltered} from "@nsm/engine/ignore";
-import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 async function prepareImage(
   options: {
+      imageName: string|undefined,
       client: DockerClient,
       arDir: string,
       buildDir: string,
       env: any
   }
 ): Promise<string> {
-    const {
+    let {
+        imageName,
         client,
         arDir,
         buildDir,
         env
     } = options;
 
-    const imageName = "nsm-template-" + path.basename(buildDir);
+    if (!imageName) {
+        // Generate an unique image name
+        imageName = "nsm-template-" + path.basename(buildDir); // TODO: unique image name
+    }
 
     // TODO: make this in temp folder
     const archive = arDir + '/' + imageName + '.tar';
@@ -119,17 +123,14 @@ export default function (client: DockerClient): ServiceEngine['build'] {
         fs.mkdirSync(arDir);
     }
 
-    return async (buildDir, options) => {
+    return async (imageId, buildDir, options) => {
         if (!buildDir) {
             throw new Error('Docker engine does not support no-template mode!');
         }
 
-        // Populate env with built-in vars
-        propagateOptionsToEnv(options, options.env);
-
         currentContext.logger.info("Building image for " + arDir + "...");
         const imageBuildClock = clock();
-        const imageTag = await prepareImage({client, arDir, buildDir, env: options.env});
+        const imageTag = await prepareImage({imageName: imageId, client, arDir, buildDir, env: options});
         currentContext.logger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
 
         return imageTag;

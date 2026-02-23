@@ -84,11 +84,13 @@ export type ServiceEngine = {
     /**
      * Builds an image from build dir.
      *
+     * @param imageId The image ID to build. If this is undefined, the engine should generate a random image ID and return it.
      * @param buildDir The build dir path
-     * @param options The build options, including env vars.
+     * @param buildOptions The build options
      */
     build(
-      buildDir: string|undefined, options: BuildOptions): Promise<string>;
+      imageId: string|undefined,
+      buildDir: string|undefined, buildOptions: { [key: string]: string }): Promise<string>;
 
     run(
       templateId: string,

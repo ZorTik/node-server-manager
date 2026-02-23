@@ -1,6 +1,5 @@
 import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
-import {Database, TemplateMetaModel} from "@nsm/database";
 import {baseTemplatesDir} from "@nsm/engine/monitoring/util";
 
 export type Template = {
@@ -11,12 +10,6 @@ export type Template = {
 }
 
 const templateCache = {};
-
-let db: Database;
-
-export const init = (db_: Database) => {
-    db = db_;
-}
 
 /**
  * Returns a template by ID.
@@ -54,20 +47,4 @@ export const getAllTemplates = () => {
       .filter(file => fs.statSync(`${templatesDir}/${file}`).isDirectory())
       .map(id => getTemplate(id))
       .filter(template => template !== null);
-}
-
-export const setTemplateMeta = async (meta: TemplateMetaModel) => {
-    return db.saveTemplateMeta(meta);
-}
-
-export const getTemplateMeta = async (id: string) => {
-    let meta = await db.getTemplateMeta(id);
-    if (!meta) {
-        meta = {
-            id
-        };
-        await db.saveTemplateMeta(meta);
-    }
-
-    return meta;
 }

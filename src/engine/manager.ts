@@ -1,6 +1,6 @@
 import {currentContext, Database} from "../app";
 import createEngine, {BuildOptions, RunListener, ServiceEngineI} from "./engine";
-import {Template, getTemplate as loadTemplate, getTemplateMeta, setTemplateMeta, getAllTemplates, init as initTemplateEngine} from "./template";
+import {Template, getTemplate as loadTemplate, getAllTemplates} from "./template";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
@@ -18,8 +18,10 @@ import * as bus from "@nsm/event/bus";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
 import {buildDir} from "@nsm/engine/monitoring/util";
-import {getTemplateHash, watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
+import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
 import {logService} from "@nsm/logger";
+import {processImage, init as initImageEngine, buildImage} from "@nsm/engine/image";
+import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 export type Options = {
     /**
@@ -358,7 +360,7 @@ async function init(db_: Database, appConfig_: any) {
     }
     nodeId = appConfig['node_id'] as string;
 
-    initTemplateEngine(db_);
+    initImageEngine(engine, db_, currentContext.logger);
     await watchTemplateDirChanges(currentContext.logger);
 }
 
@@ -478,37 +480,33 @@ export async function resumeService(id: string) {
         network,
     };
 
-    const templateMeta = await getTemplateMeta(template);
-    const templateHash = getTemplateHash(template);
-    if (templateMeta.hash != templateHash) {
-        if (templateMeta.hash) {
-            currentContext.logger.warn(`Template ${template} has changed since last build, rebuilding...`);
-        } else {
-            currentContext.logger.warn(`Building template ${template}...`);
-        }
+    const perma = await db.getPerma(id);
+    let image = perma.imageId;
 
-        try {
-            templateMeta.image = await engine.build(buildDir(template), buildOptions); // TODO: make image per-container and cache it in db because the build options are per-container
-            templateMeta.hash = templateHash;
-        } catch (e) {
-            templateMeta.image = undefined;
-            templateMeta.hash = undefined;
+    const processImageOptions = {
+        ...buildOptions.env,
+    };
+    propagateOptionsToEnv(buildOptions, processImageOptions);
 
-            currentContext.logger.error('Failed to build image for template ' + template, e);
-        }
+    const processedImage = image != undefined
+      ? await processImage(image, processImageOptions)
+      : await buildImage(template, processImageOptions);
+    // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
+    if (processedImage != image) {
+        image = processedImage;
 
-        // Save built image to template meta for later use.
-        // This is an optimization to avoid rebuilding the same template every time.
-        await setTemplateMeta(templateMeta);
+        // Update image in database if it was changed by processing
+        perma.imageId = image;
+        await db.savePerma(perma);
     }
 
     let containerId: string|undefined;
     try {
         // Run the container with the built image and save the container id for later use.
-        if (templateMeta.image) {
+        if (image) {
             containerId = await engine.run(
-              templateMeta.id,
-              templateMeta.image,
+              template,
+              image,
               id,
               buildOptions,
               meta,
