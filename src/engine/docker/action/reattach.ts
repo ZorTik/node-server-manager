@@ -98,7 +98,7 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     if (!info.State.Running) {
       // If the container is not running, we can delete it right after
       await handleClosed();
-      throw new Error("Container is not running.");
+      throw new Error("Container is not running. Maybe it stopped before it could be attached?");
     }
 
     const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };

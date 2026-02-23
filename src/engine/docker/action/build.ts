@@ -15,7 +15,8 @@ async function prepareImage(
       arDir: string,
       buildDir: string,
       env: any
-  }
+  },
+  logger = currentContext.logger,
 ): Promise<string> {
     let {
         imageName,
@@ -27,7 +28,7 @@ async function prepareImage(
 
     if (!imageName) {
         // Generate an unique image name
-        imageName = "nsm-template-" + path.basename(buildDir) + '-' + Date.now(); // TODO: better unique name generation, maybe hash of the build context?
+        imageName = "nsm-template-" + path.basename(buildDir) + '-' + Date.now() + ':latest'; // TODO: better unique name generation, maybe hash of the build context?
     }
 
     // TODO: make this in temp folder
@@ -46,7 +47,7 @@ async function prepareImage(
         cwd: buildDir
     }, [...getRootFilesFiltered(buildDir)]);
 
-    const imageTag = imageName + ':latest';
+    const imageTag = imageName;
     const logs = [];
     return (
       new Promise<string>((resolve, reject) => {
@@ -118,7 +119,7 @@ async function prepareImage(
 }
 
 export default function (client: DockerClient): ServiceEngine['build'] {
-    const arDir = process.cwd() + '/archives';
+    const arDir = process.cwd() + path.sep + "archives";
     if (!fs.existsSync(arDir)) {
         fs.mkdirSync(arDir);
     }
@@ -128,7 +129,6 @@ export default function (client: DockerClient): ServiceEngine['build'] {
             throw new Error('Docker engine does not support no-template mode!');
         }
 
-        currentContext.logger.info("Building image for " + arDir + "...");
         const imageBuildClock = clock();
         const imageTag = await prepareImage({imageName: imageId, client, arDir, buildDir, env: options});
         currentContext.logger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
