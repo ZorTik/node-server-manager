@@ -33,6 +33,11 @@ export const processImage = async (
   id: string | undefined | null,
   templateId: string, buildOptions: BuildOptionsMap
 ) => {
+  const templateEnvChanged = false; // TODO: check if the template has changed some options
+  if (templateEnvChanged) {
+    // TODO: recheck if the provided buildOptions are still compatible with the template. if not, throw an error. if they are, a new image will be chosen down below
+  }
+
   if (!id) {
     // No image specified, need to build or pick a new one
     id = await pickImageOrBuild(templateId, buildOptions);
@@ -47,11 +52,6 @@ export const processImage = async (
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
-    const templateEnvChanged = false; // TODO: check if the template has changed some options
-    if (templateEnvChanged) {
-      // TODO: recheck if the provided buildOptions are still compatible with the template. if not, throw an error. if they are, a new image will be chosen down below
-    }
-
     if (optionsChanged || templateEnvChanged) {
       logger.info(`The target options differ, finding or building a new compatible image...`);
       id = await pickImageOrBuild(templateId, buildOptions);
@@ -160,8 +160,6 @@ const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<
 }
 
 const rebuildImage = async (image: ImageModel) => {
-
-
   return buildImage(image.templateId, image.buildOptions, image.id);
 }
 
@@ -172,5 +170,12 @@ const deleteImageIfUnused = async (image: ImageModel) => {
     return;
   }
 
+  logger.info(`Image ${image.id} is no longer used by any service. Deleting...`);
+
+  try {
+    await engine.deleteImage(image.id);
+  } catch (e) {
+    logger.error(`Failed to delete image ${image.id}`, e);
+  }
   await db.deleteImage(image.id);
 }

@@ -135,6 +135,14 @@ export type ServiceEngine = {
     deleteVolume(id: string): Promise<boolean>;
 
     /**
+     * Deletes an image by ID.
+     *
+     * @param id The image ID.
+     * @throw Error if the image cannot be deleted
+     */
+    deleteImage(id: string): Promise<void>;
+
+    /**
      * Send a command to the container.
      *
      * @param id Container ID

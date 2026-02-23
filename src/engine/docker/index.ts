@@ -7,6 +7,7 @@ import stop from './action/stop';
 import kill from './action/kill';
 import reattach from "./action/reattach";
 import delVolume from './action/deletev';
+import delImage from './action/deletei';
 import cmd from './action/cmd';
 import getAttachedVolume from "./action/getAttachedVolume";
 import listContainers from './action/listc';
@@ -30,6 +31,7 @@ export default async function buildDockerEngine(appConfig: any) {
     engine.kill = kill(client);
     engine.reattach = reattach(engine, client);
     engine.deleteVolume = delVolume(engine, client);
+    engine.deleteImage = delImage(client);
     engine.cmd = cmd(engine, client);
     engine.getAttachedVolume = getAttachedVolume(client);
     engine.listContainers = listContainers(engine, client);
