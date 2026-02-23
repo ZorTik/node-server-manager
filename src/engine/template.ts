@@ -3,9 +3,21 @@ import * as fs from "fs";
 import {baseTemplatesDir} from "@nsm/engine/monitoring/util";
 
 export type Template = {
+    /**
+     * The unique ID of the template.
+     */
     id: string,
+    /**
+     * The display name of the template, used for display purposes.
+     */
     name: string;
+    /**
+     * A short description of the template, used for display purposes.
+     */
     description: string;
+    /**
+     * The settings (definitions) object.
+     */
     settings: any;
 }
 
