@@ -20,7 +20,7 @@ import {resolveSequentially} from "@nsm/util/promises";
 import {buildDir} from "@nsm/engine/monitoring/util";
 import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
 import {logService} from "@nsm/logger";
-import {processImage, init as initImageEngine, buildImage} from "@nsm/engine/image";
+import {processImage, init as initImageEngine} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 export type Options = {
@@ -446,7 +446,7 @@ export async function resumeService(id: string) {
         throw new _InternalError('Already running.', 2);
     }
 
-    const {
+    let {
         template,
         options,
         env,
@@ -465,7 +465,15 @@ export async function resumeService(id: string) {
         throw new Error('In no-template mode, only services that came from this node can be resumed here.');
     }
 
-    const {defaults} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    const {defaults, env: settingsEnv} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    // Filter env to only those that are defined in settings.yml, because those are the only ones that
+    // we can guarantee to be used and will not make problems when handling images.
+    env = {
+        ...Object.entries(env)
+          .filter(([key]) => settingsEnv && key in settingsEnv)
+          .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
+    }
+
 
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
@@ -488,9 +496,7 @@ export async function resumeService(id: string) {
     };
     propagateOptionsToEnv(buildOptions, processImageOptions);
 
-    const processedImage = image != undefined
-      ? await processImage(image, processImageOptions)
-      : await buildImage(template, processImageOptions);
+    const processedImage = await processImage(image, template, processImageOptions);
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
     if (processedImage != image) {
         image = processedImage;

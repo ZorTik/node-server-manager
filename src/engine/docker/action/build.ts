@@ -27,7 +27,7 @@ async function prepareImage(
 
     if (!imageName) {
         // Generate an unique image name
-        imageName = "nsm-template-" + path.basename(buildDir); // TODO: unique image name
+        imageName = "nsm-template-" + path.basename(buildDir) + '-' + Date.now(); // TODO: better unique name generation, maybe hash of the build context?
     }
 
     // TODO: make this in temp folder

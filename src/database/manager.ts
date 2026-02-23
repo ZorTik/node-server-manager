@@ -1,5 +1,5 @@
-import {PrismaClient} from "@prisma/client";
-import {PermaModel, SessionModel} from "./models";
+import {PrismaClient, Image} from "@prisma/client";
+import {ImageModel, PermaModel, SessionModel} from "./models";
 
 export const client = new PrismaClient();
 
@@ -150,6 +150,15 @@ export async function list(nodeId: string|undefined, page?: number, pageSize?: n
     }
 }
 
+export async function listAllUsingImage(imageId: string): Promise<PermaModel[]> {
+    try {
+        return await client.service.findMany({ where: { imageId } }) as PermaModel[];
+    } catch (e) {
+        console.log(e);
+        return [];
+    }
+}
+
 export async function listSessions(nodeId: string): Promise<SessionModel[]> {
     try {
         return await client.session.findMany({ where: { nodeId } });
@@ -188,5 +197,110 @@ export async function getServiceMeta(serviceId: string, key: string): Promise<an
         return meta.value;
     } else {
         return undefined;
+    }
+}
+
+export async function saveImage(info: ImageModel): Promise<boolean> {
+    const { id, templateId, hash, buildOptions } = info;
+
+    try {
+        await client.image.upsert({
+            where: { id },
+            update: {
+                templateId,
+                hash,
+                buildOptions: {
+                    deleteMany: {},
+                    create: Object.entries(buildOptions).map(([key, value]) => ({ key, value })),
+                }
+            },
+            create: {
+                id,
+                templateId,
+                hash,
+                buildOptions: {
+                    create: Object.entries(buildOptions).map(([key, value]) => ({ key, value })),
+                }
+            }
+        });
+        return true;
+    } catch (e) {
+        console.log(e);
+        return false;
+    }
+}
+
+export async function getImage(id: string): Promise<ImageModel|undefined> {
+    const image = await client.image.findUnique({
+        where: { id },
+        include: {
+            buildOptions: {
+                select: { key: true, value: true },
+            }
+        }
+    });
+    if (image) {
+        const buildOptions = {};
+        image.buildOptions.forEach((option) => buildOptions[option.key] = option.value);
+
+        return {
+            ...image,
+            buildOptions,
+        }
+    } else {
+        return undefined;
+    }
+}
+
+export async function deleteImage(id: string): Promise<boolean> {
+    try {
+        await client.image.delete({ where: { id } });
+        return true;
+    } catch (e) {
+        if (e.code !== 'P2025') {
+            console.log(e);
+        }
+
+        return false;
+    }
+}
+
+export async function listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]> { // TODO: toto možná nefunguje správně, furtt vrací prázdný array
+    try {
+        const images = await client.image.findMany({
+            where: {
+                AND: [
+                    { templateId },
+                    ...Object.entries(buildOptions).map(([key, value]) => ({
+                        buildOptions: {
+                            some: {
+                                key,
+                                value,
+                            }
+                        }
+                    }))
+                ]
+            },
+            include: {
+                buildOptions: {
+                    select: { key: true, value: true },
+                }
+            }
+        });
+
+        return images.map(image => {
+            const options = {};
+            image.buildOptions.forEach(option => options[option.key] = option.value);
+
+            return {
+                id: image.id,
+                templateId: image.templateId,
+                hash: image.hash,
+                buildOptions: options,
+            } as ImageModel;
+        });
+    } catch (e) {
+        console.log(e);
+        return [];
     }
 }

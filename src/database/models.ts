@@ -19,7 +19,7 @@ export type Database = {
     saveImage(info: ImageModel): Promise<boolean>;
     getImage(id: string): Promise<ImageModel|undefined>;
     deleteImage(id: string): Promise<boolean>;
-    listImagesByOptions(buildOptions: {[key: string]: string}): Promise<ImageModel[]>;
+    listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]>;
 };
 
 export type SessionModel = {
@@ -32,7 +32,7 @@ export type PermaModel = {
     serviceId: string,
     template: string,
     nodeId: string,
-    imageId?: string, // TODO: implement this
+    imageId?: string,
     port: number,
     options: {
         [key: string]: any,

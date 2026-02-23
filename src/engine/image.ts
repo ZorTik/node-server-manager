@@ -25,24 +25,31 @@ export const init = (engine_: ServiceEngineI, db_: Database, logger_: winston.Lo
  * or build a new one. It may also trigger a rebuild or remove unused images.
  *
  * @param id The ID of the current image
+ * @param templateId The ID of the template
  * @param buildOptions Build arguments used when building the image
  * @returns The ID of the image that should be used
  */
-export const processImage = async (id: string, buildOptions: BuildOptionsMap) => {
+export const processImage = async (
+  id: string | undefined | null,
+  templateId: string, buildOptions: BuildOptionsMap
+) => {
+  if (!id) {
+    // No image specified, need to build or pick a new one
+    id = await pickImageOrBuild(templateId, buildOptions);
+  }
+
   const imageModel = await getImage(id);
+  if (imageModel.templateId != templateId) {
+    throw new Error(`Image ${id} is based on template ${imageModel.templateId}, but template ${templateId} was expected`);
+  }
 
   const imageOutdated = imageModel.hash != getTemplateHash(imageModel.templateId);
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
     if (optionsChanged) {
-      id = await pickImage(buildOptions);
-      if (id == null) {
-        logger.info(`No compatible image found for request. Building new image...`);
-
-        // No compatible image, need to build a new one
-        id = await buildImage(imageModel.templateId, buildOptions);
-      }
+      logger.info(`The target has changed options, finding or building a new compatible image...`);
+      id = await pickImageOrBuild(templateId, buildOptions);
 
       // If the image becomes unused after the switch, delete it
       await deleteImageIfUnused(imageModel);
@@ -52,6 +59,26 @@ export const processImage = async (id: string, buildOptions: BuildOptionsMap) =>
       // Template changed, we need to rebuild the image
       await rebuildImage(imageModel);
     }
+  }
+
+  return id;
+}
+
+/**
+ * Tries to find an existing image that is compatible with the given template ID and build options.
+ * If no compatible image is found, it builds a new one.
+ *
+ * @param templateId The ID of the template to find/build the image for
+ * @param buildOptions Build options to use when finding/building the image
+ * @returns The ID of the found or built image
+ */
+const pickImageOrBuild = async (templateId: string, buildOptions: BuildOptionsMap) => {
+  let id = await pickImage(templateId, buildOptions);
+  if (id == null) {
+    logger.info(`No compatible image found for request. Building new image...`);
+
+    // No compatible image, need to build a new one
+    id = await buildImage(templateId, buildOptions);
   }
 
   return id;
@@ -85,7 +112,7 @@ const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsMap): bo
  * @returns The image info
  * @throws Error if the image with the given ID is not found in the database
  */
-export const getImage = async (id: string) => {
+const getImage = async (id: string) => {
   const image = await db.getImage(id);
   if (!image) {
     throw new Error(`Image with ID ${id} not found`);
@@ -103,7 +130,7 @@ export const getImage = async (id: string) => {
  * @param imageId (Optional) The ID of the image to overwrite. If not provided, a new image will be created.
  * @return The ID of the built image
  */
-export const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?: string): Promise<string> => {
+const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?: string): Promise<string> => {
   const hash = getTemplateHash(templateId);
   imageId = await engine.build(imageId, buildDir(templateId), options);
 
@@ -116,8 +143,8 @@ export const buildImage = async (templateId: string, options: BuildOptionsMap, i
   return imageId;
 }
 
-const pickImage = async (options: BuildOptionsMap): Promise<string|null> => {
-  const images = await db.listImagesByOptions(options);
+const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<string|null> => {
+  const images = await db.listImagesByOptions(templateId, options);
   if (images.length == 0) {
     return null;
   }
