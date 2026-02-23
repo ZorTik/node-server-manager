@@ -47,12 +47,13 @@ export const processImage = async (
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
-    if (imageOutdated) {
-      // TODO: check if the image has added some options. if so, we need to recheck if the provided buildOptions are still compatible with the image.
+    const templateEnvChanged = false; // TODO: check if the template has changed some options
+    if (templateEnvChanged) {
+      // TODO: recheck if the provided buildOptions are still compatible with the template. if not, throw an error. if they are, a new image will be chosen down below
     }
 
-    if (optionsChanged) {
-      logger.info(`The target has changed options, finding or building a new compatible image...`);
+    if (optionsChanged || templateEnvChanged) {
+      logger.info(`The target options differ, finding or building a new compatible image...`);
       id = await pickImageOrBuild(templateId, buildOptions);
 
       // If the image becomes unused after the switch, delete it
