@@ -2,6 +2,7 @@ import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 import {handleErr} from "@nsm/util/routes";
 import {isServicePending} from "@nsm/engine/asyncp";
+import {checkServicePending} from "@nsm/router/util/preconditions";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
@@ -13,8 +14,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
                     return;
                 }
-                if (isServicePending(id)) {
-                    res.status(500).json({status: 409, message: 'Service is pending another action.'});
+                if (!checkServicePending(id, res)) {
                     return;
                 }
                 if (!await manager.getService(id)) {

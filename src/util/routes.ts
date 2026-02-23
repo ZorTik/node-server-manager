@@ -11,3 +11,7 @@ export function handleErr(e: any, res: any) {
     }
     res.status(500).json({status: 500, message: e.message});
 }
+
+export function handleErrorMessage(status: number, message: string, res: any) {
+    res.status(status).json({status, message});
+}

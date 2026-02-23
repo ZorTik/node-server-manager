@@ -1,8 +1,9 @@
 import {AppContext} from "../../../app";
 import {RouterHandler} from "../../index";
 import {handleErr} from "@nsm/util/routes";
+import {checkServicePending} from "@nsm/router/util/preconditions";
 
-export default async function ({manager}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/resume',
         routes: {
@@ -20,10 +21,16 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                         });
                         return;
                     }
+                    if (!checkServicePending(id, res)) {
+                        return;
+                    }
 
                     manager.resumeService(id)
                       .then(() => {
                           // Service resumed successfully, do nothing here for now.
+                      })
+                      .catch((e: Error) => {
+                          logger.error(e);
                       });
 
                     res.status(200).json({

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
-    "start": "node installTempDeps.js && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
+    "start": "cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
     "test": "npm run build && cross-env TS_NODE_BASEURL=./dist jest"
   },
   "keywords": [],
