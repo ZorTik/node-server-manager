@@ -15,7 +15,6 @@ import {
 } from "./asyncp";
 import winston from "winston";
 import path from "path";
-import * as bus from "@nsm/event/bus";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
 import {buildDir} from "@nsm/engine/monitoring/util";
