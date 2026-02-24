@@ -20,7 +20,7 @@ import {resolveSequentially} from "@nsm/util/promises";
 import {buildDir} from "@nsm/engine/monitoring/util";
 import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
 import {logService} from "@nsm/logger";
-import {processImage, init as initImageEngine} from "@nsm/engine/image";
+import {processImage, init as initImageEngine, deleteImageIfUnused} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
 export type Options = {
@@ -623,14 +623,31 @@ export async function deleteService(id: string) {
     }
 
     const unlockHandler: UnlockObserver = (_, __, ___) => {
-        const onFinish = () => {
-            currentContext.logger.info(`Service ${id} deleted.`);
-        }
+        const resolveDeleteImageFunc = async () => {
+            const image = await db.getPerma(id)
+              .then((perma) => perma.imageId
+                ? db.getImage(perma.imageId)
+                : undefined);
 
-        resolveSequentially(
-          async () => engine.deleteVolume(id),
-          async () => db.deletePerma(id)
-        ).then(onFinish);
+            return async () => {
+                if (image) {
+                    // If the image becomes unused after service deletion, delete it
+                    await deleteImageIfUnused(image);
+                }
+            }
+        };
+
+        resolveDeleteImageFunc()
+          .then((deleteImageFunc) => (
+            resolveSequentially(
+              async () => engine.deleteVolume(id),
+              async () => db.deletePerma(id),
+              deleteImageFunc,
+            )
+          ))
+          .then(() => {
+              currentContext.logger.info(`Service ${id} deleted.`);
+          });
     };
 
     whenUnlocked(id, unlockHandler);

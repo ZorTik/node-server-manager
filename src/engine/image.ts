@@ -163,7 +163,7 @@ const rebuildImage = async (image: ImageModel) => {
   return buildImage(image.templateId, image.buildOptions, image.id);
 }
 
-const deleteImageIfUnused = async (image: ImageModel) => {
+export const deleteImageIfUnused = async (image: ImageModel) => {
   const servicesUsingImage = await db.listAllUsingImage(image.id);
   if (servicesUsingImage.length > 0) {
     // Image is still in use, do not delete
