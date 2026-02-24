@@ -342,13 +342,14 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
     started[funcName] = (...args: any[]) => {
+        const result = Array.prototype[funcName].apply(started, args);
+
         // Emit services change within those methods
-        bus.callEvent('nsm:engine:startedserviceschange', [...started]).then(() => {
-            if (isDebug()) {
-                currentContext.logger.debug('Service registry changed');
-            }
-        });
-        return Array.prototype[funcName].apply(started, args);
+        if (isDebug()) {
+            currentContext.logger.debug('Service registry changed');
+        }
+
+        return result;
     };
 });
 
@@ -622,19 +623,14 @@ export async function deleteService(id: string) {
         }
     }
 
-    const unlockHandler: UnlockObserver = (_, __, err) => {
-        let task = resolveSequentially(
-          async () => bus.callEvent('nsm:engine:deletev', { id }),
-          async () => engine.deleteVolume(id)
-        );
-
+    const unlockHandler: UnlockObserver = (_, __, ___) => {
         const onFinish = () => {
             currentContext.logger.info(`Service ${id} deleted.`);
         }
 
         resolveSequentially(
-            task,
-            async () => db.deletePerma(id)
+          async () => engine.deleteVolume(id),
+          async () => db.deletePerma(id)
         ).then(onFinish);
     };
 

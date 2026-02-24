@@ -15,7 +15,6 @@ import loadAppRoutes from '@nsm/router';
 import createDbManager from '@nsm/database';
 import initServiceManager from '@nsm/engine';
 import loadSecurity from "@nsm/security";
-import redis from "@nsm/redis";
 import * as r from "@nsm/configuration/resources";
 import * as manager from "@nsm/engine";
 import * as logging from "./logger";
@@ -57,20 +56,6 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 function initGlobalLogger() {
     logging.createNewLatest();
     return logging.createLogger();
-}
-
-function initRedis({ appConfig, logger, manager }: AppContext) {
-    if (appConfig['redis'] == "true") {
-        logger.info('Using redis');
-        redis(manager)
-            .then(cl => {
-                logger.info('Redis connected');
-            })
-            .catch(err => {
-                logger.error(err);
-                process.exit(1);
-            });
-    }
 }
 
 // Decorate all manager functions except those excluded to disallow using them
@@ -151,9 +136,6 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
         logger.info(`Starting server`);
         srv = router.listen(appConfig.port, () => {
             logger.info(`Server started on port ${appConfig.port}`);
-
-            // Enable redis support
-            initRedis(ctx);
         });
     }
     steps('BOOT', ctx, srv);

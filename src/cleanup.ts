@@ -1,6 +1,5 @@
 import {AppBootContext} from "@nsm/app";
 import {setStatus} from "@nsm/server";
-import * as bus from "@nsm/event/bus";
 import {resolveSequentially} from "@nsm/util/promises";
 import {setStopping} from "@nsm/engine/asyncp";
 
@@ -23,7 +22,6 @@ const cleanup = (ctx: AppBootContext, exit?: boolean) => {
     resolveSequentially(
         ...(exit == true ? [
             // Those steps that should only be called on exit
-            () => bus.callEvent('nsm:exit', undefined),
             () => steps('EXIT', ctx)
         ] : []),
         () => manager.stopRunning()
