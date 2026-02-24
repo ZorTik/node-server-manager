@@ -54,3 +54,36 @@ it("saves image", async () => {
     option2: "value2",
   });
 });
+
+it("finds image by options", async () => {
+  await db.saveImage({
+    id: "test-image",
+    templateId: "test-template",
+    hash: "test-hash",
+    buildOptions: {
+      option1: "value1",
+      option2: "value2",
+    },
+  });
+
+  let imagesByOptions = await db.listImagesByOptions("test-template", {
+    option1: "value1",
+    option2: "value2",
+  });
+  expect(imagesByOptions).toHaveLength(1);
+  expect(imagesByOptions[0]?.id).toBe("test-image");
+
+  imagesByOptions = await db.listImagesByOptions("test-template", {
+    option2: "value2",
+    option1: "value1",
+  });
+  expect(imagesByOptions).toHaveLength(1);
+  expect(imagesByOptions[0]?.id).toBe("test-image");
+
+  imagesByOptions = await db.listImagesByOptions("test-template", {
+    option1: "value1",
+    option2: "value2",
+    option3: "value3",
+  });
+  expect(imagesByOptions).toHaveLength(0);
+});
