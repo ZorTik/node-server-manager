@@ -387,7 +387,7 @@ export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<
     return engine as any;
 }
 
-export async function createService(template: string, options: Parameters<ServiceManager["createService"]>[1]) {
+export async function createService(template: string, options: Options) {
     reqCompatibleEngine();
     template = noTAlternateSett ? noTTemplate : template;
 

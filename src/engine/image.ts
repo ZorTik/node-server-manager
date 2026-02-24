@@ -3,6 +3,7 @@ import {getTemplateHash} from "@nsm/engine/monitoring/templateDirWatcher";
 import winston from "winston";
 import {ServiceEngineI} from "@nsm/engine/engine";
 import {buildDir} from "@nsm/engine/monitoring/util";
+import {getTemplate, prepareEnvForTemplate} from "@nsm/engine/template";
 
 type BuildOptionsMap = {
   [key: string]: string
@@ -33,10 +34,9 @@ export const processImage = async (
   id: string | undefined | null,
   templateId: string, buildOptions: BuildOptionsMap
 ) => {
-  const templateEnvChanged = false; // TODO: check if the template has changed some options
-  if (templateEnvChanged) {
-    // TODO: recheck if the provided buildOptions are still compatible with the template. if not, throw an error. if they are, a new image will be chosen down below
-  }
+  const template = getTemplate(templateId);
+  // Checks if the provided options are still compatible with the template
+  buildOptions = prepareEnvForTemplate(template, buildOptions);
 
   if (!id) {
     // No image specified, need to build or pick a new one
@@ -52,7 +52,7 @@ export const processImage = async (
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
-    if (optionsChanged || templateEnvChanged) {
+    if (optionsChanged) {
       logger.info(`The target options differ, finding or building a new compatible image...`);
       id = await pickImageOrBuild(templateId, buildOptions);
 

@@ -24,6 +24,45 @@ export type Template = {
 const templateCache = {};
 
 /**
+ * Prepares the environment variables for a template by validating the provided env object against
+ * the template's settings and filling in default values where necessary. It checks for required options, validates
+ * types, and returns a new env object that can be used when creating a service from the template.
+ *
+ * @param template The template or template ID for which to prepare the environment variables
+ * @param env The environment variables provided by the user, which may be incomplete or have incorrect types
+ * @return A new env object that has been validated and filled with default values according to the template's settings
+ * @throws Error if a required option is missing or if an option has an invalid type
+ */
+export const prepareEnvForTemplate = (template: Template | string, env: any) => {
+    env = { ...env }; // Shallow copy to avoid mutating the original object
+    if (typeof template === 'string') {
+        template = getTemplate(template); // Load the template if ID provided
+    }
+
+    for (const key of Object.keys(template.settings['env'])) {
+        if (env[key] && typeof env[key] == typeof template.settings['env'][key]) {
+            // Keep the value
+        } else if (env[key]) {
+            throw new Error('Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.');
+        } else if (isRequiredOption(template.settings['env'][key])) {
+            throw new Error('Missing required option ' + key);
+        } else {
+            // Set default
+            env[key] = template.settings['env'][key];
+        }
+    }
+    return env;
+}
+
+// Defines if the value represents required option.
+const isRequiredOption = (value: any) => {
+    return (
+      (typeof value == "string" && value === "") ||
+      (typeof value === "number" && value == -1)
+    )
+}
+
+/**
  * Returns a template by ID.
  *
  * @param id The ID of the template

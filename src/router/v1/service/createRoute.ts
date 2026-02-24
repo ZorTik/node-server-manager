@@ -1,16 +1,9 @@
 
 import {RouterHandler} from "../../index";
-import {AppContext} from "../../../app";
+import {AppContext} from "@nsm/app";
 import {Options} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
-
-// Defines if the value inside template settings.yml env represents required option.
-function checkRequired(value: any) {
-    return (
-        (typeof value == "string" && value === "") ||
-        (typeof value === "number" && value == -1)
-    )
-}
+import {prepareEnvForTemplate} from "@nsm/engine/template";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
@@ -27,27 +20,14 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     res.status(400).json({status: 400, message: 'Invalid template ID.'}).end();
                     return;
                 }
-                const env = req.body.env ?? {};
-                // Load optional env (template options)
-                for (const key of Object.keys(template.settings['env'])) {
-                    if (env[key] && typeof env[key] == typeof template.settings['env'][key]) {
-                        // Keep the value
-                        continue;
-                    } else if (env[key]) {
-                        res.status(400)
-                            .json({status: 400, message: 'Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.'})
-                            .end();
-                        return;
-                    } else if (checkRequired(template.settings['env'][key])) {
-                        res.status(400)
-                            .json({status: 400, message: 'Missing required option ' + key})
-                            .end();
-                        return;
-                    } else {
-                        // Set default
-                        env[key] = template.settings['env'][key];
-                    }
+                let env = req.body.env ?? {};
+                try {
+                    env = prepareEnvForTemplate(template, env);
+                } catch (e) {
+                    res.status(400).json({status: 400, message: e.message}).end();
+                    return;
                 }
+
                 // Build options
                 const options: Options = req.body;
                 options.env = env;
