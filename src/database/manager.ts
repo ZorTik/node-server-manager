@@ -1,7 +1,11 @@
 import {PrismaClient, Image} from "@prisma/client";
 import {ImageModel, PermaModel, SessionModel} from "./models";
 
-export const client = new PrismaClient();
+let client = new PrismaClient();
+
+export const initClientForTest = (client_: PrismaClient) => {
+    client = client_;
+}
 
 // Database manager implementation
 
