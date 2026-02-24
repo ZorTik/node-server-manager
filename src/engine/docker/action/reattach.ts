@@ -114,7 +114,7 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
 
         await handleClosed();
       } else {
-        ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
+        ctx.logger.info('Container ' + container.id + ' stopped.');
 
         await deleteContainer(container.id, client, { deleteNetwork: true });
       }
