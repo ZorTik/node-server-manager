@@ -35,55 +35,6 @@ async function deleteContainer(id: string, client: DockerClient, options: { dele
   }
 }
 
-/*
-
-return new Promise((resolve, reject) => {
-      // Watcher
-      setTimeout(() => {
-        (async () => {
-          const info = await container.inspect();
-          if (!info.State.Running) {
-            // If the container is not running, we can delete it right after
-            await handleClosed();
-            reject(new Error("Container is not running."));
-            return;
-          }
-
-          const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
-          const rws = await container.attach(attachOptions);
-          rws.on('data', (data) => {
-            listener.onMessage?.(data);
-          }); // no-op, keepalive
-          rws.on('end', async () => {
-            // I only want to trigger close when the container is not being
-            // stopped by nsm to prevent loops.
-            if (getActionType(container.id) != 'stop') {
-              ctx.logger.info('Container ' + container.id + ' stopped from the inside.');
-
-              await handleClosed();
-            } else {
-              ctx.logger.info('Container ' + container.id + ' stopped by NSM.');
-            }
-
-            // Clean up resources
-            await deleteContainer(container.id, client, { deleteNetwork: true });
-          });
-          (self as DockerServiceEngine).rws[container.id] = rws;
-
-          listener.onStateMessage?.('Watching changes');
-          resolve();
-        })()
-          .catch((e) => {
-            ctx.logger.error('Error while re/attaching container ' + container.id + ': ' + e.message);
-
-            reject(e);
-          });
-      }, 500);
-    });
-
-
-* */
-
 export default function reattach(self: ServiceEngine, client: DockerClient): ServiceEngine["reattach"] {
   return async (id, listener) => {
     const container = client.getContainer(id);
