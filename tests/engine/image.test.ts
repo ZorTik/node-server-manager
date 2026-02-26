@@ -38,7 +38,9 @@ beforeAll(async () => {
 }, 20000);
 
 afterAll(async () => {
-  await container.stop();
+  if (container) {
+    await container.stop();
+  }
 });
 
 it("reuses image with same options", async () => {

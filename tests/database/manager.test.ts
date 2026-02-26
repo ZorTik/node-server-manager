@@ -22,7 +22,9 @@ beforeEach(async () => {
 }, 20000);
 
 afterEach(async () => {
-  await container.stop();
+  if (container) {
+    await container.stop();
+  }
 }, 20000);
 
 it("saves image", async () => {
