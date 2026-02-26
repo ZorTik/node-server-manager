@@ -21,18 +21,33 @@ export type Template = {
     settings: any;
 }
 
+export type TemplateManager = {
+
+    /**
+     * Prepares the environment variables for a template by validating the provided env object against
+     * the template's settings and filling in default values where necessary. It checks for required options, validates
+     * types, and returns a new env object that can be used when creating a service from the template.
+     *
+     * @param template The template or template ID for which to prepare the environment variables
+     * @param env The environment variables provided by the user, which may be incomplete or have incorrect types
+     * @return A new env object that has been validated and filled with default values according to the template's settings
+     * @throws Error if a required option is missing or if an option has an invalid type
+     */
+    prepareEnvForTemplate(template: Template | string, env: any): any;
+
+    /**
+     * Returns a template by ID.
+     *
+     * @param id The ID of the template
+     * @return The template, or null if not exists
+     */
+    getTemplate(id: string): Template|null;
+
+    getAllTemplates(): Template[];
+}
+
 const templateCache = {};
 
-/**
- * Prepares the environment variables for a template by validating the provided env object against
- * the template's settings and filling in default values where necessary. It checks for required options, validates
- * types, and returns a new env object that can be used when creating a service from the template.
- *
- * @param template The template or template ID for which to prepare the environment variables
- * @param env The environment variables provided by the user, which may be incomplete or have incorrect types
- * @return A new env object that has been validated and filled with default values according to the template's settings
- * @throws Error if a required option is missing or if an option has an invalid type
- */
 export const prepareEnvForTemplate = (template: Template | string, env: any) => {
     env = { ...env }; // Shallow copy to avoid mutating the original object
     if (typeof template === 'string') {
@@ -62,12 +77,6 @@ const isRequiredOption = (value: any) => {
     )
 }
 
-/**
- * Returns a template by ID.
- *
- * @param id The ID of the template
- * @return The template, or null if not exists
- */
 export const getTemplate = (id: string): Template|null => {
     if (templateCache[id]) {
         return templateCache[id];

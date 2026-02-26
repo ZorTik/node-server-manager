@@ -1,30 +1,23 @@
 import {afterEach, beforeEach, expect, it} from "@jest/globals";
-import {MariaDbContainer, StartedMariaDbContainer} from "@testcontainers/mariadb";
-import {execSync} from "child_process";
+import {StartedMariaDbContainer} from "@testcontainers/mariadb";
 import getDb, {Database} from "@nsm/database";
 import {initClientForTest} from "@nsm/database/manager";
 import {PrismaClient} from "@prisma/client";
+import {initDbContainerForTest} from "../testUtils";
 
 let container: StartedMariaDbContainer;
 let db: Database;
 
 beforeEach(async () => {
-  container = await new MariaDbContainer("mariadb:10.4")
-    .withRootPassword("test")
-    .withDatabase("nsm")
-    .start();
+  const [
+    container_,
+    dbUrl_,
+  ] = await initDbContainerForTest();
 
-  const dbUrl = container.getConnectionUri()
-    .replace("mariadb://", "mysql://");;
-  process.env.DATABASE_URL = dbUrl;
-
-  execSync("npx prisma migrate deploy", {
-    stdio: "inherit",
-    env: { ...process.env },
-  });
+  container = container_;
   db = getDb();
   initClientForTest(new PrismaClient({
-    datasourceUrl: dbUrl,
+    datasourceUrl: dbUrl_,
   }));
 }, 20000);
 

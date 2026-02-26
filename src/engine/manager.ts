@@ -1,6 +1,8 @@
 import {currentContext, Database} from "../app";
 import createEngine, {BuildOptions, RunListener, ServiceEngineI} from "./engine";
 import {Template, getTemplate as loadTemplate, getAllTemplates} from "./template";
+import * as templateManager from "./template";
+import * as templateDirWatcher from "./monitoring/templateDirWatcher";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
@@ -361,7 +363,7 @@ async function init(db_: Database, appConfig_: any) {
     }
     nodeId = appConfig['node_id'] as string;
 
-    initImageEngine(engine, db_, currentContext.logger);
+    initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
     await watchTemplateDirChanges(currentContext.logger);
 }
 
@@ -780,7 +782,7 @@ export async function initEngineForcibly() {
     if (!currentContext || !currentContext.appConfig) {
         throw new Error("Engine can't be loaded forcibly!");
     }
-    engine = await createEngine(currentContext.appConfig);
+    engine = createEngine(currentContext.appConfig);
     // I set it here to keep the exact reference if the engine
     // is changed in the future.
     engine.cast = () => engine as any;

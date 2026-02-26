@@ -1,20 +1,30 @@
 import {Database, ImageModel} from "@nsm/database";
-import {getTemplateHash} from "@nsm/engine/monitoring/templateDirWatcher";
 import winston from "winston";
 import {ServiceEngineI} from "@nsm/engine/engine";
 import {buildDir} from "@nsm/engine/monitoring/util";
-import {getTemplate, prepareEnvForTemplate} from "@nsm/engine/template";
+import {TemplateManager} from "@nsm/engine/template";
+import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
 
 type BuildOptionsMap = {
   [key: string]: string
 };
 
 let engine: ServiceEngineI;
+let templateManager: TemplateManager;
+let templateDirWatcher: TemplateDirWatcher;
 let db: Database;
 let logger: winston.Logger;
 
-export const init = (engine_: ServiceEngineI, db_: Database, logger_: winston.Logger) => {
+export const init = (
+  engine_: ServiceEngineI,
+  templateManager_: TemplateManager,
+  templateDirWatcher_: TemplateDirWatcher,
+  db_: Database,
+  logger_: winston.Logger
+) => {
   engine = engine_;
+  templateManager = templateManager_;
+  templateDirWatcher = templateDirWatcher_;
   db = db_;
   logger = logger_;
 }
@@ -34,9 +44,9 @@ export const processImage = async (
   id: string | undefined | null,
   templateId: string, buildOptions: BuildOptionsMap
 ) => {
-  const template = getTemplate(templateId);
+  const template = templateManager.getTemplate(templateId);
   // Checks if the provided options are still compatible with the template
-  buildOptions = prepareEnvForTemplate(template, buildOptions);
+  buildOptions = templateManager.prepareEnvForTemplate(template, buildOptions);
 
   if (!id) {
     // No image specified, need to build or pick a new one
@@ -48,7 +58,7 @@ export const processImage = async (
     throw new Error(`Image ${id} is based on template ${imageModel.templateId}, but template ${templateId} was expected`);
   }
 
-  const imageOutdated = imageModel.hash != getTemplateHash(imageModel.templateId);
+  const imageOutdated = imageModel.hash != templateDirWatcher.getTemplateHash(imageModel.templateId);
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
@@ -136,7 +146,7 @@ const getImage = async (id: string) => {
  * @return The ID of the built image
  */
 const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?: string): Promise<string> => {
-  const hash = getTemplateHash(templateId);
+  const hash = templateDirWatcher.getTemplateHash(templateId);
   imageId = await engine.build(imageId, buildDir(templateId), options);
 
   await db.saveImage({

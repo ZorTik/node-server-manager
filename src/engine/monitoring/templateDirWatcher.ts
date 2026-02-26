@@ -6,14 +6,28 @@ import winston from "winston";
 import chokidar, {FSWatcher} from "chokidar";
 import path from "path";
 
+export type TemplateDirWatcher = {
+
+  /**
+   * Starts watching the template directories for changes.
+   * When a change is detected, the template hash is updated and cached.
+   */
+  watchTemplateDirChanges(logger: winston.Logger): Promise<void>;
+
+  /**
+   * Gets the cached hash of a template directory.
+   *
+   * @param template The name of the template.
+   * @returns The cached hash of the template directory.
+   * @throws If the template does not exist or if there is an error reading the directory.
+   */
+  getTemplateHash(template: string): string;
+};
+
 const hashCache: Map<string, string> = new Map();
 const watchers: Map<string, FSWatcher> = new Map();
 const hashingInProgress: Set<string> = new Set();
 
-/**
- * Starts watching the template directories for changes.
- * When a change is detected, the template hash is updated and cached.
- */
 export const watchTemplateDirChanges = async (logger: winston.Logger) => {
   const templates = getAllTemplates();
 
@@ -122,13 +136,6 @@ const recalculateTemplateHash = async (template: string) => {
   }
 }
 
-/**
- * Gets the cached hash of a template directory.
- *
- * @param template The name of the template.
- * @returns The cached hash of the template directory.
- * @throws If the template does not exist or if there is an error reading the directory.
- */
 export const getTemplateHash = (template: string): string => {
   const hash = hashCache.get(template);
   if (!hash) {

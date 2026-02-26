@@ -185,14 +185,14 @@ export type ServiceEngine = {
     calcHostUsage(): Promise<number[]>;
 }
 
-export default async function (appConfig: any): Promise<ServiceEngineI> {
+export default function (appConfig: any): ServiceEngineI {
     let engine = getSingleton<ServiceEngine>('engine');
     const usingBuiltInEngine = engine == undefined;
     const engineId = process.env.NSM_ENGINE ?? 'docker';
     if (usingBuiltInEngine) {
         switch (engineId) {
             case 'docker':
-                engine = await buildDockerEngine(appConfig);
+                engine = buildDockerEngine(appConfig);
                 break;
             default:
                 throw new Error('Invalid engine ID ' + engineId);

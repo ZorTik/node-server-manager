@@ -17,7 +17,7 @@ import statAll from "./action/statall";
 import calcHostUsage from "./action/calcHostUsage";
 import listRunning from "./action/listRunning";
 
-export default async function buildDockerEngine(appConfig: any) {
+export default function buildDockerEngine(appConfig: any) {
     // Default engine implementation
     const client = initDockerClient(appConfig);
     const engine = {} as DockerServiceEngine;
