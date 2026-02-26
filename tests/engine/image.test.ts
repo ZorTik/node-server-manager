@@ -58,7 +58,7 @@ it("reuses image with same options", async () => {
 
   const customEngine: ServiceEngineI = {
     ...engine,
-    build(imageId: string | undefined, buildDir: string | undefined, buildOptions: {
+    build(imageId: string | undefined, _: string | undefined, __: {
       [p: string]: string
     }): Promise<string> {
       buildCount++;
