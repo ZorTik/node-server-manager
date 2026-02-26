@@ -258,7 +258,12 @@ export async function getImage(id: string): Promise<ImageModel|undefined> {
 
 export async function deleteImage(id: string): Promise<boolean> {
     try {
-        await client.image.delete({ where: { id } });
+        await client.image.delete({
+            where: { id },
+            include: {
+                buildOptions: true,
+            }
+        });
         return true;
     } catch (e) {
         if (e.code !== 'P2025') {
