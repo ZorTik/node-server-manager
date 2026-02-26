@@ -1,7 +1,4 @@
-import {PrismaClient} from "@prisma/client";
-
 export type Database = {
-    client: PrismaClient;
     saveSession(info: SessionModel): Promise<boolean>;
     savePerma(info: PermaModel): Promise<boolean>;
     deleteSession(serviceId: string): Promise<boolean>;

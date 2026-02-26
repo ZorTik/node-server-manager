@@ -269,7 +269,7 @@ export async function deleteImage(id: string): Promise<boolean> {
     }
 }
 
-export async function listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]> { // TODO: toto možná nefunguje správně, furt vrací prázdný array
+export async function listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]> {
     try {
         const images = await client.image.findMany({
             where: {
