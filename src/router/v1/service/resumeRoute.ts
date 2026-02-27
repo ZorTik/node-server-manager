@@ -1,7 +1,7 @@
-import {AppContext} from "../../../app";
+import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
 import {handleErr} from "@nsm/util/routes";
-import {checkServicePending} from "@nsm/router/util/preconditions";
+import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
 
 export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
@@ -14,11 +14,7 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                     return;
                 }
                 try {
-                    if (!await manager.getService(id)) {
-                        res.status(404).json({
-                            status: 404,
-                            message: 'Service not found.'
-                        });
+                    if (!await checkServiceExists(id, manager, res)) {
                         return;
                     }
                     if (!checkServicePending(id, res)) {
@@ -30,6 +26,7 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                           // Service resumed successfully, do nothing here for now.
                       })
                       .catch((e: Error) => {
+                          // TODO: more robust logging
                           logger.error(e);
                       });
 

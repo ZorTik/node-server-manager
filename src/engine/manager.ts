@@ -181,17 +181,15 @@ export type ServiceManager = ServiceManagerEventBus & {
      * Stop a service.
      *
      * @param id The service ID
-     * @returns Whether the service was stopped
      */
-    stopService(id: string): Promise<boolean>;
+    stopService(id: string): Promise<void>;
 
     /**
      * Stop a service forcibly (kill).
      *
      * @param id The service ID
-     * @returns Whether the service was killed
      */
-    stopServiceForcibly(id: string): Promise<boolean>;
+    stopServiceForcibly(id: string): Promise<void>;
 
     /**
      * Send pre-configured stop signal to the service.
@@ -205,9 +203,8 @@ export type ServiceManager = ServiceManagerEventBus & {
      * Delete a service.
      *
      * @param id The service ID
-     * @returns Whether the service was deleted
      */
-    deleteService(id: string): Promise<boolean>;
+    deleteService(id: string): Promise<void>;
 
     /**
      * Update the options of a service.
@@ -569,9 +566,8 @@ export async function stopService(id: string, force?: boolean) {
     lckStatusTp(session.containerId, 'stop');
     const unlock = lockBusyAction(id, 'stop');
 
-    (async () => {
+    try {
         const meta = metaStorageForService(id);
-
         if (force) {
             await engine.kill(session.containerId, meta);
         } else {
@@ -579,21 +575,16 @@ export async function stopService(id: string, force?: boolean) {
         }
 
         started.splice(started.indexOf(id), 1);
-        return true;
-    })()
-        .then(() => {
-            unlock();
-            callManagerEvent('stop', { id });
-        })
-        .catch(e => {
-            currentContext.logger.error(e);
-            unlock(e);
-            callManagerEvent('stop', { id, error: e });
-        })
-        .finally(() => {
-            ulckStatusTp(session.containerId);
-        });
-    return true;
+
+        unlock();
+        callManagerEvent('stop', { id });
+    } catch (e) {
+        currentContext.logger.error(e);
+        unlock(e);
+        callManagerEvent('stop', { id, error: e });
+    } finally {
+        ulckStatusTp(session.containerId);
+    }
 }
 
 export async function stopServiceForcibly(id: string) {
@@ -652,7 +643,6 @@ export async function deleteService(id: string) {
     };
 
     whenUnlocked(id, unlockHandler);
-    return true;
 }
 
 export async function updateOptions(id: string, options: Options) {

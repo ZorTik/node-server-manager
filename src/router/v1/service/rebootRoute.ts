@@ -1,6 +1,6 @@
-import {AppContext} from "../../../app";
+import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
-import {handleErr} from "@nsm/util/routes";
+import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
 
 export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
@@ -12,22 +12,34 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                     res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
                     return;
                 }
-                try {
-                    await manager.stopService(id);
-                    manager.whenUnlocked(id, (_, __, err) => {
-                        if (err) {
-                            logger.error(err);
-                        } else {
-                            manager.resumeService(id);
-                        }
-                    });
-                    res.status(200).json({
-                        status: 200,
-                        message: 'Service reboot action successfully registered to be completed in a moment.'
-                    });
-                } catch (e) {
-                    handleErr(e, res);
+                if (!await checkServiceExists(id, manager, res)) {
+                    return;
                 }
+                if (!checkServicePending(id, res)) {
+                    return;
+                }
+
+                manager.stopService(id)
+                  .then(() => {
+                      // Service stopped successfully, now wait for it to be unlocked before resuming.
+
+                      manager.whenUnlocked(id, (_, __, err) => {
+                          if (err) {
+                              logger.error(err);
+                          } else {
+                              manager.resumeService(id);
+                          }
+                      });
+                  })
+                  .catch((e) => {
+                      // TODO: more robust logging
+                      logger.error(e);
+                  });
+
+                res.status(200).json({
+                    status: 200,
+                    message: 'Service reboot action successfully registered to be completed in a moment.'
+                });
             }
         },
     }

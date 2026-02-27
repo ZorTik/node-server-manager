@@ -1,10 +1,8 @@
-import {AppContext} from "../../../app";
+import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
-import {handleErr} from "@nsm/util/routes";
-import {isServicePending} from "@nsm/engine/asyncp";
-import {checkServicePending} from "@nsm/router/util/preconditions";
+import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
 
-export default async function ({manager}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/stop',
         routes: {
@@ -14,25 +12,31 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
                     return;
                 }
+                if (!await checkServiceExists(id, manager, res)) {
+                    return;
+                }
                 if (!checkServicePending(id, res)) {
                     return;
                 }
-                if (!await manager.getService(id)) {
-                    res.status(404).json({status: 404, message: 'Service not found.'});
-                    return;
-                }
-                try {
-                    const result = req.query.force === 'true'
-                        ? await manager.stopServiceForcibly(id)
-                        : await manager.stopService(id);
-                    if (result) {
-                        res.status(200).json({status: 200, message: 'Service stopped.'});
-                    } else {
-                        res.status(404).json({status: 404, message: 'Service not found or unknown error occured.'});
-                    }
-                } catch (e) {
-                    handleErr(e, res);
-                }
+
+                (
+                  req.query.force === 'true'
+                    ? manager.stopServiceForcibly(id)
+                    : manager.stopService(id)
+                )
+                  .then(() => {
+                      // Service stopped successfully, do nothing here for now.
+                  })
+                  .catch((err) => {
+                      // TODO: more robust logging
+                      logger.error(err);
+                  });
+
+                res.status(200).json({
+                    status: 200,
+                    message: 'Service stop action successfully registered to be completed in a moment.',
+                    statusPath: '/v1/service/' + id + '/powerstatus',
+                });
             }
         },
     }
