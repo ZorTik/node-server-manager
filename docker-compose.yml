@@ -3,8 +3,47 @@ services:
     build: .
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
-    network_mode: host
+    ports:
+      - '3000:3000'
     extra_hosts:
       - 'docker.host.internal:host-gateway'
     environment:
       - 'CONFIG_DOCKER_HOST=///var/run/docker.sock'
+      - 'DATABASE_URL=mysql://root:test@db:3306/nsm'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+          ignore:
+            - ./service_logs
+            - ./logs
+            - ./node_packages
+            - ./package-lock.json
+
+  db:
+    image: mariadb:10.4
+    environment:
+      MARIADB_ROOT_PASSWORD: test
+      MARIADB_DATABASE: nsm
+    ports:
+      - '3306:3306'
+    volumes:
+      - nsm_db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -ptest"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  nsm_db:

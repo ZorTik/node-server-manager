@@ -1,16 +1,10 @@
-import app from "./app";
-import server from "./server";
-import cleanup from "./cleanup";
+import {init} from "@nsm/app";
+import {postInit} from "@nsm/cleanup";
+import server from "@nsm/server";
 
-app(server)
-    .then((ctx) => {
-        // Cleanup on start
-        cleanup(ctx);
-        process.on('SIGINT', () => {
-            // Cleanup on exit
-            cleanup(ctx, true);
-        });
-    })
+init(server)
+    // Run some cleanup tasks and register handlers
+    .then(postInit)
     .catch((e) => {
         console.log(e);
     });

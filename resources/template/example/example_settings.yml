@@ -15,4 +15,3 @@ meta:
 env:
   STARTUP_FILE: 'server.jar'
   JAVA_VERSION: '' # Required option
-  VERSION: '' # Required option

@@ -1,5 +1,5 @@
 import {expect, test} from "@jest/globals";
-import {readResource} from "../../configuration/resources";
+import {readResource} from "@nsm/configuration/resources";
 import * as fs from "fs";
 
 test('Reads the resource', () => {

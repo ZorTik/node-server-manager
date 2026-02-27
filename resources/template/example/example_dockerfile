@@ -2,7 +2,7 @@
 ARG JAVA_VERSION
 
 # Use args down there.
-FROM openjdk:$JAVA_VERSION
+FROM eclipse-temurin:$JAVA_VERSION
 
 # Don't change this!
 WORKDIR /data
@@ -17,10 +17,9 @@ ARG SERVICE_CPU
 ARG SERVICE_DISK
 
 # Optional ones. From settings.yml
-ARG VERSION
 ARG STARTUP_FILE
 
-ADD https://cdn.getbukkit.org/spigot/spigot-$VERSION.jar $STARTUP_FILE
+ADD https://api.papermc.io/v2/projects/paper/versions/1.12.2/builds/1620/downloads/paper-1.12.2-1620.jar $STARTUP_FILE
 
 # port1 port2 port3
 EXPOSE $SERVICE_PORTS

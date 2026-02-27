@@ -1,4 +1,4 @@
-import {Addon} from "../../addon";
+import {Addon} from "@nsm/addon";
 import winston from "winston";
 
 async function initAfterLogger(ctx: { logger: winston.Logger }) {

@@ -1,5 +1,13 @@
 name: Jest
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request:
+    branches:
+      - master
+      - dev
 
 jobs:
   test:
@@ -26,10 +34,10 @@ jobs:
           mysql database: 'test'
           mysql user: 'test'
           mysql password: 'test'
-      - name: Use Node.js 14.x
-        uses: actions/setup-node@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v6
         with:
-          node-version: 18.x
+          node-version: 20.x
       - name: Install dependencies
         run: npm install
       - name: Prisma generate
