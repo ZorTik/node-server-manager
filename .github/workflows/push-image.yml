@@ -7,6 +7,11 @@ on:
       - dev
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to use for the image (optional, defaults to branch name and short SHA)'
+        required: false
 
 jobs:
   build-and-push:
@@ -29,6 +34,11 @@ jobs:
           if [ "${{ github.event_name }}" = "release" ]; then
             TAG=${{ github.event.release.tag_name }}
             echo "IS_RELEASE=true" >> $GITHUB_ENV
+  
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.tag }}" ]; then
+            TAG=${{ github.event.inputs.tag }}
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+  
           else
             TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
             echo "IS_RELEASE=false" >> $GITHUB_ENV
