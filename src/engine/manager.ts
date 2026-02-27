@@ -578,12 +578,8 @@ export async function stopService(id: string, force?: boolean) {
             await engine.stop(session.containerId, meta);
         }
 
-        if (await db.deleteSession(id)) {
-            started.splice(started.indexOf(id), 1);
-            return true;
-        } else {
-            return false;
-        }
+        started.splice(started.indexOf(id), 1);
+        return true;
     })()
         .then(() => {
             unlock();
@@ -838,6 +834,8 @@ function buildRunListener(serviceId: string): RunListener {
         onclose: async () => {
             // Remove session when container is closed, because the service is not running anymore
             await db.deleteSession(serviceId);
+
+            currentContext.logger.info("Service " + serviceId + " stopped");
         }
     };
 }

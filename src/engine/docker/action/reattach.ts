@@ -58,16 +58,14 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
       listener.onMessage?.(data);
     }); // no-op, keepalive
     rws.on('end', async () => {
-      // I only want to trigger close when the container is not being
-      // stopped by nsm to prevent loops.
       if (getActionType(container.id) != 'stop') {
-        ctx.logger.info('Container ' + container.id + ' stopped from the inside.');
+        // Stopped from the inside
 
         await handleClosed();
       } else {
-        ctx.logger.info('Container ' + container.id + ' stopped.');
+        // Stopped by the NSM
 
-        await deleteContainer(container.id, client, { deleteNetwork: true });
+        await handleClosed();
       }
     });
     (self as DockerServiceEngine).rws[container.id] = rws;
