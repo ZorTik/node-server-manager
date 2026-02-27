@@ -22,14 +22,16 @@ model Session {
 }
 
 model Service {
-  serviceId String @id @default(uuid())
+  serviceId String  @id @default(uuid())
   nodeId    String
+  imageId   String?
   template  String
   port      Int
   options   Json
-  meta      Json   @default("{}")
+  meta      Json    @default("{}")
   env       Json
   network   Json?
+  image     Image?  @relation(fields: [imageId], references: [id])
 }
 
 model ServiceMeta {
@@ -45,4 +47,20 @@ model Meta {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Image {
+  id           String             @id
+  templateId   String
+  hash         String
+  buildOptions ImageBuildOption[]
+  services     Service[]
+}
+
+model ImageBuildOption {
+  id      String @id @default(uuid())
+  imageId String
+  key     String
+  value   String
+  image   Image? @relation(fields: [imageId], references: [id])
 }

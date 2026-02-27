@@ -2,7 +2,7 @@
 ARG JAVA_VERSION
 
 # Use args down there.
-FROM openjdk:$JAVA_VERSION
+FROM eclipse-temurin:$JAVA_VERSION
 
 # Don't change this!
 WORKDIR /data

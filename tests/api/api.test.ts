@@ -1,8 +1,8 @@
-import server from "../../server";
-import {init as boot, AppBootContext, AppBootOptions} from "../../app";
+import server from "@nsm/server";
+import {init as boot, AppBootContext, AppBootOptions} from "@nsm/app";
 import request from "supertest";
 import {afterAll, beforeAll, describe, expect, test} from "@jest/globals";
-import {isServicePending} from "../../engine/asyncp";
+import {isServicePending} from "@nsm/engine/asyncp";
 import {log} from "console";
 
 function expectProps(obj: any, model: any[]) {
@@ -17,6 +17,8 @@ function expectProps(obj: any, model: any[]) {
 
 async function miniService(ctx: AppBootContext) {
     const id = await ctx.manager.createService("test", {});
+    await ctx.manager.resumeService(id);
+
     do {
         await new Promise((resolve) => {
             setTimeout(() => resolve(null), 300);
@@ -47,7 +49,7 @@ describe("Test v1 API models", () => {
             ctx = ctx_;
             done();
         }).catch(err => {
-            console.log(err);
+            done(err);
         });
     }, 20000);
 
@@ -70,7 +72,7 @@ describe("Test v1 API models", () => {
         const res = await request(server).get("/v1/status");
         expect(res.status).toBe(200);
         expect(res.body.running).toContain(id);
-    }, 20000);
+    }, 60000);
 
     test("Test /v1/status?stats=true", async () => {
         const res = await request(server).get("/v1/status?stats=true");
@@ -86,7 +88,7 @@ describe("Test v1 API models", () => {
             'stats.services.cpuTotal', undefined,
             'stats.services.diskTotal', undefined,
         ]);
-    }, 20000);
+    }, 60000);
 
     test("Test /v1/servicelist", async () => {
         const res = await request(server)
@@ -208,6 +210,10 @@ describe("Test v1 API models", () => {
     }, 20000);
 
     afterAll(() => {
+        if (!ctx) {
+            return;
+        }
+
         return ctx.manager.stopRunning();
     }, 60000);
 

@@ -7,8 +7,9 @@
       "sourceMap": true,
       "rootDir": "./",
       "outDir": "dist",
+      "baseUrl": ".",
       "paths": {
-        "@nsm/*": ["./*"]
+        "@nsm/*": ["src/*"]
       }
     },
     "lib": ["es2015"]
