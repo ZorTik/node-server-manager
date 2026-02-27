@@ -8,6 +8,7 @@ import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
 import {PermaModel, SessionModel} from "../database";
 import {
+    isServicePending,
     lckStatusTp,
     lockBusyAction,
     reqNotPending,
@@ -567,23 +568,33 @@ export async function stopService(id: string, force?: boolean) {
     const unlock = lockBusyAction(id, 'stop');
 
     try {
+        on("stop", ({ id: stoppedId, error }) => {
+            if (stoppedId !== id) {
+                // This call is not for me
+                return false;
+            }
+
+            if (started.includes(id)) {
+                started.splice(started.indexOf(id), 1);
+            }
+
+            if (isServicePending(id)) {
+                unlock(error);
+            }
+            ulckStatusTp(session.containerId);
+            return true;
+        })
+
         const meta = metaStorageForService(id);
         if (force) {
             await engine.kill(session.containerId, meta);
         } else {
             await engine.stop(session.containerId, meta);
         }
-
-        started.splice(started.indexOf(id), 1);
-
-        unlock();
-        callManagerEvent('stop', { id });
     } catch (e) {
         currentContext.logger.error(e);
-        unlock(e);
+
         callManagerEvent('stop', { id, error: e });
-    } finally {
-        ulckStatusTp(session.containerId);
     }
 }
 
@@ -807,7 +818,9 @@ function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: Ser
     }
     const newArray = evtHandlers.get(e)
         .filter(handler => {
+            // Filter out those who returned true, which means they want to be unsubscribed after this call.
             const result = handler(event);
+
             return typeof result != 'boolean' || !result;
         });
     evtHandlers.set(e, newArray);
@@ -824,6 +837,9 @@ function buildRunListener(serviceId: string): RunListener {
         onclose: async () => {
             // Remove session when container is closed, because the service is not running anymore
             await db.deleteSession(serviceId);
+            // Call stop event on the manager for the stopService() to potentially
+            // unlock a busy action
+            callManagerEvent("stop", { id: serviceId });
 
             currentContext.logger.info("Service " + serviceId + " stopped");
         }
