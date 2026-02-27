@@ -494,12 +494,15 @@ export async function resumeService(id: string) {
     const perma = await db.getPerma(id);
     let image = perma.imageId;
 
-    const processImageOptions = {
+    const runEnv = {
         ...buildOptions.env,
     };
-    propagateOptionsToEnv(buildOptions, processImageOptions);
+    propagateOptionsToEnv(buildOptions, runEnv);
 
-    const processedImage = await processImage(image, template, processImageOptions);
+    // Omit service port opts since they are not really being used in build env
+    // and they are preventing the pick algorithm to re-use images.
+    const { SERVICE_PORT, SERVICE_PORTS, ...buildEnv } = runEnv;
+    const processedImage = await processImage(image, template, buildEnv);
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
     if (processedImage != image) {
         image = processedImage;
