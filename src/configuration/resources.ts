@@ -10,6 +10,15 @@ export function saveResource(name: string, target: string) {
     fs.writeFileSync(target, readResource(name));
 }
 
+export function prepareTemplatesFolder() {
+    const cwd = process.cwd();
+    if (fs.existsSync(cwd + '/templates')) {
+        return;
+    }
+
+    fs.mkdirSync(cwd + '/templates');
+}
+
 export function prepareTestResources() {
     const cwd = process.cwd();
     if (fs.existsSync(cwd + '/templates/test')) {

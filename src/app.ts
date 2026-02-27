@@ -82,6 +82,8 @@ function managerForUnsafeUse() {
 export const init = async (router: Application, options?: AppBootOptions): Promise<AppBootContext> => {
     // Prepare logging
     const logger = initGlobalLogger();
+
+    r.prepareTemplatesFolder();
     if (options?.test === true) {
         r.prepareTestResources(); // Copy resources for test
     }
