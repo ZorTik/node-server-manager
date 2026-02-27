@@ -18,6 +18,10 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                 if (!checkServicePending(id, res)) {
                     return;
                 }
+                if (!manager.isRunning(id)) {
+                    res.status(409).json({status: 400, message: 'Service is not running.'});
+                    return;
+                }
 
                 (
                   req.query.force === 'true'
