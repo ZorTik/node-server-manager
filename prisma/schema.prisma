@@ -62,5 +62,5 @@ model ImageBuildOption {
   imageId String
   key     String
   value   String
-  image   Image? @relation(fields: [imageId], references: [id])
+  image   Image? @relation(fields: [imageId], references: [id], onDelete: Cascade)
 }

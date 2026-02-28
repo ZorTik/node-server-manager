@@ -180,7 +180,7 @@ export const deleteImageIfUnused = async (image: ImageModel) => {
     return;
   }
 
-  logger.info(`Image ${image.id} is no longer used by any service. Deleting...`);
+  logger.debug(`Image ${image.id} is no longer used by any service. Deleting...`);
 
   try {
     await engine.deleteImage(image.id);

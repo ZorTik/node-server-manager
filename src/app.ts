@@ -82,7 +82,11 @@ function managerForUnsafeUse() {
 export const init = async (router: Application, options?: AppBootOptions): Promise<AppBootContext> => {
     // Prepare logging
     const logger = initGlobalLogger();
-    r.prepareResources(options?.test === true); // Copy resources, etc.
+
+    r.prepareTemplatesFolder();
+    if (options?.test === true) {
+        r.prepareTestResources(); // Copy resources for test
+    }
 
     // Load addon steps
     const steps = await loadAddons(logger);
