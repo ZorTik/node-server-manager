@@ -3,7 +3,7 @@ import buildDockerEngine from "./docker";
 import {getSingleton} from "../depend";
 import {MetaStorage} from "./manager";
 
-export type BuildOptions = {
+export type RunOptions = {
     port: number;
     ports: number[];
     ram: number; // in MB
@@ -96,7 +96,7 @@ export type ServiceEngine = {
       templateId: string,
       imageId: string,
       volumeId: string,
-      options: BuildOptions,
+      options: RunOptions,
       meta: MetaStorage,
       listener?: RunListener): Promise<string>;
 

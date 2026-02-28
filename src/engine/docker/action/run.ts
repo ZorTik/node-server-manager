@@ -1,5 +1,5 @@
 import DockerClient from "dockerode";
-import {BuildOptions, MetaStorage, ServiceEngine} from "@nsm/engine";
+import {RunOptions, MetaStorage, ServiceEngine} from "@nsm/engine";
 import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
 import path from "path";
@@ -29,7 +29,7 @@ async function prepareVolume(client: DockerClient, volumeId: string) {
 
 async function prepareNetwork(
   client: DockerClient,
-  network: BuildOptions['network'],
+  network: RunOptions['network'],
   meta: MetaStorage,
   creatingContainer: boolean
 ) {
@@ -55,7 +55,7 @@ async function prepareContainer(
   imageTag: string,
   buildDir: string,
   volumeId: string,
-  options: BuildOptions,
+  options: RunOptions,
   net: DockerClient.Network|undefined
 ) {
   const {ram, cpu, disk, port, network} = options;
