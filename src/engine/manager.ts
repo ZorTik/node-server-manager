@@ -514,6 +514,7 @@ export async function resumeService(id: string) {
     try {
         // Run the container with the built image and save the container id for later use.
         if (image) {
+            currentContext.logger.info('Running service ' + id + "...");
             containerId = await engine.run(
               template,
               image,
