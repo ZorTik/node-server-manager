@@ -5,7 +5,7 @@ import {Options} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {prepareEnvForTemplate} from "@nsm/engine/template";
 
-export default async function ({manager}: AppContext): Promise<RouterHandler> {
+export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/create',
         routes: {
@@ -40,6 +40,10 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                       .then(() => {
                           // Service resumed successfully, do nothing here for now.
                       })
+                      .catch((e) => {
+                          // TODO: more robust logging
+                          logger.error(e);
+                      });
 
                     res.status(200).json({
                         status: 200,
