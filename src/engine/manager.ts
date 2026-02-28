@@ -649,7 +649,7 @@ export async function deleteService(id: string) {
             )
           ))
           .then(() => {
-              currentContext.logger.info(`Service ${id} deleted.`);
+              currentContext.logger.info(`Service ${id} deleted`);
           });
     };
 
