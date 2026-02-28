@@ -1,5 +1,5 @@
 import {currentContext, Database} from "../app";
-import createEngine, {BuildOptions, RunListener, ServiceEngineI} from "./engine";
+import createEngine, {RunOptions, RunListener, ServiceEngineI} from "./engine";
 import {Template, getTemplate as loadTemplate, getAllTemplates} from "./template";
 import * as templateManager from "./template";
 import * as templateDirWatcher from "./monitoring/templateDirWatcher";
@@ -479,7 +479,7 @@ export async function resumeService(id: string) {
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
 
-    const buildOptions: BuildOptions = {
+    const runOptions: RunOptions = {
         ram: options.ram ?? defaults.ram as number,
         cpu: options.cpu ?? defaults.cpu as number,
         disk: options.disk ?? defaults.disk as number,
@@ -492,14 +492,14 @@ export async function resumeService(id: string) {
     const perma = await db.getPerma(id);
     let image = perma.imageId;
 
-    const runEnv = {
-        ...buildOptions.env,
-    };
-    propagateOptionsToEnv(buildOptions, runEnv);
+    // Propagate other options to env, so they can be used in image processing and building
+    propagateOptionsToEnv(runOptions, runOptions.env);
+    // Include service ID in env
+    runOptions.env.SERVICE_ID = id;
 
-    // Omit service port opts since they are not really being used in build env
-    // and they are preventing the pick algorithm to re-use images.
-    const { SERVICE_PORT, SERVICE_PORTS, ...buildEnv } = runEnv;
+    // Omit the always-changing args from build env, since they would always trigger an
+    // image rebuild
+    const { SERVICE_ID, SERVICE_PORT, SERVICE_PORTS, ...buildEnv } = runOptions.env;
     const processedImage = await processImage(image, template, buildEnv);
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
     if (processedImage != image) {
@@ -518,7 +518,7 @@ export async function resumeService(id: string) {
               template,
               image,
               id,
-              buildOptions,
+              runOptions,
               meta,
               buildRunListener(id)
             );
