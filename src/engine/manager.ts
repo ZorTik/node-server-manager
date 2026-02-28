@@ -574,10 +574,6 @@ export async function stopService(id: string, force?: boolean) {
                 return false;
             }
 
-            if (started.includes(id)) {
-                started.splice(started.indexOf(id), 1);
-            }
-
             if (isServicePending(id)) {
                 unlock(error);
             }
@@ -837,6 +833,11 @@ function buildRunListener(serviceId: string): RunListener {
         onclose: async () => {
             // Remove session when container is closed, because the service is not running anymore
             await db.deleteSession(serviceId);
+
+            if (started.includes(serviceId)) {
+                started.splice(started.indexOf(serviceId, 1));
+            }
+
             // Call stop event on the manager for the stopService() to potentially
             // unlock a busy action
             callManagerEvent("stop", { id: serviceId });
