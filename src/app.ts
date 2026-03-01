@@ -22,6 +22,7 @@ import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
 import isInsideContainer from "@nsm/lib/isInsideContainer";
+import {middleLayer} from "@nsm/engine/middle";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -116,7 +117,7 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
     await initServiceManager({ db: database, appConfig, logger });
 
     // Bring back original manager
-    ctx.manager = currentContext.manager = manager;
+    ctx.manager = currentContext.manager = middleLayer(manager);
 
     // Load security
     steps('BEFORE_SECURITY', ctx);

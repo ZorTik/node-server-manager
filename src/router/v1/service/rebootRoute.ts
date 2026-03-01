@@ -30,10 +30,6 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                               manager.resumeService(id);
                           }
                       });
-                  })
-                  .catch((e) => {
-                      // TODO: more robust logging
-                      logger.error(e);
                   });
 
                 res.status(200).json({

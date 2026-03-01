@@ -30,10 +30,6 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                 )
                   .then(() => {
                       // Service stopped successfully, do nothing here for now.
-                  })
-                  .catch((err) => {
-                      // TODO: more robust logging
-                      logger.error(err);
                   });
 
                 res.status(200).json({
