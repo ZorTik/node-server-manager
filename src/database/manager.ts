@@ -1,5 +1,6 @@
 import {PrismaClient, Image} from "@prisma/client";
 import {ImageModel, PermaModel, SessionModel} from "./models";
+import {optionsDiffer} from "@nsm/engine/image";
 
 let client = new PrismaClient();
 
@@ -272,41 +273,26 @@ export async function deleteImage(id: string): Promise<boolean> {
 }
 
 export async function listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]> {
-    try {
-        const images = await client.image.findMany({
-            where: {
-                AND: [
-                    { templateId },
-                    ...Object.entries(buildOptions).map(([key, value]) => ({
-                        buildOptions: {
-                            some: {
-                                key,
-                                value,
-                            }
-                        }
-                    }))
-                ]
-            },
-            include: {
-                buildOptions: {
-                    select: { key: true, value: true },
-                }
-            }
-        });
-
-        return images.map(image => {
-            const options = {};
-            image.buildOptions.forEach(option => options[option.key] = option.value);
-
-            return {
-                id: image.id,
-                templateId: image.templateId,
-                hash: image.hash,
-                buildOptions: options,
-            } as ImageModel;
-        });
-    } catch (e) {
-        console.log(e);
-        return [];
-    }
+    return (
+      client.image.findMany({
+          include: {
+              buildOptions: {
+                  select: { key: true, value: true },
+              }
+          }
+      })
+    ).then((images) => (
+      images.map(image => ({
+          ...image,
+          buildOptions: image.buildOptions.reduce((acc, option) => {
+              acc[option.key] = option.value;
+              return acc;
+          }, {})
+      }))
+    ))
+      .then((images) => (
+        images.filter(
+          (image) => image.templateId === templateId && !optionsDiffer(image.buildOptions, buildOptions)
+        )
+      ));
 }

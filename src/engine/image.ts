@@ -99,7 +99,7 @@ const pickImageOrBuild = async (templateId: string, buildOptions: BuildOptionsMa
   return id;
 }
 
-const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsMap): boolean => {
+export const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsMap): boolean => {
   const keys1 = Object.keys(options1);
   const keys2 = Object.keys(options2);
 
