@@ -1,5 +1,6 @@
 Odebrat ukládání běžících sessions do databáze, držet jen v runtimu
 odebrat no template mode
+odebrat nodeId, cluster support se bude řešit jinak
 vyřešit logging u servis a logování změn stavů
 abstrahovat template management a udělat další sources jako například používání images z docker registry
 předělat usages monitoring na nějaký standardizovaný formát/způsob
