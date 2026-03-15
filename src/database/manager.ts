@@ -1,4 +1,4 @@
-import {PrismaClient, Image} from "@prisma/client";
+import {PrismaClient} from "@prisma/client";
 import {ImageModel, PermaModel, SessionModel} from "./models";
 import {optionsDiffer} from "@nsm/engine/image";
 
