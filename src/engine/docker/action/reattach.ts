@@ -42,7 +42,7 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     const handleClosed = async () => {
       await deleteContainer(container.id, client, { deleteNetwork: true });
 
-      await listener.onclose?.();
+      await listener.onClose?.();
     }
 
     const info = await container.inspect();

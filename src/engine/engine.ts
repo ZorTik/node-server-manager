@@ -49,7 +49,7 @@ export type RunListener = {
     /**
      * Called when the container is closed, either by stop or kill, or by itself.
      */
-    onclose?: () => Promise<void>|void;
+    onClose?: () => Promise<void>|void;
 }
 
 export type DockerServiceEngine = ServiceEngineI & {

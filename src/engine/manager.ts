@@ -800,9 +800,6 @@ export {
     whenUnlocked
 }
 
-
-// Utils
-
 function reqCompatibleEngine() {
     if (noTAlternateSett && !engine.supportsNoTemplateMode) {
         throw new Error('No-template mode is enabled, but current engine does not support it! Please switch to different engine.');
@@ -831,7 +828,7 @@ function buildRunListener(serviceId: string): RunListener {
         onMessage: (msg) => {
             logService(serviceId, msg);
         },
-        onclose: async () => {
+        onClose: async () => {
             // Remove session when container is closed, because the service is not running anymore
             await db.deleteSession(serviceId);
 
