@@ -4,4 +4,5 @@ odebrat nodeId, cluster support se bude řešit jinak
 vyřešit logging u servis a logování změn stavů
 abstrahovat template management a udělat další sources jako například používání images z docker registry
 předělat usages monitoring na nějaký standardizovaný formát/způsob
+pořešit /resources/config.yml aby měl víc možností a možná byl uložený jinde v systému podle platformy
 udělat nějaký auto packaging do balíčků na githubu jako bundle aby se dal spustit jako systémový proces v systemctl například
