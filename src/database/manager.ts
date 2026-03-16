@@ -8,8 +8,6 @@ export const initClientForTest = (client_: PrismaClient) => {
     client = client_;
 }
 
-// Database manager implementation
-
 export async function saveSession({ serviceId, nodeId, containerId }: SessionModel): Promise<boolean> {
     try {
         await client.session.upsert({
