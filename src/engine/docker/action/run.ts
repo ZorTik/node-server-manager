@@ -103,15 +103,15 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
     // Prepare volume
     let creating = await prepareVolume(client, volumeId);
     if (creating) {
-      listener.onStateMessage('Created new volume');
+      await listener.onStateMessage('Created new volume');
     }
 
-    listener.onStateMessage('Preparing network');
+    await listener.onStateMessage('Preparing network');
     const net = await prepareNetwork(client, options.network, meta, creating);
     // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-    listener.onStateMessage('Preparing container');
+    await listener.onStateMessage('Preparing container');
     container = await prepareContainer(client, imageId, buildDir(templateId), volumeId, options, net);
-    listener.onStateMessage('Starting container');
+    await listener.onStateMessage('Starting container');
 
     await container.start();
     const info = await container.inspect();
@@ -130,8 +130,8 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
         });
         const msg = logs.toString("utf8");
 
-        listener.onStateMessage("Container failed to start");
-        listener.onMessage(msg);
+        await listener.onStateMessage("Container failed to start");
+        await listener.onMessage(msg);
       } catch (e) {
         ctx.logger.error("Error while fetching logs for failed container " + container.id, e);
       }

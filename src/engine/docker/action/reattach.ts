@@ -70,6 +70,6 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     });
     (self as DockerServiceEngine).rws[container.id] = rws;
 
-    listener.onStateMessage?.('Watching changes');
+    await listener.onStateMessage?.('Watching changes');
   }
 }

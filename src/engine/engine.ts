@@ -121,6 +121,8 @@ export type ServiceEngine = {
     /**
      * Reattaches to a container.
      *
+     * When this completes, the service is up and running.
+     *
      * @param id Container ID
      * @param listener Listener for container messages and state changes
      */
