@@ -439,9 +439,19 @@ export async function createService(template: string, options: Options) {
       portRange.max as number
     );
 
+    const perma: PermaModel = {
+        serviceId,
+        template,
+        nodeId,
+        port,
+        options: {ram, cpu, disk, ports},
+        meta,
+        env: env ?? {},
+        network
+    };
     let err: any;
     // Save permanent info
-    if (!await db.savePerma({ serviceId, template, nodeId, port, options: {ram, cpu, disk, ports}, meta, env: env ?? {}, network })) {
+    if (!await db.savePerma(perma)) {
         err = new _InternalError('Failed to save perma info to database');
     }
 
