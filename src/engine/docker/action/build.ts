@@ -125,10 +125,6 @@ export default function (client: DockerClient): ServiceEngine['build'] {
     }
 
     return async (imageId, buildDir, options) => {
-        if (!buildDir) {
-            throw new Error('Docker engine does not support no-template mode!');
-        }
-
         const imageBuildClock = clock();
         const imageTag = await prepareImage({imageName: imageId, client, arDir, buildDir, env: options});
         currentContext.logger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');

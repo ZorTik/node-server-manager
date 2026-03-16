@@ -92,23 +92,6 @@ export type MetaStorage = {
     get: <T>(key: string, def?: T) => Promise<T|undefined>;
 }
 
-export type NoTAlternateSettings = {
-    port_range: {
-        min: number,
-        max: number,
-    },
-    defaults: {
-        ram: number,
-        cpu: number,
-        disk: number,
-    },
-    meta: {
-        stopCmd: string,
-    },
-    env: {
-    },
-}
-
 export type EngineExpansion = {
     [k in keyof ServiceEngineI | string]: any;
 };
@@ -274,26 +257,6 @@ export type ServiceManager = ServiceManagerEventBus & {
      */
     stopRunning(): Promise<void>;
 
-    /**
-     * Enable no-template mode.
-     *
-     * When this is enabled, all services are being treated as same template, and it's
-     * up to the internal engine to handle creating them without templates. Services
-     * created using template mode can't be manipulated in this mode. Also, internal
-     * engine must support this mode.
-     *
-     * @param alternateSettings The global template default settings, replacement for
-     *                          settings.yml in template mode. This will be used as
-     *                          the settings for the global template used for every
-     *                          service created in this mode.
-     */
-    enableNoTemplateMode(alternateSettings: NoTAlternateSettings): Promise<void>;
-
-    /**
-     * Whether the no-template mode is enabled.
-     */
-    noTemplateMode(): boolean;
-
     isRunning(id: string): boolean;
 
     waitForBusyAction(id: string): Promise<void>;
@@ -333,7 +296,6 @@ export let nodeId: string;
 
 let db: Database;
 let appConfig: any;
-let noTAlternateSett: NoTAlternateSettings|undefined = undefined;
 
 // Returns the settings.yml file for the template
 function settings(template: string) {
@@ -345,7 +307,6 @@ function settings(template: string) {
 const errors = {};
 // Service IDs that are currently running
 const started = [];
-const noTTemplate = '__no_t__';
 const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
@@ -406,9 +367,6 @@ export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<
 }
 
 export async function createService(template: string, options: Options) {
-    reqCompatibleEngine();
-    template = noTAlternateSett ? noTTemplate : template;
-
     const {
         ram,
         cpu,
@@ -418,7 +376,7 @@ export async function createService(template: string, options: Options) {
         network
     } = options;
 
-    const serviceSettings = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    const serviceSettings = settings(template);
 
     // Join meta supplied by user and template meta
     const meta = {
@@ -469,7 +427,6 @@ export async function createService(template: string, options: Options) {
 }
 
 export async function resumeService(id: string) {
-    reqCompatibleEngine();
     // Service is already running
     if (await db.getSession(id)) {
         throw new _InternalError('Already running.', 2);
@@ -481,20 +438,9 @@ export async function resumeService(id: string) {
         env,
         network,
         port,
-        nodeId: permaNodeId,
     } = await getPermaModel(id);
 
-    if (noTAlternateSett && template !== noTTemplate) {
-        throw new Error('Tried to resume template-based service from within no-template mode.');
-    } else if (template === noTTemplate && !noTAlternateSett) {
-        throw new Error('Tried to resume no-t service from within template mode.');
-    }
-
-    if (noTAlternateSett && permaNodeId !== nodeId) {
-        throw new Error('In no-template mode, only services that came from this node can be resumed here.');
-    }
-
-    const {defaults, env: settingsEnv} = noTAlternateSett ? {...noTAlternateSett} : settings(template);
+    const {defaults, env: settingsEnv} = settings(template);
     // Filter env to only those that are defined in settings.yml, because those are the only ones that
     // we can guarantee to be used and will not make problems when handling images.
     env = {
@@ -700,16 +646,7 @@ export async function updateOptions(id: string, options: Options) {
 }
 
 export function getTemplate(id: string) {
-    if (noTemplateMode()) {
-        return {
-            id: noTTemplate,
-            name: "Built-in",
-            description: "A no-template template.",
-            settings: noTAlternateSett,
-        }
-    } else {
-        return loadTemplate(id);
-    }
+    return loadTemplate(id);
 }
 
 export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }) {
@@ -760,11 +697,6 @@ export async function stopRunning() {
     )));
 }
 
-export async function enableNoTemplateMode(alternateSettings: NoTAlternateSettings) {
-    noTAlternateSett = alternateSettings;
-    currentContext.logger.info("No-template mode has been enabled.");
-}
-
 export async function waitForBusyAction(id: string) {
     return new Promise<void>((resolve, reject) => {
         whenUnlocked(id, (_, status, err) => {
@@ -790,10 +722,6 @@ function metaStorageForService(id: string): MetaStorage { // service id
             return (await db.getServiceMeta(id, key)) ?? def;
         },
     };
-}
-
-export function noTemplateMode() {
-    return noTAlternateSett !== undefined;
 }
 
 export function initialized() {
@@ -826,12 +754,6 @@ export function on<T extends keyof ServiceManagerEvents>(evt: T, h: EventHandler
 
 export {
     whenUnlocked
-}
-
-function reqCompatibleEngine() {
-    if (noTAlternateSett && !engine.supportsNoTemplateMode) {
-        throw new Error('No-template mode is enabled, but current engine does not support it! Please switch to different engine.');
-    }
 }
 
 function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: ServiceManagerEvents[T]) {
@@ -900,8 +822,7 @@ async function clearSessions(db: Database, nodeId: string, logger: winston.Logge
     for (const session of unclearedSessions) {
         try {
             // Reattach to the container
-            await engine.reattach(
-              session.containerId, buildRunListener(session.serviceId));
+            await engine.reattach(session.containerId, buildRunListener(session.serviceId));
         } catch (e) {
             // Delete session if failed to reattach, probably the container is not running anymore
             await db.deleteSession(session.serviceId);

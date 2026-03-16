@@ -12,7 +12,7 @@ export type RunOptions = {
     ram: number; // in MB
     cpu: number; // in cores
     disk: number;
-    env: {[key: string]: string};
+    env: { [key: string]: string };
     network?: {
         address: string,
         // If only ports should be exposed to this
@@ -82,12 +82,6 @@ export type ServiceEngineI = ServiceEngine & { // Internal
  */
 export type ServiceEngine = {
     /**
-     * If this engine supports no-t mode from engine/manager.
-     * If enabled, buildDir from build() method can be undefined.
-     */
-    supportsNoTemplateMode: boolean;
-
-    /**
      * Builds an image from build dir.
      *
      * @param imageId The image ID to build. If this is undefined, the engine should generate a random image ID and return it.
@@ -96,7 +90,7 @@ export type ServiceEngine = {
      */
     build(
       imageId: string|undefined,
-      buildDir: string|undefined, buildOptions: { [key: string]: string }): Promise<string>;
+      buildDir: string, buildOptions: { [key: string]: string }): Promise<string>;
 
     run(
       templateId: string,

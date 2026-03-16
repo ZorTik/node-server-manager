@@ -5,13 +5,13 @@ import {Options} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {prepareEnvForTemplate} from "@nsm/engine/template";
 
-export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/create',
         routes: {
             post: async (req, res) => {
                 const clk = clock();
-                if (!req.body || (!manager.noTemplateMode() && !req.body.template)) {
+                if (!req.body || !req.body.template) {
                     res.status(400).json({status: 400, message: 'Missing body or template key.'}).end();
                     return;
                 }

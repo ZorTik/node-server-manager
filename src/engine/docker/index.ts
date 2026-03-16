@@ -22,7 +22,6 @@ export default function buildDockerEngine(appConfig: any) {
     const client = initDockerClient(appConfig);
     const engine = {} as DockerServiceEngine;
     engine.dockerClient = client;
-    engine.supportsNoTemplateMode = false;
     engine.rws = {};
     // engine.cast - Being replaced in manager.
     engine.build = build(client);
