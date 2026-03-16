@@ -33,6 +33,8 @@ const publishers: ErrorPublisher[] = [
 
 /**
  * Registers a new error publisher to publish notifications of service action errors.
+ * This is called when fails an ServiceManager call that manipulates with service lifecycle state,
+ * so registering this is quite useful for handling service action request errors.
  *
  * @param publisher The error publisher to register.
  */
