@@ -162,6 +162,15 @@ export type ServiceManager = ServiceManagerEventBus & {
     engine: ServiceEngineI;
 
     /**
+     * Initialize the service manager.
+     *
+     * @param db The database
+     * @param appConfig The app config
+     * @param logger The global logger
+     */
+    init(db: Database, appConfig: any, logger: winston.Logger): Promise<void>;
+
+    /**
      * Create a new service.
      *
      * @param template The template ID (folder name) to use
@@ -352,7 +361,11 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
     };
 });
 
-async function init(db_: Database, appConfig_: any) {
+export async function init(db_: Database, appConfig_: any, logger: winston.Logger) {
+    const nodeId_ = appConfig['node_id'] as string;
+
+    logger.info(`Initializing service manager for node ${nodeId_}...`);
+
     db = db_;
     appConfig = appConfig_;
     if (!engine) {
@@ -363,6 +376,11 @@ async function init(db_: Database, appConfig_: any) {
 
     initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
     watchTemplateDirChanges(currentContext.logger);
+
+    await clearSessions(db, nodeId_, logger);
+    await stopRunningServices(); // TODO: is this necessary?
+
+    logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
 }
 
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {
@@ -864,17 +882,8 @@ async function getServiceSession(id: string) {
     return session;
 }
 
-export default async function ({db, appConfig, logger}: {
-    db: Database,
-    appConfig: any,
-    logger: winston.Logger
-}) {
-    const nodeId = appConfig['node_id'] as string;
-
-    logger.info(`Initializing service manager for node ${nodeId}...`);
-
+async function clearSessions(db: Database, nodeId: string, logger: winston.Logger) {
     const unclearedSessions = await db.listSessions(nodeId);
-    await init(db, appConfig);
     if (unclearedSessions.length > 0) {
         logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to reattach to them...');
     }
@@ -890,7 +899,9 @@ export default async function ({db, appConfig, logger}: {
     }
 
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
+}
 
+async function stopRunningServices() {
     const running = await engine.listRunning();
     for (const id of running) {
         const volumeId = await engine.getAttachedVolume(id);
@@ -900,6 +911,4 @@ export default async function ({db, appConfig, logger}: {
         }
         await engine.stop(id, metaStorageForService(volumeId));
     }
-
-    logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
 }

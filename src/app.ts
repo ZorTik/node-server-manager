@@ -13,10 +13,9 @@ import {ServiceManager} from "@nsm/engine";
 import loadAddons from "./addon";
 import loadAppRoutes from '@nsm/router';
 import createDbManager from '@nsm/database';
-import initServiceManager from '@nsm/engine';
 import loadSecurity from "@nsm/security";
 import * as r from "@nsm/configuration/resources";
-import * as manager from "@nsm/engine";
+import * as manager from "@nsm/engine/manager";
 import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
@@ -114,7 +113,7 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
 
     // Service (virtualization) layer
     steps('BEFORE_ENGINE', ctx);
-    await initServiceManager({ db: database, appConfig, logger });
+    await manager.init(database, appConfig, logger);
 
     // Bring back original manager
     ctx.manager = currentContext.manager = middleLayer(manager);
