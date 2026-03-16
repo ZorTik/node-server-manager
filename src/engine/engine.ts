@@ -3,6 +3,9 @@ import buildDockerEngine from "./docker";
 import {getSingleton} from "../depend";
 import {MetaStorage} from "./manager";
 
+/**
+ * The options for running a service.
+ */
 export type RunOptions = {
     port: number;
     ports: number[];
@@ -18,6 +21,9 @@ export type RunOptions = {
     };
 }
 
+/**
+ * The stats of a container, used for monitoring.
+ */
 export type ContainerStat = {
     id: string,
     memory: {
