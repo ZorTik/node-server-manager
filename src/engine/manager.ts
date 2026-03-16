@@ -847,8 +847,8 @@ function buildRunListener(serviceId: string): RunListener {
 
 async function getPermaModel(id: string) {
     const perma_ = await db.getPerma(id);
-    // Service does not exist
     if (!perma_) {
+        // Service does not exist
         throw new _InternalError('Not found.', 3);
     }
 
@@ -888,9 +888,9 @@ export default async function ({db, appConfig, logger}: {
             await db.deleteSession(session.serviceId);
         }
     }
-    //
+
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
-    //
+
     const running = await engine.listRunning();
     for (const id of running) {
         const volumeId = await engine.getAttachedVolume(id);
