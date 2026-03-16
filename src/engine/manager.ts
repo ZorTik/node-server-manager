@@ -362,7 +362,7 @@ async function init(db_: Database, appConfig_: any) {
     nodeId = appConfig['node_id'] as string;
 
     initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
-    await watchTemplateDirChanges(currentContext.logger);
+    watchTemplateDirChanges(currentContext.logger);
 }
 
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {

@@ -12,7 +12,7 @@ export type TemplateDirWatcher = {
    * Starts watching the template directories for changes.
    * When a change is detected, the template hash is updated and cached.
    */
-  watchTemplateDirChanges(logger: winston.Logger): Promise<void>;
+  watchTemplateDirChanges(logger: winston.Logger): void;
 
   /**
    * Gets the cached hash of a template directory.
@@ -28,13 +28,13 @@ const hashCache: Map<string, string> = new Map();
 const watchers: Map<string, FSWatcher> = new Map();
 const hashingInProgress: Set<string> = new Set();
 
-export const watchTemplateDirChanges = async (logger: winston.Logger) => {
+export const watchTemplateDirChanges = (logger: winston.Logger) => {
   const templates = getAllTemplates();
 
   // Populate on startup
-  await Promise.all(templates.map(template => watchTemplateDir(template.id)));
+  templates.forEach(template => watchTemplateDir(template.id));
   // Watch the base directory for new templates
-  await watchBaseDir(logger);
+  watchBaseDir(logger);
 
   logger.info("Watching template directories for changes...");
 }
@@ -45,7 +45,7 @@ export const watchTemplateDirChanges = async (logger: winston.Logger) => {
  * When a new template directory is added, it starts watching that directory for changes.
  * When a template directory is removed, it stops watching that directory and removes its hash from the cache.
  */
-const watchBaseDir = async (logger: winston.Logger) => {
+const watchBaseDir = (logger: winston.Logger) => {
   const dir = baseTemplatesDir();
 
   const watcher = chokidar.watch(dir, {
