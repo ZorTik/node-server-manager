@@ -323,7 +323,7 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 });
 
 export async function init(db_: Database, appConfig_: any, logger: winston.Logger) {
-    const nodeId_ = appConfig['node_id'] as string;
+    const nodeId_ = appConfig_['node_id'] as string;
 
     logger.info(`Initializing service manager for node ${nodeId_}...`);
 
