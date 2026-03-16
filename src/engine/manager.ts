@@ -6,7 +6,7 @@ import * as templateDirWatcher from "./monitoring/templateDirWatcher";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
-import {PermaModel, SessionModel} from "../database";
+import {PermaModel} from "../database";
 import {
     isServicePending,
     lckStatusTp,
@@ -270,11 +270,21 @@ export type ServiceManager = ServiceManagerEventBus & {
     whenUnlocked: typeof whenUnlocked
 };
 
+type RunningService = {
+    id: string;
+    session: Session;
+}
+
+export type Session = {
+    containerId: string;
+    // TODO: add more useful information?
+}
+
 export type ServiceInfo = PermaModel & {
     optionsRam: number, // From options.ram
     optionsCpu: number, // From options.cpu
     optionsDisk: number, // From options.disk
-    session?: SessionModel
+    session?: Session
 }
 
 // 1 = unknown, 2 = conflict, 3 = not found
@@ -306,7 +316,7 @@ function settings(template: string) {
 // Could it be a memory leak if there are tons of them??
 const errors = {};
 // Service IDs that are currently running
-const started = [];
+const started: RunningService[] = [];
 const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
@@ -338,7 +348,7 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
     initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
     watchTemplateDirChanges(currentContext.logger);
 
-    await clearSessions(db, nodeId_, logger);
+    await reattachStaleContainers(logger);
     await stopRunningServices(); // TODO: is this necessary?
 
     logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
@@ -427,10 +437,7 @@ export async function createService(template: string, options: Options) {
 }
 
 export async function resumeService(id: string) {
-    // Service is already running
-    if (await db.getSession(id)) {
-        throw new _InternalError('Already running.', 2);
-    }
+    reqNotRunning(id);
 
     let {
         template,
@@ -504,15 +511,14 @@ export async function resumeService(id: string) {
 
     let success: boolean = false;
     if (containerId) {
-        const saved = await db.saveSession({ serviceId: id, nodeId, containerId });
-        // Save new session info
-        if (saved) {
-            started.push(id);
-            success = true;
-        } else {
-            // Cleanup if err with db
-            await engine.stop(containerId, meta);
-        }
+        const runningService: RunningService = {
+            id,
+            session: {
+                containerId
+            }
+        };
+        started.push(runningService);
+        success = true;
     }
 
     if (success == true) {
@@ -520,7 +526,7 @@ export async function resumeService(id: string) {
         callManagerEvent('resume', { id });
     } else {
         errors[id] = new Error('Failed to resume service');
-        started.splice(started.indexOf(id), 1);
+        clearRunningServiceIfExists(id);
         callManagerEvent('resume', { id, error: errors[id] });
     }
 
@@ -530,14 +536,9 @@ export async function resumeService(id: string) {
 }
 
 export async function stopService(id: string, force?: boolean) {
-    if (!await db.getPerma(id)) {
-        throw new _InternalError("Service not found.", 3);
-    }
+    await reqExists(id);
 
-    const session = await db.getSession(id);
-    if (!session) {
-        throw new _InternalError("This service is not running.", 2);
-    }
+    const { session } = reqRunning(id);
 
     lckStatusTp(session.containerId, 'stop');
     const unlock = lockBusyAction(id, 'stop');
@@ -574,15 +575,15 @@ export async function stopServiceForcibly(id: string) {
 }
 
 export async function sendStopSignal(id: string) {
-    const perma_ = await getPermaModel(id);
-    const session = await getServiceSession(id);
-    const stopCmd = perma_.meta?.stopCmd;
+    const perma = await reqExists(id);
+    const { session } = reqRunning(id);
+
+    const stopCmd = perma.meta?.stopCmd;
     if (!stopCmd) {
         throw new _InternalError('Service does not have stop command set.');
     }
 
     await engine.cmd(session.containerId, stopCmd);
-
     return true;
 }
 
@@ -654,7 +655,7 @@ export async function getService(from: string, options?: { includeSession?: bool
     if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
         let session = undefined;
         if (options?.includeSession === true) {
-            session = await currentContext.database.getSession(data.serviceId);
+            session = getRunningService(data.serviceId);
         }
         return {
             ...data,
@@ -684,8 +685,8 @@ export async function listTemplates(): Promise<string[]> {
 }
 
 export async function stopRunning() {
-    await Promise.all(started.map(id => (
-        new Promise((resolve, reject) => {
+    await Promise.all(started.map(({id}) => (
+        new Promise((resolve) => {
             whenUnlocked(id, () => {
                 stopService(id)
                     .catch(e => console.log(e))
@@ -710,7 +711,11 @@ export async function waitForBusyAction(id: string) {
 }
 
 export function isRunning(id: string) {
-    return started.includes(id);
+    return getRunningService(id) != undefined;
+}
+
+function getRunningService(id: string) {
+    return started.find(service => service.id === id);
 }
 
 function metaStorageForService(id: string): MetaStorage { // service id
@@ -756,6 +761,37 @@ export {
     whenUnlocked
 }
 
+async function reqExists(id: string) {
+    const perma = await db.getPerma(id);
+    if (!perma) {
+        throw new _InternalError("Service not found.", 3);
+    }
+
+    return perma;
+}
+
+function reqRunning(id: string) {
+    const session = getRunningService(id);
+    if (!session) {
+        throw new _InternalError("This service is not running.", 2);
+    }
+
+    return session;
+}
+
+function reqNotRunning(id: string) {
+    if (isRunning(id)) {
+        throw new _InternalError('Already running.', 2);
+    }
+}
+
+function clearRunningServiceIfExists(id: string) {
+    const service = getRunningService(id);
+    if (service) {
+        started.splice(started.indexOf(service, 1));
+    }
+}
+
 function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: ServiceManagerEvents[T]) {
     if (!evtHandlers.has(e)) {
         return;
@@ -782,9 +818,7 @@ function buildRunListener(serviceId: string): RunListener {
             // Remove session when container is closed, because the service is not running anymore
             await db.deleteSession(serviceId);
 
-            if (started.includes(serviceId)) {
-                started.splice(started.indexOf(serviceId, 1));
-            }
+            clearRunningServiceIfExists(serviceId);
 
             // Call stop event on the manager for the stopService() to potentially
             // unlock a busy action
@@ -805,29 +839,9 @@ async function getPermaModel(id: string) {
     return perma_;
 }
 
-async function getServiceSession(id: string) {
-    const session = await db.getSession(id);
-    if (!session) {
-        throw new _InternalError("This service is not running.", 2);
-    }
-
-    return session;
-}
-
-async function clearSessions(db: Database, nodeId: string, logger: winston.Logger) {
-    const unclearedSessions = await db.listSessions(nodeId);
-    if (unclearedSessions.length > 0) {
-        logger.info('There are ' + unclearedSessions.length + ' uncleared sessions, trying to reattach to them...');
-    }
-    for (const session of unclearedSessions) {
-        try {
-            // Reattach to the container
-            await engine.reattach(session.containerId, buildRunListener(session.serviceId));
-        } catch (e) {
-            // Delete session if failed to reattach, probably the container is not running anymore
-            await db.deleteSession(session.serviceId);
-        }
-    }
+async function reattachStaleContainers(logger: winston.Logger) {
+    // TODO: find containers marked and find serviceId marked on them
+    // TODO: engine.reattach(containerId, buildRunListener(serviceId));
 
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
 }

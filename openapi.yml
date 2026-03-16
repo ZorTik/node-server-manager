@@ -86,10 +86,6 @@ components:
       type: "object"
       description: "The session information about a running service, if running"
       properties:
-        serviceId:
-          type: "string"
-        nodeId:
-          type: "string"
         containerId:
           type: "string"
         stats:

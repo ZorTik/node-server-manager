@@ -14,13 +14,6 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model Session {
-  serviceId   String   @id @default(uuid())
-  createdAt   DateTime @default(now())
-  nodeId      String
-  containerId String
-}
-
 model Service {
   serviceId String  @id @default(uuid())
   nodeId    String

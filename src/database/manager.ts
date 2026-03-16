@@ -1,25 +1,11 @@
 import {PrismaClient} from "@prisma/client";
-import {ImageModel, PermaModel, SessionModel} from "./models";
+import {ImageModel, PermaModel} from "./models";
 import {optionsDiffer} from "@nsm/engine/image";
 
 let client = new PrismaClient();
 
 export const initClientForTest = (client_: PrismaClient) => {
     client = client_;
-}
-
-export async function saveSession({ serviceId, nodeId, containerId }: SessionModel): Promise<boolean> {
-    try {
-        await client.session.upsert({
-            where: { serviceId },
-            update: { nodeId, containerId },
-            create: { serviceId, nodeId, containerId }
-        });
-        return true;
-    } catch (e) {
-        console.log(e);
-        return false;
-    }
 }
 
 export async function savePerma(data: PermaModel): Promise<boolean> {
@@ -70,19 +56,6 @@ export async function deletePerma(serviceId: string): Promise<boolean> {
             console.log(e);
         }
         return false;
-    }
-}
-
-export async function getSession(serviceId: string): Promise<SessionModel|undefined> {
-    try {
-        const session = await client.session.findUnique({ where: { serviceId } });
-        if (!session) {
-            return undefined;
-        }
-        return session;
-    } catch (e) {
-        console.log(e);
-        return undefined;
     }
 }
 
@@ -156,15 +129,6 @@ export async function list(nodeId: string|undefined, page?: number, pageSize?: n
 export async function listAllUsingImage(imageId: string): Promise<PermaModel[]> {
     try {
         return await client.service.findMany({ where: { imageId } }) as PermaModel[];
-    } catch (e) {
-        console.log(e);
-        return [];
-    }
-}
-
-export async function listSessions(nodeId: string): Promise<SessionModel[]> {
-    try {
-        return await client.session.findMany({ where: { nodeId } });
     } catch (e) {
         console.log(e);
         return [];
