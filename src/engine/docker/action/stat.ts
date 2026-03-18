@@ -1,4 +1,4 @@
-import {ServiceEngine} from "../../engine";
+import {ServiceEngine} from "@nsm/engine";
 import DockerClient from "dockerode";
 import {adaptContainerStatsFromDocker} from "@nsm/util/docker";
 

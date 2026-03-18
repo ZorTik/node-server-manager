@@ -668,7 +668,7 @@ export async function getService(from: string, options?: { includeSession?: bool
     if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
         let session = undefined;
         if (options?.includeSession === true) {
-            session = getRunningService(data.serviceId);
+            session = getRunningService(data.serviceId)?.session;
         }
         return {
             ...data,
