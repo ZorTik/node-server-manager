@@ -21,6 +21,7 @@ export default function buildDockerEngine(appConfig: any) {
     // Default engine implementation
     const client = initDockerClient(appConfig);
     const engine = {} as DockerServiceEngine;
+    engine.name = "Docker";
     engine.dockerClient = client;
     engine.rws = {};
     // engine.cast - Being replaced in manager.

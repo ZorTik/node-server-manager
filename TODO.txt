@@ -1,28 +1,6 @@
-vyřešit logging u servis a logování změn stavů
-odebrat nodeId, cluster support se bude řešit jinak
+vyřešit logging u servis a logování změn stavů takže i stavy služeb
 abstrahovat template management a udělat další sources jako například používání images z docker registry
 předělat usages monitoring na nějaký standardizovaný formát/způsob
 pořešit /resources/config.yml aby měl víc možností a možná byl uložený jinde v systému podle platformy
 port retrieval strategy pro spouštění servis, aby nebyla jenom random ale i jiné strategies
 udělat nějaký auto packaging do balíčků na githubu jako bundle aby se dal spustit jako systémový proces v systemctl například
-
-
-2026-03-18T00:45:00.041Z [NSM] info: Server started on port 3000
-2026-03-18T00:45:11.731Z [NSM] info: Running service f052b43b-3b04-4c75-957a-5ff0cbec65df...
-2026-03-18T00:45:12.119Z [NSM] info: Service f052b43b-3b04-4c75-957a-5ff0cbec65df resumed
-C:\Users\zortl\WebstormProjects\node-server-manager\node_modules\docker-modem\lib\modem.js:383
-      var msg = new Error(
-                ^
-
-Error: (HTTP code 404) no such container - No such container: undefined
-    at C:\Users\zortl\WebstormProjects\node-server-manager\node_modules\docker-modem\lib\modem.js:383:17
-    at getCause (C:\Users\zortl\WebstormProjects\node-server-manager\node_modules\docker-modem\lib\modem.js:418:7)
-    at Modem.buildPayload (C:\Users\zortl\WebstormProjects\node-server-manager\node_modules\docker-modem\lib\modem.js:379:5)
-    at IncomingMessage.<anonymous> (C:\Users\zortl\WebstormProjects\node-server-manager\node_modules\docker-modem\lib\modem.js:347:16)
-    at IncomingMessage.emit (node:events:531:35)
-    at endReadableNT (node:internal/streams/readable:1698:12)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
-  reason: 'no such container',
-  statusCode: 404,
-  json: { message: 'No such container: undefined' }
-}

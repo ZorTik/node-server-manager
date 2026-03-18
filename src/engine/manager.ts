@@ -357,7 +357,7 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
 
     await reattachStaleContainers(logger);
 
-    logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
+    logger.info(`Using engine: ${engine.name}`);
 }
 
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {

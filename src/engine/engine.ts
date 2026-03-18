@@ -79,9 +79,6 @@ export type DockerServiceEngine = ServiceEngineI & {
 }
 
 export type ServiceEngineI = ServiceEngine & { // Internal
-    // If we are using the default (not custom) engine
-    defaultEngine: boolean,
-
     cast<T extends ServiceEngine>(): T;
 }
 
@@ -91,6 +88,9 @@ export type ServiceEngineI = ServiceEngine & { // Internal
  * containers themselves.
  */
 export type ServiceEngine = {
+    // Just for display purposes
+    name: string;
+
     /**
      * Builds an image from build dir.
      *
@@ -242,19 +242,17 @@ export const Filters = {
 
 export default function (appConfig: any): ServiceEngineI {
     let engine = getSingleton<ServiceEngine>('engine');
-    const usingBuiltInEngine = engine == undefined;
-    const engineId = process.env.NSM_ENGINE ?? 'docker';
-    if (usingBuiltInEngine) {
+    if (!engine) {
+        const engineId = process.env.NSM_ENGINE ?? 'docker';
         switch (engineId) {
             case 'docker':
                 engine = buildDockerEngine(appConfig);
                 break;
             default:
-                throw new Error('Invalid engine ID ' + engineId);
+                throw new Error('Invalid engine ID: ' + engineId);
         }
     }
     return {
-        defaultEngine: usingBuiltInEngine && engineId === 'docker',
         cast: undefined, // Being set in manager
         ...engine,
     };
