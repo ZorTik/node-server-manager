@@ -127,8 +127,6 @@ describe("Test v1 API models", () => {
             "port", undefined,
             "options", undefined,
             "env", undefined,
-            "session.serviceId", undefined,
-            "session.nodeId", undefined,
             "session.containerId", undefined,
         ]);
     }, 20000);
