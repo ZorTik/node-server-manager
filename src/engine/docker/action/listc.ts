@@ -1,18 +1,16 @@
 import DockerClient from "dockerode";
-import {ServiceEngine} from "../../engine";
-import {currentContext} from "../../../app";
+import {ServiceEngine} from "@nsm/engine";
+import {toDockerFilters} from "@nsm/engine/docker/util/labels";
 
 export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['listContainers'] {
-    return async (templates) => {
-        if (templates === undefined) {
-            templates = await currentContext.manager.listTemplates();
-        }
+    return async (filter) => {
         try {
-            return (await client.listContainers())
-                .filter(c => templates.some(function (t) {
-                    return c.Labels.hasOwnProperty('nsm.templateId') && c.Labels['nsm.templateId'] == t;
-                }))
-                .map(c => c.Id);
+            const containers = await client.listContainers({
+                all: true,
+                filters: toDockerFilters(filter)
+            });
+
+            return containers.map(c => c.Id);
         } catch (e) {
             console.log(e);
             return [];

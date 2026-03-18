@@ -1,5 +1,5 @@
 import {currentContext, Database} from "../app";
-import createEngine, {RunOptions, RunListener, ServiceEngineI} from "./engine";
+import createEngine, {RunOptions, RunListener, ServiceEngineI, StandardLabel, Filters} from "./engine";
 import {Template, getTemplate as loadTemplate, getAllTemplates} from "./template";
 import * as templateManager from "./template";
 import * as templateDirWatcher from "./monitoring/templateDirWatcher";
@@ -235,7 +235,14 @@ export type ServiceManager = ServiceManagerEventBus & {
     /**
      * Get list of running services on this node.
      */
-    getRunningServices(): string[];
+    getRunningServices(): RunningService[];
+
+    /**
+     * Get the running service by ID.
+     *
+     * @param id The service ID
+     */
+    getRunningService(id: string): RunningService|undefined;
 
     /**
      * List all available services.
@@ -349,7 +356,6 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
     watchTemplateDirChanges(currentContext.logger);
 
     await reattachStaleContainers(logger);
-    await stopRunningServices(); // TODO: is this necessary?
 
     logger.info(`Using ${engine.defaultEngine ? 'default' : 'custom'} engine`);
 }
@@ -468,6 +474,13 @@ export async function resumeService(id: string) {
         port,
         ports: options.ports ?? [],
         network,
+        labels: {
+            [StandardLabel.Nsm]: 'true',
+            [StandardLabel.ServiceId]: id,
+            [StandardLabel.VolumeId]: id,
+            [StandardLabel.TemplateId]: template,
+            // TODO: nsm.buildDir
+        }
     };
 
     const perma = await db.getPerma(id);
@@ -497,7 +510,6 @@ export async function resumeService(id: string) {
         if (image) {
             currentContext.logger.info('Running service ' + id + "...");
             containerId = await engine.run(
-              template,
               image,
               id,
               runOptions,
@@ -561,7 +573,7 @@ export async function stopService(id: string, force?: boolean) {
         if (force) {
             await engine.kill(session.containerId, meta);
         } else {
-            await engine.stop(session.containerId, meta);
+            await engine.stop(session.containerId);
         }
     } catch (e) {
         currentContext.logger.error(e);
@@ -714,7 +726,7 @@ export function isRunning(id: string) {
     return getRunningService(id) != undefined;
 }
 
-function getRunningService(id: string) {
+export function getRunningService(id: string) {
     return started.find(service => service.id === id);
 }
 
@@ -839,21 +851,44 @@ async function getPermaModel(id: string) {
     return perma_;
 }
 
+/**
+ * Reattach to containers that are still running from the previous session.
+ * This may happen if NSM was force-stopped and not properly cleared up resources.
+ *
+ * @param logger The logger to use
+ */
 async function reattachStaleContainers(logger: winston.Logger) {
-    // TODO: find containers marked and find serviceId marked on them
-    // TODO: engine.reattach(containerId, buildRunListener(serviceId));
+    const running = await engine.listRunning(Filters.node(nodeId))
+      .then(containerIds => containerIds
+        // Filter out those that we have already started in this session, just in case
+        // this was started more than once a session
+        .filter(id => !started.find(runningService => runningService.session.containerId === id)));
+
+    for (let containerId of running) {
+        const labels = await engine.getLabels(containerId);
+        if (!labels[StandardLabel.ServiceId]) {
+            // The container was in the running list, but does not have the required labels
+            // Should not happen, but just in case
+            logger.warn(`Found a running container with id ${containerId} that does not have a service id label, stopping.`);
+
+            await engine.stop(containerId);
+        }
+
+        const serviceId = labels[StandardLabel.ServiceId];
+        logger.info(`Reattaching container ${containerId} for service ${serviceId}...`);
+
+        // Reattach and watch the container
+        await engine.reattach(containerId, buildRunListener(serviceId));
+
+        // Save session in-memory
+        const info: RunningService = {
+            id: serviceId,
+            session: {
+                containerId
+            }
+        };
+        started.push(info);
+    }
 
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
-}
-
-async function stopRunningServices() {
-    const running = await engine.listRunning();
-    for (const id of running) {
-        const volumeId = await engine.getAttachedVolume(id);
-        if (!volumeId) {
-            // The container does not exist or does not have a volume attached?
-            continue;
-        }
-        await engine.stop(id, metaStorageForService(volumeId));
-    }
 }

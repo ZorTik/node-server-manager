@@ -1,18 +1,18 @@
-import {AppContext} from "../../../app";
+import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
 
-export default async function ({database, manager}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id',
         routes: {
             get: async (req, res) => {
                 const id = req.params.id;
-                const service = await database.getPerma(id);
+                const service = await manager.getService(id, { includeSession: true });
                 if (!service) {
                     res.status(404).json({status: 404, message: 'Invalid service ID.'}).end();
                     return;
                 }
-                const session = await database.getSession(id);
+                const session = service.session;
                 let stats: any;
                 if (session && req.query.stats === 'true') {
                     stats = await manager.engine.stat(session.containerId);

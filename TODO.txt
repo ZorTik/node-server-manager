@@ -1,4 +1,3 @@
-Odebrat ukládání běžících sessions do databáze, držet jen v runtimu
 vyřešit logging u servis a logování změn stavů
 odebrat nodeId, cluster support se bude řešit jinak
 abstrahovat template management a udělat další sources jako například používání images z docker registry

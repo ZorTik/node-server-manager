@@ -1,9 +1,10 @@
-import {AppContext, Database, ServiceManager} from "../../../app";
+import {AppContext, Database, ServiceManager} from "@nsm/app";
 import {RouterHandler} from "../../index";
 import * as os from "os";
+import {Filters} from "@nsm/engine";
 
 async function checkNsmResources(engine: ServiceManager, db: Database) {
-    const stats = await engine.engine.statAll();
+    const stats = await engine.engine.statAll(Filters.node(engine.nodeId));
     const servicesGlobal = await db.list(engine.nodeId);
     const res = stats.reduce((acc, s) => {
         acc.memory.used += s.memory.used;
@@ -55,9 +56,6 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
         routes: {
             get: async (req, res) => {
                 const nodeId = appConfig['node_id'];
-                const templates = await manager.listTemplates();
-                const runningContainers = await manager.engine.listContainers(templates);
-                const sessions = await database.listSessions(manager.nodeId);
                 const all = await database.list(nodeId);
                 const [free, size] = await manager.engine.calcHostUsage();
                 const system = {
@@ -68,9 +66,8 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
                 }
                 res.json({
                     nodeId,
-                    running: sessions
-                        .filter(s => runningContainers.includes(s.containerId))
-                        .map(s => s.serviceId),
+                    running: manager.getRunningServices()
+                      .map(s => s.id),
                     all: all.length,
                     system,
                     ...(req.query.stats === 'true' ? { stats: await checkNsmResources(manager, database) } : {})

@@ -19,6 +19,9 @@ export type RunOptions = {
         // IP address.
         portsOnly: boolean,
     };
+    labels?: {
+        [key: string]: string;
+    }
 }
 
 /**
@@ -36,6 +39,13 @@ export type ContainerStat = {
         total: number,
         percent: number
     },
+}
+
+export type ContainerFilter = {
+    /**
+     * Filter containers that have all those labels.
+     */
+    labels?: { [key: string]: string };
 }
 
 export type RunListener = {
@@ -93,7 +103,6 @@ export type ServiceEngine = {
       buildDir: string, buildOptions: { [key: string]: string }): Promise<string>;
 
     run(
-      templateId: string,
       imageId: string,
       volumeId: string,
       options: RunOptions,
@@ -104,10 +113,9 @@ export type ServiceEngine = {
      * Stops a container.
      *
      * @param id Container ID
-     * @param meta Meta storage for this unique context
      * @return Success state
      */
-    stop(id: string, meta: MetaStorage): Promise<boolean>;
+    stop(id: string): Promise<boolean>;
 
     /**
      * Kills a container.
@@ -153,38 +161,83 @@ export type ServiceEngine = {
     cmd(id: string, cmd: string): Promise<boolean>;
 
     /**
-     * Get ID of volume that this container is attached to, or undefined
-     * if not found or no volume. Meta is not present here because this func
-     * is used to determine ID for building the meta.
+     * Gets the labels of a container.
      *
-     * @param id The volume ID.
+     * @param id Container ID
      */
-    getAttachedVolume(id: string): Promise<string|undefined>;
+    getLabels(id: string): Promise<{ [key: string]: string }>;
 
     /**
      * Lists container ids of containers by templates.
      *
-     * @param templates The templates
+     * @param filter The filter to apply
      * @return List of container IDs
      */
-    listContainers(templates?: string[]): Promise<string[]>;
+    listContainers(filter: ContainerFilter): Promise<string[]>;
 
     /**
      * List running containers owned by this engine on this machine.
      *
+     * @param filter The filter to apply
      * @return List of container IDs
      */
-    listRunning(): Promise<string[]>;
+    listRunning(filter: ContainerFilter): Promise<string[]>;
 
     listAttachedPorts(): Promise<number[]>;
 
     stat(id: string): Promise<ContainerStat|null>;
 
-    statAll(): Promise<ContainerStat[]>;
+    statAll(filter: ContainerFilter): Promise<ContainerStat[]>;
 
     // Disk usage of all services here
     // [0]: free, [1]: size
     calcHostUsage(): Promise<number[]>;
+}
+
+/**
+ * Standard labels that NSM uses to identify and manage containers.
+ * Used by the manager to keep consistency across the codebase.
+ */
+export enum StandardLabel {
+    // The default label identifying a NSM-managed container.
+    Nsm = 'nsm',
+    // The service ID that owns the container.
+    ServiceId = 'nsm.id',
+    // The volume ID that the container is using.
+    VolumeId = 'nsm.volumeId',
+    // The template ID that the container is created from.
+    TemplateId = 'nsm.templateId',
+    // The node ID of the managing worker.
+    NodeId = 'nsm.nodeId',
+    // The templare build dir.
+    BuildDir = 'nsm.buildDir',
+}
+
+export const Filters = {
+    /**
+     * The standard filter for NSM-managed containers, which
+     * filters containers that have the label "nsm" with value "true".
+     */
+    nsm() {
+        return {
+            labels: {
+                [StandardLabel.Nsm]: 'true'
+            }
+        }
+    },
+    /**
+     * The filter for containers belonging to a node with the given node ID.
+     *
+     * @param nodeId The node ID
+     */
+    node(nodeId: string) {
+        return {
+            labels: {
+                ...this.nsm().labels,
+                [StandardLabel.NodeId]: nodeId,
+            }
+        }
+    }
 }
 
 export default function (appConfig: any): ServiceEngineI {

@@ -2,8 +2,6 @@ import DockerClient from "dockerode";
 import {RunOptions, MetaStorage, ServiceEngine} from "@nsm/engine";
 import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
-import path from "path";
-import {buildDir} from "@nsm/engine/monitoring/util";
 import {currentContext as ctx} from "@nsm/app";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 
@@ -53,7 +51,6 @@ async function prepareNetwork(
 async function prepareContainer(
   client: DockerClient,
   imageTag: string,
-  buildDir: string,
   volumeId: string,
   options: RunOptions,
   net: DockerClient.Network|undefined
@@ -66,12 +63,7 @@ async function prepareContainer(
   // Create container
   const container = await client.createContainer({
     Image: imageTag,
-    Labels: {
-      ...constructObjectLabels({ id: volumeId }),
-      'nsm.buildDir': buildDir,
-      'nsm.volumeId': volumeId,
-      'nsm.templateId': buildDir ? path.basename(buildDir) : '__no_t__'
-    },
+    Labels: options.labels,
     HostConfig: {
       Memory: ram,
       CpuShares: cpu,
@@ -98,7 +90,7 @@ async function prepareContainer(
 }
 
 export default function run(self: ServiceEngine, client: DockerClient): ServiceEngine["run"] {
-  return async (templateId, imageId, volumeId, options, meta, listener) => {
+  return async (imageId, volumeId, options, meta, listener) => {
     let container: DockerClient.Container;
     // Prepare volume
     let creating = await prepareVolume(client, volumeId);
@@ -110,7 +102,7 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
     const net = await prepareNetwork(client, options.network, meta, creating);
     // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
     await listener.onStateMessage('Preparing container');
-    container = await prepareContainer(client, imageId, buildDir(templateId), volumeId, options, net);
+    container = await prepareContainer(client, imageId, volumeId, options, net);
     await listener.onStateMessage('Starting container');
 
     await container.start();
