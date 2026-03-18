@@ -9,6 +9,7 @@ import reattach from "./action/reattach";
 import delVolume from './action/deletev';
 import delImage from './action/deletei';
 import cmd from './action/cmd';
+import getLabels from './action/getLabels';
 import listContainers from './action/listc';
 import listAttachedPorts from './action/listp';
 import stat from "./action/stat";
@@ -31,6 +32,7 @@ export default function buildDockerEngine(appConfig: any) {
     engine.deleteVolume = delVolume(engine, client);
     engine.deleteImage = delImage(client);
     engine.cmd = cmd(engine, client);
+    engine.getLabels = getLabels(client);
     engine.listContainers = listContainers(engine, client);
     engine.listAttachedPorts = listAttachedPorts(engine, client);
     engine.stat = stat(engine, client);

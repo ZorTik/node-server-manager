@@ -477,6 +477,7 @@ export async function resumeService(id: string) {
         labels: {
             [StandardLabel.Nsm]: 'true',
             [StandardLabel.ServiceId]: id,
+            [StandardLabel.NodeId]: nodeId,
             [StandardLabel.VolumeId]: id,
             [StandardLabel.TemplateId]: template,
             // TODO: nsm.buildDir
@@ -875,7 +876,6 @@ async function reattachStaleContainers(logger: winston.Logger) {
         }
 
         const serviceId = labels[StandardLabel.ServiceId];
-        logger.info(`Reattaching container ${containerId} for service ${serviceId}...`);
 
         // Reattach and watch the container
         await engine.reattach(containerId, buildRunListener(serviceId));
@@ -888,6 +888,7 @@ async function reattachStaleContainers(logger: winston.Logger) {
             }
         };
         started.push(info);
+        logger.info(`Reattached container ${containerId} for service ${serviceId}`);
     }
 
     await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
