@@ -16,12 +16,14 @@ import createDbManager from '@nsm/database';
 import loadSecurity from "@nsm/security";
 import * as r from "@nsm/configuration/resources";
 import * as manager from "@nsm/engine/manager";
+import * as sessionManager from "@nsm/engine/session";
 import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
 import isInsideContainer from "@nsm/lib/isInsideContainer";
 import {middleLayer} from "@nsm/engine/middle";
+import {SessionManager} from "@nsm/engine/session";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -29,6 +31,7 @@ export type AppBootContext = AppContext & { steps: any };
 export type AppContext = {
     router: Router;
     manager: ServiceManager;
+    sessionManager: SessionManager;
     database: Database;
     appConfig: any;
     logger: winston.Logger;
@@ -104,6 +107,7 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
     const ctx = currentContext = {
         router,
         manager: managerForUnsafeUse(),
+        sessionManager,
         database,
         appConfig,
         logger,

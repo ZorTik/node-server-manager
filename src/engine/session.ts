@@ -1,5 +1,21 @@
 import {RunListener} from "@nsm/engine/engine";
-import {CreateLogRecordArgs, Database, ListRecordsArgs, ListSessionsArgs, ServiceLogRecordModel} from "@nsm/database";
+import {
+  CreateLogRecordArgs,
+  Database,
+  ListRecordsArgs,
+  ListSessionsArgs,
+  ServiceLogRecordModel,
+  ServiceSessionModel
+} from "@nsm/database";
+
+export interface SessionManager {
+  init(db: Database): void;
+
+  beginServiceSession(serviceId: string): Promise<ActiveServiceSession>;
+
+  listSessions(args: ListSessionsArgs): Promise<ServiceSessionModel[]|undefined>;
+  listSessionLogs(args: ListRecordsArgs): Promise<ServiceLogRecordModel[]|undefined>;
+}
 
 export interface ServiceSession {
   id: string;
@@ -26,7 +42,9 @@ export const init = (db_: Database) => {
  * @param serviceId The ID of the service for which to begin a session.
  * @return An object representing the active service session.
  */
-export const beginServiceSession = async (serviceId: string): Promise<ActiveServiceSession> => {
+export const beginServiceSession: SessionManager["beginServiceSession"] = async (
+  serviceId: string
+): Promise<ActiveServiceSession> => {
   let session = await db.sessionRepository.createSession(serviceId);
 
   // Debounce the push in bulk to prevent database overhead
@@ -150,10 +168,10 @@ const debounceBulkPush = () => {
 
 // TODO: get service session
 
-export const listSessions = async (args: ListSessionsArgs) => {
+export const listSessions: SessionManager["listSessions"] = async (args: ListSessionsArgs) => {
   return db.sessionRepository.listSessions(args);
 }
 
-export const listSessionLogs = async (args: ListRecordsArgs) => { // TODO: implement this in ep
+export const listSessionLogs: SessionManager["listSessionLogs"] = async (args: ListRecordsArgs) => {
   return db.serviceLogRepository.listRecords(args);
 }
