@@ -154,6 +154,6 @@ export const listSessions = async (args: ListSessionsArgs) => {
   return db.sessionRepository.listSessions(args);
 }
 
-export const listSessionLogs = async (args: ListRecordsArgs) => {
+export const listSessionLogs = async (args: ListRecordsArgs) => { // TODO: implement this in ep
   return db.serviceLogRepository.listRecords(args);
 }
