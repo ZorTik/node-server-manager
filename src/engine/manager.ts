@@ -295,9 +295,10 @@ export type InternalSession = {
 }
 
 export type ServiceInfo = PermaModel & {
-    optionsRam: number, // From options.ram
-    optionsCpu: number, // From options.cpu
-    optionsDisk: number, // From options.disk
+    optionsRam: number; // From options.ram
+    optionsCpu: number; // From options.cpu
+    optionsDisk: number; // From options.disk
+    session?: ServiceSession;
     internalSession?: InternalSession
 }
 
@@ -525,7 +526,8 @@ export async function resumeService(id: string) {
             );
         }
     } catch (e) {
-        currentContext.logger.error('Failed to run container for service ' + id, e);
+        currentContext.logger.error('Failed to run container for service ' + id);
+        currentContext.logger.error(e);
     }
 
     let success: boolean = false;
@@ -542,7 +544,7 @@ export async function resumeService(id: string) {
     }
 
     if (success == true) {
-        currentContext.logger.info('Service ' + id + ' resumed');
+        currentContext.logger.debug('Service ' + id + ' resumed');
         callManagerEvent('resume', { id });
     } else {
         errors[id] = new Error('Failed to resume service');
@@ -670,19 +672,26 @@ export function getTemplate(id: string) {
     return loadTemplate(id);
 }
 
-export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }) {
+export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }): ReturnType<ServiceManager["getService"]> {
     const data = typeof from === 'string' ? await db.permaRepository.getPerma(from) : from;
     if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
         let session = undefined;
+        let internalSession = undefined;
         if (options?.includeSession === true) {
-            session = getRunningService(data.serviceId)?.internalSession;
+            const runningService = getRunningService(data.serviceId);
+            if (runningService) {
+                session = runningService.session;
+                internalSession = runningService.internalSession;
+            }
         }
+
         return {
             ...data,
             optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
             optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
             optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
-            session
+            session,
+            internalSession
         }
     } else {
         return undefined;
@@ -854,7 +863,7 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
             // unlock a busy action
             callManagerEvent("stop", { id: serviceId });
 
-            currentContext.logger.info("Service " + serviceId + " stopped");
+            currentContext.logger.debug("Service " + serviceId + " stopped");
         }
     };
     // Combine collected listeners

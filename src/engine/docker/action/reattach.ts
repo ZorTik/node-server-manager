@@ -1,8 +1,9 @@
 import DockerClient from "dockerode";
-import {DockerServiceEngine, ServiceEngine} from "@nsm/engine";
+import {DockerServiceEngine, ServiceEngine, ServiceLogRecord} from "@nsm/engine";
 import {getActionType} from "@nsm/engine/asyncp";
 import {currentContext} from "@nsm/app";
 import {deleteNetwork as doDeleteNetwork, isInNetwork} from "@nsm/networking/manager";
+import winston from "winston";
 
 async function deleteContainer(id: string, client: DockerClient, options: { deleteNetwork?: boolean }) {
   try {
@@ -38,6 +39,7 @@ async function deleteContainer(id: string, client: DockerClient, options: { dele
 export default function reattach(self: ServiceEngine, client: DockerClient): ServiceEngine["reattach"] {
   return async (id, listener) => {
     const container = client.getContainer(id);
+    const logger = currentContext.logger;
 
     const handleClosed = async () => {
       await deleteContainer(container.id, client, { deleteNetwork: true });
@@ -55,7 +57,17 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
     const rws = await container.attach(attachOptions);
     rws.on('data', (data) => {
-      listener.onMessage?.(data);
+      try {
+        data = Buffer.from(data).toString('ascii');
+        const record: ServiceLogRecord = {
+          level: 'info',
+          message: data
+        };
+
+        listener.onMessage?.(record);
+      } catch (e) {
+        logger.error("Error producing container output: " + e);
+      }
     }); // no-op, keepalive
     rws.on('end', async () => {
       if (getActionType(container.id) != 'stop') {

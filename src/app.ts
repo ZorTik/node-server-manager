@@ -54,7 +54,7 @@ function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
 }
 
 function initGlobalLogger() {
-    logging.createNewLatest();
+    logging.createLatestLogFile();
     return logging.createLogger();
 }
 

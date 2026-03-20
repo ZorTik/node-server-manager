@@ -86,6 +86,9 @@ components:
       type: "object"
       description: "The session information about a running service, if running"
       properties:
+        id:
+          type: "string"
+          description: "The currently active session ID"
         containerId:
           type: "string"
         stats:
@@ -132,8 +135,9 @@ components:
         id:
           type: "string"
           description: "The service UID in the system"
-        template:
-          $ref: "#/components/schemas/TemplateLookup"
+        templateId:
+          type: "string"
+          description: "The template ID used to create the service"
         port:
           type: "integer"
           format: "int32"

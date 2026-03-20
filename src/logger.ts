@@ -1,13 +1,14 @@
 import winston from "winston";
 import fs from "fs";
 
-const { combine, timestamp, label, printf } = winston.format;
+const { combine, timestamp, label, errors, printf } = winston.format;
 
-export function createNewLatest() {
+export function createLatestLogFile() {
     if (fs.existsSync(process.cwd() + '/logs/latest.log')) {
         const date = new Date(Date.now()).toJSON().slice(2, 10) + '.'
             + new Date(Date.now()).getHours() + '.'
             + new Date(Date.now()).getMinutes();
+
         fs.renameSync(process.cwd() + '/logs/latest.log', process.cwd() + '/logs/' + date + '.log');
     }
 }
@@ -17,11 +18,14 @@ export function createLogger(options?: { label?: string }) {
     return winston.createLogger({
         level: debug ? 'debug' : 'info',
         format: combine(
-            label({ label: options?.label ?? 'NSM' }),
-            timestamp(),
-            printf(({ level, message, label, timestamp }) => {
-                return `${timestamp} [${label}] ${level}: ${message}`;
-            })
+          errors({ stack: true }),
+          label({ label: options?.label ?? 'NSM' }),
+          timestamp(),
+          printf(({ level, message, label, timestamp, stack }) => {
+              let row = `${timestamp} [${label}] ${level}: ${message}`;
+
+              return stack ? row + `\n${stack}` : row;
+          })
         ),
         transports: [
             new winston.transports.Console(),

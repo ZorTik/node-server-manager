@@ -51,7 +51,7 @@ model ServiceLogRecord {
   timestamp DateTime         @default(now())
   source    ServiceLogSource
   logLevel  String
-  message   String
+  message   String           @db.LongText
   session   ServiceSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 

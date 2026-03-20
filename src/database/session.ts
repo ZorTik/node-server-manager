@@ -13,7 +13,7 @@ export const createSession: SessionRepository["createSession"] = async (serviceI
   };
 
   try {
-    await client.serviceSession.create({ data });
+    return await client.serviceSession.create({ data });
   } catch (e) {
     console.log(e);
 

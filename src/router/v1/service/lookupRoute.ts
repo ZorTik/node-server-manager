@@ -19,21 +19,18 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                 } else {
                     stats = null;
                 }
-                const template = manager.getTemplate(service.template);
                 // Build that info
                 res.json({
                     id: service.serviceId,
-                    template: {
-                        id: service.template,
-                        ...template
-                    },
+                    templateId: service.template,
                     port: service.port,
                     options: service.options,
                     env: service.env,
                     ...(session ? {
                         session: {
+                            id: service.session.id,
                             ...session,
-                            ...stats,
+                            stats,
                         }
                     } : {})
                 }).end();
