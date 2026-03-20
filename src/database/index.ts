@@ -6,6 +6,7 @@ import * as metaRepository from "./meta";
 import * as serviceMetaRepository from "./serviceMeta";
 import * as imageRepository from "./image";
 import * as sessionRepository from "./session";
+import * as serviceLogRepository from "./serviceLog";
 
 export * from './models';
 
@@ -21,7 +22,8 @@ export default function (client?: PrismaClient): Database {
         metaRepository,
         serviceMetaRepository,
         imageRepository,
-        sessionRepository
+        sessionRepository,
+        serviceLogRepository
       ] as unknown as { init: (client: PrismaClient) => void }[]
     ).forEach(repository => repository.init(client));
 
@@ -30,6 +32,7 @@ export default function (client?: PrismaClient): Database {
         metaRepository,
         serviceMetaRepository,
         imageRepository,
-        sessionRepository
+        sessionRepository,
+        serviceLogRepository
     }
 }

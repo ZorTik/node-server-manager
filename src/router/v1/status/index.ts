@@ -5,7 +5,7 @@ import {Filters} from "@nsm/engine";
 
 async function checkNsmResources(engine: ServiceManager, db: Database) {
     const stats = await engine.engine.statAll(Filters.node(engine.nodeId));
-    const servicesGlobal = await db.listPerma(engine.nodeId);
+    const servicesGlobal = await db.permaRepository.listPerma(engine.nodeId);
     const res = stats.reduce((acc, s) => {
         acc.memory.used += s.memory.used;
         acc.memory.total += s.memory.total;
@@ -56,7 +56,7 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
         routes: {
             get: async (req, res) => {
                 const nodeId = appConfig['node_id'];
-                const all = await database.listPerma(nodeId);
+                const all = await database.permaRepository.listPerma(nodeId);
                 const [free, size] = await manager.engine.calcHostUsage();
                 const system = {
                     totalmem: os.totalmem(),

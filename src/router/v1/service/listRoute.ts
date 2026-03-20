@@ -52,7 +52,7 @@ export default async function ({manager, database}: AppContext): Promise<RouterH
                     meta: {
                         ...listOptions,
                         // Total num of services on this node
-                        total: await database.countPerma(manager.nodeId),
+                        total: await database.permaRepository.countPerma(manager.nodeId),
                     }
                 };
                 res.status(200).json(data).end();
