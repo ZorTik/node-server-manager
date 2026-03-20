@@ -298,9 +298,12 @@ export type ServiceInfo = PermaModel & {
     optionsRam: number; // From options.ram
     optionsCpu: number; // From options.cpu
     optionsDisk: number; // From options.disk
+    state: State;
     session?: ServiceSession;
-    internalSession?: InternalSession
+    internalSession?: InternalSession;
 }
+
+export type State = 'RUNNING' | 'BUILDING' | 'STOPPED';
 
 // 1 = unknown, 2 = conflict, 3 = not found
 export type StatusCode = 1 | 2 | 3;
@@ -332,6 +335,7 @@ function settings(template: string) {
 const errors = {};
 // Service IDs that are currently running
 const started: RunningService[] = [];
+const startedStates: Map<string, State> = new Map();
 const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
 ["push", "splice"].forEach(funcName => {
@@ -734,6 +738,7 @@ export async function getService(from: string, options?: { includeSession?: bool
             optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
             optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
             optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
+            state: getServiceState(data.serviceId),
             session,
             internalSession
         }
@@ -762,7 +767,7 @@ export async function stopRunning() {
       new Promise((resolve) => {
           whenUnlocked(id, () => {
               stopService(id)
-                .catch(e => console.log(e))
+                .catch(e => currentContext.logger.error(e))
                 .then(() => {
                     whenUnlocked(id, () => resolve(null));
                 });
@@ -876,8 +881,12 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
 
     // The internal run listener of this manager
     const internalRunListener: RunListener = {
+        onStateChange: (state) => {
+            startedStates.set(serviceId, state.ready ? 'RUNNING' : 'BUILDING');
+        },
         onClose: async () => {
             clearRunningServiceIfExists(serviceId);
+            startedStates.delete(serviceId);
 
             // Call stop event on the manager for the stopService() to potentially
             // unlock a busy action
@@ -892,6 +901,16 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
       // Add listener from the session
       session.runListener
     ])
+}
+
+/**
+ * Returns the local service state managed by this manager.
+ *
+ * @param id The id of the service.
+ * @returns The state of the service
+ */
+function getServiceState(id: string) {
+    return startedStates.get(id) ?? 'STOPPED';
 }
 
 async function getPermaModel(id: string) {

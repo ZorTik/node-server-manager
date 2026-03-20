@@ -23,6 +23,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                 res.json({
                     id: service.serviceId,
                     templateId: service.template,
+                    state: service.state,
                     port: service.port,
                     options: service.options,
                     env: service.env,

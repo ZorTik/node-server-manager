@@ -54,8 +54,19 @@ export type ServiceLogRecord = {
 }
 
 export type ServiceState = {
+    /**
+     * Internal ID of the state.
+     */
     id: string;
+    /**
+     * A brief description of the state, for display purposes.
+     */
     description: string;
+    /**
+     * Whether the service is ready to accept commands and connections
+     * in this state, thus is running.
+     */
+    ready: boolean;
 }
 
 export type RunListener = {

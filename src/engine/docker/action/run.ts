@@ -90,17 +90,19 @@ async function prepareContainer(
   return container;
 }
 
-const createState = (id: string, description: string): ServiceState => {
+const createState = (id: string, description: string, ready?: boolean): ServiceState => {
   return {
     id,
-    description
+    description,
+    ready: ready ?? false
   }
 };
 
 const createErrorState = (description: string): ServiceState => {
   return {
     id: 'error',
-    description
+    description,
+    ready: false
   }
 }
 

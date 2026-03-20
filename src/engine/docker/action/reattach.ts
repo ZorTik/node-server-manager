@@ -82,6 +82,6 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     });
     (self as DockerServiceEngine).rws[container.id] = rws;
 
-    await listener.onStateChange?.({ id: 'watching_changes', description: 'Watching changes' });
+    await listener.onStateChange?.({ id: 'watching_changes', description: 'Watching changes', ready: true });
   }
 }
