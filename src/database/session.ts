@@ -20,3 +20,31 @@ export const createSession: SessionRepository["createSession"] = async (serviceI
     return undefined;
   }
 }
+
+export const listSessions: SessionRepository["listSessions"] = async (args) => {
+  const {
+    filter,
+    sort,
+    page
+  } = args;
+
+  const query: Prisma.ServiceSessionFindManyArgs = {};
+  if (filter?.serviceId) {
+    query.where = filter;
+  }
+  query.orderBy = {
+    [sort?.by ?? "startedAt"]: sort?.direction ?? "desc"
+  };
+  if (page) {
+    query.skip = page.index * page.size;
+    query.take = page.size;
+  }
+
+  try {
+    return await client.serviceSession.findMany(query);
+  } catch (e) {
+    console.log(e);
+
+    return undefined;
+  }
+}

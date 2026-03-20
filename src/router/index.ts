@@ -12,7 +12,6 @@ type RouterInit = (context: AppContext) => Promise<RouterHandler>;
 
 // Load API by version
 async function api(ver: string, context: AppContext, routes: RouterInit[]) {
-    context.logger.info(`API ${ver} routes`);
     const router = Router();
     router.use(json());
     if (context.debug) {
@@ -35,7 +34,7 @@ async function api(ver: string, context: AppContext, routes: RouterInit[]) {
         // used specifically for this API version
         const handler = await init({ ...context, router });
         let reg = false;
-        //
+
         for (const method of ['get', 'post', 'put', 'delete']) {
             if (handler.routes[method]) {
                 // Register handler to express
@@ -47,7 +46,7 @@ async function api(ver: string, context: AppContext, routes: RouterInit[]) {
             }
         }
         if (reg) {
-            context.logger.info(`-- ${handler.url}`);
+            context.logger.debug(`Registered route ${handler.url}`);
         }
     }
     context.router.use(`/${ver}`, router);

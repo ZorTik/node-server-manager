@@ -43,6 +43,7 @@ model ServiceSession {
   serviceId String
   service   Service            @relation(fields: [serviceId], references: [serviceId], onDelete: Cascade)
   logs      ServiceLogRecord[]
+  startedAt DateTime           @default(now())
 }
 
 model ServiceLogRecord {

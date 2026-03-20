@@ -369,6 +369,51 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
     logger.info(`Using engine: ${engine.name}`);
 }
 
+/**
+ * Reattach to containers that are still running from the previous session.
+ * This may happen if NSM was force-stopped and not properly cleared up resources.
+ *
+ * @param logger The logger to use
+ */
+async function reattachStaleContainers(logger: winston.Logger) {
+    const running = await engine.listRunning(Filters.node(nodeId))
+      .then(containerIds => containerIds
+        // Filter out those that we have already started in this session, just in case
+        // this was started more than once a session
+        .filter(id => !started.find(runningService => runningService.internalSession.containerId === id)));
+
+    for (let containerId of running) {
+        const labels = await engine.getLabels(containerId);
+        if (!labels[StandardLabel.ServiceId]) {
+            // The container was in the running list, but does not have the required labels
+            // Should not happen, but just in case
+            logger.warn(`Found a running container with id ${containerId} that does not have a service id label, stopping.`);
+
+            await engine.stop(containerId);
+        }
+
+        const serviceId = labels[StandardLabel.ServiceId];
+
+        // We must begin a new session since the previous was interrupted
+        const session = await beginServiceSession(serviceId);
+        // Reattach and watch the container
+        await engine.reattach(containerId, buildRunListener(session));
+
+        // Save session in-memory
+        const info: RunningService = {
+            id: serviceId,
+            session,
+            internalSession: {
+                containerId
+            }
+        };
+        started.push(info);
+        logger.info(`Reattached container ${containerId} for service ${serviceId}`);
+    }
+
+    await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
+}
+
 export async function expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T> {
     if (exp) {
         if (!engine && (!currentContext || !currentContext.appConfig)) {
@@ -407,7 +452,6 @@ export async function createService(template: string, options: Options) {
         ...(options.meta ?? {}),
         ...(serviceSettings.meta ?? {})
     };
-
     if (!meta || !meta.stopCmd) {
         throw new _InternalError('Invalid template meta for ' + template);
     }
@@ -797,30 +841,6 @@ export {
     whenUnlocked
 }
 
-async function reqExists(id: string) {
-    const perma = await db.permaRepository.getPerma(id);
-    if (!perma) {
-        throw new _InternalError("Service not found.", 3);
-    }
-
-    return perma;
-}
-
-function reqRunning(id: string) {
-    const session = getRunningService(id);
-    if (!session) {
-        throw new _InternalError("This service is not running.", 2);
-    }
-
-    return session;
-}
-
-function reqNotRunning(id: string) {
-    if (isRunning(id)) {
-        throw new _InternalError('Already running.', 2);
-    }
-}
-
 function clearRunningServiceIfExists(id: string) {
     const service = getRunningService(id);
 
@@ -884,47 +904,26 @@ async function getPermaModel(id: string) {
     return perma_;
 }
 
-/**
- * Reattach to containers that are still running from the previous session.
- * This may happen if NSM was force-stopped and not properly cleared up resources.
- *
- * @param logger The logger to use
- */
-async function reattachStaleContainers(logger: winston.Logger) {
-    const running = await engine.listRunning(Filters.node(nodeId))
-      .then(containerIds => containerIds
-        // Filter out those that we have already started in this session, just in case
-        // this was started more than once a session
-        .filter(id => !started.find(runningService => runningService.internalSession.containerId === id)));
-
-    for (let containerId of running) {
-        const labels = await engine.getLabels(containerId);
-        if (!labels[StandardLabel.ServiceId]) {
-            // The container was in the running list, but does not have the required labels
-            // Should not happen, but just in case
-            logger.warn(`Found a running container with id ${containerId} that does not have a service id label, stopping.`);
-
-            await engine.stop(containerId);
-        }
-
-        const serviceId = labels[StandardLabel.ServiceId];
-
-        // We must begin a new session since the previous was interrupted
-        const session = await beginServiceSession(serviceId);
-        // Reattach and watch the container
-        await engine.reattach(containerId, buildRunListener(session));
-
-        // Save session in-memory
-        const info: RunningService = {
-            id: serviceId,
-            session,
-            internalSession: {
-                containerId
-            }
-        };
-        started.push(info);
-        logger.info(`Reattached container ${containerId} for service ${serviceId}`);
+async function reqExists(id: string) {
+    const perma = await db.permaRepository.getPerma(id);
+    if (!perma) {
+        throw new _InternalError("Service not found.", 3);
     }
 
-    await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
+    return perma;
+}
+
+function reqRunning(id: string) {
+    const session = getRunningService(id);
+    if (!session) {
+        throw new _InternalError("This service is not running.", 2);
+    }
+
+    return session;
+}
+
+function reqNotRunning(id: string) {
+    if (isRunning(id)) {
+        throw new _InternalError('Already running.', 2);
+    }
 }

@@ -9,18 +9,20 @@ import rebootRoute from "./service/rebootRoute";
 import powerStatusRoute from "./service/powerStatusRoute";
 import stopCmdRoute from "@nsm/router/v1/service/stopCmdRoute";
 import optionsRoute from "@nsm/router/v1/service/optionsRoute";
+import sessionsRoute from "@nsm/router/v1/service/sessionsRoute";
 
 export default [
-    // v1 routes
-    statusRoute,
-    createRoute,
-    lookupRoute,
-    deleteRoute,
-    resumeRoute,
-    rebootRoute,
-    stopCmdRoute,
-    stopRoute,
-    powerStatusRoute,
-    optionsRoute,
-    listRoute,
+  // v1 routes
+  statusRoute,
+  createRoute,
+  lookupRoute,
+  deleteRoute,
+  resumeRoute,
+  rebootRoute,
+  stopCmdRoute,
+  stopRoute,
+  powerStatusRoute,
+  optionsRoute,
+  listRoute,
+  sessionsRoute
 ]

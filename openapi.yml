@@ -538,3 +538,5 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Result"
+
+# TODO: /v1/service/{serviceId}/sessions

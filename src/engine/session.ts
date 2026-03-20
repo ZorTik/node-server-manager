@@ -1,5 +1,5 @@
 import {RunListener} from "@nsm/engine/engine";
-import {CreateLogRecordArgs, Database, ServiceLogRecordModel} from "@nsm/database";
+import {CreateLogRecordArgs, Database, ListRecordsArgs, ListSessionsArgs, ServiceLogRecordModel} from "@nsm/database";
 
 export interface ServiceSession {
   id: string;
@@ -154,6 +154,10 @@ const debounceBulkPush = () => {
 
 // TODO: get service session
 
-// TODO: get service session history for service
+export const listSessions = async (args: ListSessionsArgs) => {
+  return db.sessionRepository.listSessions(args);
+}
 
-// TODO: list service session logs
+export const listSessionLogs = async (args: ListRecordsArgs) => {
+  return db.serviceLogRepository.listRecords(args);
+}

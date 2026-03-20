@@ -34,14 +34,45 @@ export interface ImageRepository {
 
 export interface SessionRepository {
     createSession(serviceId: string): Promise<ServiceSessionModel|undefined>;
-    // TODO: store session log record, list session log records etc
+
+    listSessions(args: ListSessionsArgs): Promise<ServiceSessionModel[]|undefined>;
+}
+
+export type ListSessionsArgs = {
+    filter?: {
+        serviceId?: string;
+    }
+    sort?: {
+        by?: 'startedAt'
+        direction?: 'asc' | 'desc'
+    }
+    page?: {
+        index: number;
+        size: number;
+    }
 }
 
 export interface ServiceLogRepository {
     createRecords(records: CreateLogRecordArgs[]): Promise<boolean>;
+
+    listRecords(args: ListRecordsArgs): Promise<ServiceLogRecordModel[]|undefined>;
 }
 
 export type CreateLogRecordArgs = Omit<ServiceLogRecordModel, 'id' | 'timestamp'>;
+
+export type ListRecordsArgs = {
+    filter?: {
+        sessionId?: string;
+    }
+    sort?: {
+        by?: 'timestamp',
+        direction?: 'asc' | 'desc'
+    }
+    page?: {
+        index: number;
+        size: number;
+    }
+}
 
 export type PermaModel = {
     serviceId: string;
@@ -79,7 +110,7 @@ export type ServiceSessionModel = {
 }
 
 export type ServiceLogRecordModel = {
-    id: number;
+    id: bigint;
     sessionId: string;
     source: 'ENGINE' | 'CONTAINER'
     timestamp: Date;
