@@ -784,10 +784,9 @@ export async function waitForBusyAction(id: string) {
           whenUnlocked(id, (_, __, err) => {
               if (err) {
                   reject(err);
-                  return;
+              } else {
+                  resolve(null);
               }
-
-              resolve(null);
           });
       }
     );

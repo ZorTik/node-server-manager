@@ -1,3 +1,4 @@
+fixnout stop flow pomocí stop cmd
 abstrahovat template management a udělat další sources jako například používání images z docker registry
 předělat usages monitoring na nějaký standardizovaný formát/způsob
 pořešit /resources/config.yml aby měl víc možností a možná byl uložený jinde v systému podle platformy
