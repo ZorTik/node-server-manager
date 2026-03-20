@@ -12,7 +12,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     res.status(404).json({status: 404, message: 'Invalid service ID.'}).end();
                     return;
                 }
-                const session = service.session;
+                const session = service.internalSession;
                 let stats: any;
                 if (session && req.query.stats === 'true') {
                     stats = await manager.engine.stat(session.containerId);

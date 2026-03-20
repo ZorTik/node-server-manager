@@ -9,28 +9,50 @@ generator client {
 }
 
 datasource db {
-  provider          = "mysql"
-  url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ServiceLogSource {
+  ENGINE
+  CONTAINER
 }
 
 model Service {
-  serviceId String  @id @default(uuid())
+  serviceId String           @id @default(uuid())
   nodeId    String
   imageId   String?
   template  String
   port      Int
   options   Json
-  meta      Json    @default("{}")
+  meta      Json             @default("{}")
   env       Json
   network   Json?
-  image     Image?  @relation(fields: [imageId], references: [id])
+  image     Image?           @relation(fields: [imageId], references: [id])
+  sessions  ServiceSession[]
 }
 
 model ServiceMeta {
   serviceId String @id
   key       String @unique
   value     Json
+}
+
+model ServiceSession {
+  id        String             @id @default(uuid())
+  serviceId String
+  service   Service            @relation(fields: [serviceId], references: [serviceId], onDelete: Cascade)
+  logs      ServiceLogRecord[]
+}
+
+model ServiceLogRecord {
+  id        BigInt           @id @default(autoincrement())
+  sessionId String
+  timestamp DateTime         @default(now())
+  source    ServiceLogSource
+  logLevel  String
+  message   String
+  session   ServiceSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
 // Persistent key-value storage for system-wide attributes.

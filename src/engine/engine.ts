@@ -48,20 +48,31 @@ export type ContainerFilter = {
     labels?: { [key: string]: string };
 }
 
+export type ServiceLogRecord = {
+    level: 'error' | 'info';
+    message: string,
+}
+
+export type ServiceState = {
+    id: string;
+    description: string;
+}
+
 export type RunListener = {
     /**
-     * Called when there is a state change in the container, with the message of the state change.
-     * This is used to update the logs in NSM.
+     * Called when the container progress changes state.
      *
-     * @param message The message of the state change, e.g. "Creating container", etc.
+     * @param state The new state.
      */
-    onStateMessage?: (message: string) => Promise<void>|void;
+    onStateChange?: (state: ServiceState) => Promise<void>|void;
+
     /**
      * Called when there is a message from the container, with the message.
      *
      * @param message The message from the container
      */
-    onMessage?: (message: string) => Promise<void>|void;
+    onMessage?: (message: ServiceLogRecord) => Promise<void>|void;
+
     /**
      * Called when the container is closed, either by stop or kill, or by itself.
      */
@@ -209,8 +220,6 @@ export enum StandardLabel {
     TemplateId = 'nsm.templateId',
     // The node ID of the managing worker.
     NodeId = 'nsm.nodeId',
-    // The templare build dir.
-    BuildDir = 'nsm.buildDir',
 }
 
 export const Filters = {
@@ -235,6 +244,31 @@ export const Filters = {
             labels: {
                 ...this.nsm().labels,
                 [StandardLabel.NodeId]: nodeId,
+            }
+        }
+    }
+}
+
+/**
+ * Combines multiple run listeners into one, by calling them in sequence.
+ *
+ * @param listeners The listeners to combine.
+ */
+export const combineRunListeners = (listeners: RunListener[]): RunListener => {
+    return {
+        onStateChange: async (state) => {
+            for (let listener of listeners) {
+                await listener.onStateChange?.(state);
+            }
+        },
+        onMessage: async (record) => {
+            for (let listener of listeners) {
+                await listener.onMessage?.(record);
+            }
+        },
+        onClose: () => {
+            for (let listener of listeners) {
+                listener.onClose?.();
             }
         }
     }

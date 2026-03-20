@@ -1,7 +1,7 @@
 import DockerClient from "dockerode";
 import {DockerServiceEngine, ServiceEngine} from "@nsm/engine";
 import {getActionType} from "@nsm/engine/asyncp";
-import {currentContext, currentContext as ctx} from "@nsm/app";
+import {currentContext} from "@nsm/app";
 import {deleteNetwork as doDeleteNetwork, isInNetwork} from "@nsm/networking/manager";
 
 async function deleteContainer(id: string, client: DockerClient, options: { deleteNetwork?: boolean }) {
@@ -70,6 +70,6 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     });
     (self as DockerServiceEngine).rws[container.id] = rws;
 
-    await listener.onStateMessage?.('Watching changes');
+    await listener.onStateChange?.({ id: 'watching_changes', description: 'Watching changes' });
   }
 }

@@ -1,8 +1,35 @@
 import {Database} from "./models";
-import * as manager from './manager';
+import {PrismaClient} from "@prisma/client";
+
+import * as permaRepository from "./perma";
+import * as metaRepository from "./meta";
+import * as serviceMetaRepository from "./serviceMeta";
+import * as imageRepository from "./image";
+import * as sessionRepository from "./session";
 
 export * from './models';
 
-export default function (): Database {
-    return manager;
+export default function (client?: PrismaClient): Database {
+    if (!client) {
+        client = new PrismaClient();
+    }
+
+    // Propagate client
+    (
+      [
+        permaRepository,
+        metaRepository,
+        serviceMetaRepository,
+        imageRepository,
+        sessionRepository
+      ] as unknown as { init: (client: PrismaClient) => void }[]
+    ).forEach(repository => repository.init(client));
+
+    return {
+        permaRepository,
+        metaRepository,
+        serviceMetaRepository,
+        imageRepository,
+        sessionRepository
+    }
 }

@@ -1,39 +1,66 @@
-export type Database = {
+export interface Database {
+    permaRepository: PermaRepository;
+    metaRepository: MetaRepository;
+    serviceMetaRepository: ServiceMetaRepository;
+    imageRepository: ImageRepository;
+    sessionRepository: SessionRepository;
+    serviceLogRepository: ServiceLogRepository;
+}
+
+export interface PermaRepository {
     savePerma(info: PermaModel): Promise<boolean>;
-    deleteSession(serviceId: string): Promise<boolean>;
-    deleteSessions(nodeId: string): Promise<boolean>;
     deletePerma(serviceId: string): Promise<boolean>;
     getPerma(serviceId: string): Promise<PermaModel|undefined>;
+    listPerma(nodeId: string, page?: number, pageSize?: number, meta?: {[key: string]: any}): Promise<PermaModel[]>;
+    listPermaUsingImage(imageId: string): Promise<PermaModel[]>;
+    countPerma(nodeId: string): Promise<number>;
+}
+
+export interface MetaRepository {
     getMetaVal(key: string, defaultVal?: string): Promise<string>;
-    list(nodeId: string, page?: number, pageSize?: number, meta?: {[key: string]: any}): Promise<PermaModel[]>;
-    listAllUsingImage(imageId: string): Promise<PermaModel[]>;
-    count(nodeId: string): Promise<number>;
+}
+
+export interface ServiceMetaRepository {
     setServiceMeta(serviceId: string, key: string, value: any): Promise<boolean>;
     getServiceMeta(serviceId: string, key: string): Promise<any>;
+}
+
+export interface ImageRepository {
     saveImage(info: ImageModel): Promise<boolean>;
     getImage(id: string): Promise<ImageModel|undefined>;
     deleteImage(id: string): Promise<boolean>;
     listImagesByOptions(templateId: string, buildOptions: {[key: string]: string}): Promise<ImageModel[]>;
-};
+}
+
+export interface SessionRepository {
+    createSession(serviceId: string): Promise<ServiceSessionModel|undefined>;
+    // TODO: store session log record, list session log records etc
+}
+
+export interface ServiceLogRepository {
+    createRecords(records: CreateLogRecordArgs[]): Promise<boolean>;
+}
+
+export type CreateLogRecordArgs = Omit<ServiceLogRecordModel, 'id' | 'timestamp'>;
 
 export type PermaModel = {
-    serviceId: string,
-    template: string,
-    nodeId: string,
-    imageId?: string,
-    port: number,
+    serviceId: string;
+    template: string;
+    nodeId: string;
+    imageId?: string;
+    port: number;
     options: {
-        [key: string]: any,
-    },
+        [key: string]: any;
+    };
     meta?: {
-        stopCmd?: string,
-    }
+        stopCmd?: string;
+    };
     env: {
-        [key: string]: string,
-    },
+        [key: string]: string;
+    };
     network?: {
-        address: string,
-        portsOnly: boolean,
+        address: string;
+        portsOnly: boolean;
     }
 };
 
@@ -44,4 +71,18 @@ export type ImageModel = {
     buildOptions: {
         [key: string]: string,
     }
+}
+
+export type ServiceSessionModel = {
+    id: string,
+    serviceId: string,
+}
+
+export type ServiceLogRecordModel = {
+    id: number;
+    sessionId: string;
+    source: 'ENGINE' | 'CONTAINER'
+    timestamp: Date;
+    logLevel: string;
+    message: string;
 }

@@ -128,7 +128,7 @@ export const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsM
  * @throws Error if the image with the given ID is not found in the database
  */
 const getImage = async (id: string) => {
-  const image = await db.getImage(id);
+  const image = await db.imageRepository.getImage(id);
   if (!image) {
     throw new Error(`Image with ID ${id} not found`);
   }
@@ -149,7 +149,7 @@ const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?
   const hash = templateDirWatcher.getTemplateHash(templateId);
   imageId = await engine.build(imageId, buildDir(templateId), options);
 
-  await db.saveImage({
+  await db.imageRepository.saveImage({
     id: imageId,
     templateId,
     hash,
@@ -159,7 +159,7 @@ const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?
 }
 
 const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<string|null> => {
-  const images = await db.listImagesByOptions(templateId, options);
+  const images = await db.imageRepository.listImagesByOptions(templateId, options);
   if (images.length == 0) {
     return null;
   }
@@ -174,7 +174,7 @@ const rebuildImage = async (image: ImageModel) => {
 }
 
 export const deleteImageIfUnused = async (image: ImageModel) => {
-  const servicesUsingImage = await db.listAllUsingImage(image.id);
+  const servicesUsingImage = await db.permaRepository.listPermaUsingImage(image.id);
   if (servicesUsingImage.length > 0) {
     // Image is still in use, do not delete
     return;
@@ -187,5 +187,5 @@ export const deleteImageIfUnused = async (image: ImageModel) => {
   } catch (e) {
     logger.error(`Failed to delete image ${image.id}`, e);
   }
-  await db.deleteImage(image.id);
+  await db.imageRepository.deleteImage(image.id);
 }

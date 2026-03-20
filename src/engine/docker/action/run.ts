@@ -1,9 +1,10 @@
 import DockerClient from "dockerode";
-import {RunOptions, MetaStorage, ServiceEngine} from "@nsm/engine";
+import {RunOptions, MetaStorage, ServiceEngine, ServiceState} from "@nsm/engine";
 import {accessNetwork, createNetwork} from "@nsm/networking/manager";
 import {constructObjectLabels} from "@nsm/util/services";
 import {currentContext as ctx} from "@nsm/app";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
+import {infoRecord as info} from "@nsm/engine/docker/util/logging";
 
 async function prepareVolume(client: DockerClient, volumeId: string) {
   try {
@@ -89,25 +90,37 @@ async function prepareContainer(
   return container;
 }
 
+const createState = (id: string, description: string): ServiceState => {
+  return {
+    id,
+    description
+  }
+};
+
+const createErrorState = (description: string): ServiceState => {
+  return {
+    id: 'error',
+    description
+  }
+}
+
 export default function run(self: ServiceEngine, client: DockerClient): ServiceEngine["run"] {
   return async (imageId, volumeId, options, meta, listener) => {
     let container: DockerClient.Container;
     // Prepare volume
-    let creating = await prepareVolume(client, volumeId);
-    if (creating) {
-      await listener.onStateMessage('Created new volume');
-    }
 
-    await listener.onStateMessage('Preparing network');
+    let creating = await prepareVolume(client, volumeId);
+
+    await listener.onStateChange?.(createState('preparing_network', 'Preparing network'));
     const net = await prepareNetwork(client, options.network, meta, creating);
     // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
-    await listener.onStateMessage('Preparing container');
+    await listener.onStateChange?.(createState('preparing_container', 'Preparing container'));
     container = await prepareContainer(client, imageId, volumeId, options, net);
-    await listener.onStateMessage('Starting container');
+    await listener.onStateChange?.(createState('starting_container', 'Starting container'));
 
     await container.start();
-    const info = await container.inspect();
-    if (!info.State.Running) {
+    const inspectInfo = await container.inspect();
+    if (!inspectInfo.State.Running) {
       // Wait a bit for logs to be available
       await new Promise(r => setTimeout(r, 300));
 
@@ -122,8 +135,8 @@ export default function run(self: ServiceEngine, client: DockerClient): ServiceE
         });
         const msg = logs.toString("utf8");
 
-        await listener.onStateMessage("Container failed to start");
-        await listener.onMessage(msg);
+        await listener.onStateChange?.(createErrorState('Container failed to start'));
+        await listener.onMessage(info(msg));
       } catch (e) {
         ctx.logger.error("Error while fetching logs for failed container " + container.id, e);
       }

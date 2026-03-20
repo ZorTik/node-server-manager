@@ -1,5 +1,11 @@
 import {currentContext, Database} from "../app";
-import createEngine, {RunOptions, RunListener, ServiceEngineI, StandardLabel, Filters} from "./engine";
+import createEngine, {
+    RunOptions,
+    RunListener,
+    ServiceEngineI,
+    StandardLabel,
+    Filters, combineRunListeners
+} from "./engine";
 import {Template, getTemplate as loadTemplate, getAllTemplates} from "./template";
 import * as templateManager from "./template";
 import * as templateDirWatcher from "./monitoring/templateDirWatcher";
@@ -22,9 +28,9 @@ import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
 import {buildDir} from "@nsm/engine/monitoring/util";
 import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
-import {logService} from "@nsm/logger";
 import {processImage, init as initImageEngine, deleteImageIfUnused} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
+import {ActiveServiceSession, beginServiceSession, ServiceSession, init as initSessionEngine} from "@nsm/engine/session";
 
 export type Options = {
     /**
@@ -279,10 +285,11 @@ export type ServiceManager = ServiceManagerEventBus & {
 
 type RunningService = {
     id: string;
-    session: Session;
+    session: ServiceSession;
+    internalSession: InternalSession;
 }
 
-export type Session = {
+export type InternalSession = {
     containerId: string;
     // TODO: add more useful information?
 }
@@ -291,7 +298,7 @@ export type ServiceInfo = PermaModel & {
     optionsRam: number, // From options.ram
     optionsCpu: number, // From options.cpu
     optionsDisk: number, // From options.disk
-    session?: Session
+    internalSession?: InternalSession
 }
 
 // 1 = unknown, 2 = conflict, 3 = not found
@@ -353,6 +360,7 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
     nodeId = appConfig['node_id'] as string;
 
     initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
+    initSessionEngine(db_);
     watchTemplateDirChanges(currentContext.logger);
 
     await reattachStaleContainers(logger);
@@ -391,7 +399,6 @@ export async function createService(template: string, options: Options) {
         env,
         network
     } = options;
-
     const serviceSettings = settings(template);
 
     // Join meta supplied by user and template meta
@@ -425,7 +432,7 @@ export async function createService(template: string, options: Options) {
     };
     let err: any;
     // Save permanent info
-    if (!await db.savePerma(perma)) {
+    if (!await db.permaRepository.savePerma(perma)) {
         err = new _InternalError('Failed to save perma info to database');
     }
 
@@ -444,7 +451,6 @@ export async function createService(template: string, options: Options) {
 
 export async function resumeService(id: string) {
     reqNotRunning(id);
-
     let {
         template,
         options,
@@ -480,11 +486,10 @@ export async function resumeService(id: string) {
             [StandardLabel.NodeId]: nodeId,
             [StandardLabel.VolumeId]: id,
             [StandardLabel.TemplateId]: template,
-            // TODO: nsm.buildDir
         }
     };
 
-    const perma = await db.getPerma(id);
+    const perma = await db.permaRepository.getPerma(id);
     let image = perma.imageId;
 
     // Propagate other options to env, so they can be used in image processing and building
@@ -502,20 +507,21 @@ export async function resumeService(id: string) {
 
         // Update image in database if it was changed by processing
         perma.imageId = image;
-        await db.savePerma(perma);
+        await db.permaRepository.savePerma(perma);
     }
 
+    let session: ActiveServiceSession|undefined;
     let containerId: string|undefined;
     try {
         // Run the container with the built image and save the container id for later use.
         if (image) {
-            currentContext.logger.info('Running service ' + id + "...");
+            session = await beginServiceSession(id);
             containerId = await engine.run(
               image,
               id,
               runOptions,
               meta,
-              buildRunListener(id)
+              buildRunListener(session)
             );
         }
     } catch (e) {
@@ -526,7 +532,8 @@ export async function resumeService(id: string) {
     if (containerId) {
         const runningService: RunningService = {
             id,
-            session: {
+            session,
+            internalSession: {
                 containerId
             }
         };
@@ -551,9 +558,9 @@ export async function resumeService(id: string) {
 export async function stopService(id: string, force?: boolean) {
     await reqExists(id);
 
-    const { session } = reqRunning(id);
+    const { internalSession } = reqRunning(id);
 
-    lckStatusTp(session.containerId, 'stop');
+    lckStatusTp(internalSession.containerId, 'stop');
     const unlock = lockBusyAction(id, 'stop');
 
     try {
@@ -566,15 +573,15 @@ export async function stopService(id: string, force?: boolean) {
             if (isServicePending(id)) {
                 unlock(error);
             }
-            ulckStatusTp(session.containerId);
+            ulckStatusTp(internalSession.containerId);
             return true;
         })
 
         const meta = metaStorageForService(id);
         if (force) {
-            await engine.kill(session.containerId, meta);
+            await engine.kill(internalSession.containerId, meta);
         } else {
-            await engine.stop(session.containerId);
+            await engine.stop(internalSession.containerId);
         }
     } catch (e) {
         currentContext.logger.error(e);
@@ -589,14 +596,14 @@ export async function stopServiceForcibly(id: string) {
 
 export async function sendStopSignal(id: string) {
     const perma = await reqExists(id);
-    const { session } = reqRunning(id);
+    const { internalSession } = reqRunning(id);
 
     const stopCmd = perma.meta?.stopCmd;
     if (!stopCmd) {
         throw new _InternalError('Service does not have stop command set.');
     }
 
-    await engine.cmd(session.containerId, stopCmd);
+    await engine.cmd(internalSession.containerId, stopCmd);
     return true;
 }
 
@@ -612,9 +619,9 @@ export async function deleteService(id: string) {
 
     const unlockHandler: UnlockObserver = (_, __, ___) => {
         const resolveDeleteImageFunc = async () => {
-            const image = await db.getPerma(id)
+            const image = await db.permaRepository.getPerma(id)
               .then((perma) => perma.imageId
-                ? db.getImage(perma.imageId)
+                ? db.imageRepository.getImage(perma.imageId)
                 : undefined);
 
             return async () => {
@@ -629,7 +636,7 @@ export async function deleteService(id: string) {
           .then((deleteImageFunc) => (
             resolveSequentially(
               async () => engine.deleteVolume(id),
-              async () => db.deletePerma(id),
+              async () => db.permaRepository.deletePerma(id),
               deleteImageFunc,
             )
           ))
@@ -643,7 +650,7 @@ export async function deleteService(id: string) {
 
 export async function updateOptions(id: string, options: Options) {
     reqNotPending(id);
-    const perma = await db.getPerma(id);
+    const perma = await db.permaRepository.getPerma(id);
     const data: PermaModel = {
         ...perma,
         ...options,
@@ -656,7 +663,7 @@ export async function updateOptions(id: string, options: Options) {
             ...options.env,
         },
     };
-    return db.savePerma(data);
+    return db.permaRepository.savePerma(data);
 }
 
 export function getTemplate(id: string) {
@@ -664,11 +671,11 @@ export function getTemplate(id: string) {
 }
 
 export async function getService(from: string, options?: { includeSession?: boolean, otherNodes?: boolean }) {
-    const data = typeof from === 'string' ? await db.getPerma(from) : from;
+    const data = typeof from === 'string' ? await db.permaRepository.getPerma(from) : from;
     if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
         let session = undefined;
         if (options?.includeSession === true) {
-            session = getRunningService(data.serviceId)?.session;
+            session = getRunningService(data.serviceId)?.internalSession;
         }
         return {
             ...data,
@@ -688,8 +695,8 @@ export function getLastPowerError(id: string) {
 
 export async function listServices(options: ListServicesOptions) {
     const meta = options.filter?.meta;
-    return db
-        .list(nodeId, options.page, options.pageSize, meta)
+    return db.permaRepository
+        .listPerma(nodeId, options.page, options.pageSize, meta)
         .then(list => list.map(d => d.serviceId));
 }
 
@@ -698,29 +705,34 @@ export async function listTemplates(): Promise<string[]> {
 }
 
 export async function stopRunning() {
-    await Promise.all(started.map(({id}) => (
-        new Promise((resolve) => {
-            whenUnlocked(id, () => {
-                stopService(id)
-                    .catch(e => console.log(e))
-                    .then(() => {
-                        whenUnlocked(id, () => resolve(null));
-                    });
-            });
-        })
-    )));
+    const tasks = started.map(({id}) => (
+      new Promise((resolve) => {
+          whenUnlocked(id, () => {
+              stopService(id)
+                .catch(e => console.log(e))
+                .then(() => {
+                    whenUnlocked(id, () => resolve(null));
+                });
+          });
+      })
+    ));
+
+    await Promise.all(tasks);
 }
 
 export async function waitForBusyAction(id: string) {
-    return new Promise<void>((resolve, reject) => {
-        whenUnlocked(id, (_, status, err) => {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve(null);
-        });
-    });
+    return new Promise<void>(
+      (resolve, reject) => {
+          whenUnlocked(id, (_, __, err) => {
+              if (err) {
+                  reject(err);
+                  return;
+              }
+
+              resolve(null);
+          });
+      }
+    );
 }
 
 export function isRunning(id: string) {
@@ -734,10 +746,12 @@ export function getRunningService(id: string) {
 function metaStorageForService(id: string): MetaStorage { // service id
     return {
         set: async (key, value) => {
-            return db.setServiceMeta(id, key, value);
+            return db.serviceMetaRepository.setServiceMeta(id, key, value);
         },
         get: async (key, def) => {
-            return (await db.getServiceMeta(id, key)) ?? def;
+            const meta = await db.serviceMetaRepository.getServiceMeta(id, key);
+
+            return meta ?? def;
         },
     };
 }
@@ -775,7 +789,7 @@ export {
 }
 
 async function reqExists(id: string) {
-    const perma = await db.getPerma(id);
+    const perma = await db.permaRepository.getPerma(id);
     if (!perma) {
         throw new _InternalError("Service not found.", 3);
     }
@@ -800,6 +814,7 @@ function reqNotRunning(id: string) {
 
 function clearRunningServiceIfExists(id: string) {
     const service = getRunningService(id);
+
     if (service) {
         started.splice(started.indexOf(service, 1));
     }
@@ -819,18 +834,20 @@ function callManagerEvent<T extends keyof ServiceManagerEvents>(e: T, event: Ser
     evtHandlers.set(e, newArray);
 }
 
-function buildRunListener(serviceId: string): RunListener {
-    return {
-        onStateMessage: (msg) => {
-            // TODO: handle state messages in a better way
-        },
-        onMessage: (msg) => {
-            logService(serviceId, msg);
-        },
-        onClose: async () => {
-            // Remove session when container is closed, because the service is not running anymore
-            await db.deleteSession(serviceId);
+/**
+ * Collects all relevant run listeners and builds a composite one
+ * to be used directly when running/attaching service container.
+ *
+ * @param session The session for whom to create the session.
+ */
+function buildRunListener(session: ActiveServiceSession): RunListener {
+    const {
+        serviceId
+    } = session;
 
+    // The internal run listener of this manager
+    const internalRunListener: RunListener = {
+        onClose: async () => {
             clearRunningServiceIfExists(serviceId);
 
             // Call stop event on the manager for the stopService() to potentially
@@ -840,10 +857,16 @@ function buildRunListener(serviceId: string): RunListener {
             currentContext.logger.info("Service " + serviceId + " stopped");
         }
     };
+    // Combine collected listeners
+    return combineRunListeners([
+      internalRunListener,
+      // Add listener from the session
+      session.runListener
+    ])
 }
 
 async function getPermaModel(id: string) {
-    const perma_ = await db.getPerma(id);
+    const perma_ = await db.permaRepository.getPerma(id);
     if (!perma_) {
         // Service does not exist
         throw new _InternalError('Not found.', 3);
@@ -863,7 +886,7 @@ async function reattachStaleContainers(logger: winston.Logger) {
       .then(containerIds => containerIds
         // Filter out those that we have already started in this session, just in case
         // this was started more than once a session
-        .filter(id => !started.find(runningService => runningService.session.containerId === id)));
+        .filter(id => !started.find(runningService => runningService.internalSession.containerId === id)));
 
     for (let containerId of running) {
         const labels = await engine.getLabels(containerId);
@@ -877,13 +900,16 @@ async function reattachStaleContainers(logger: winston.Logger) {
 
         const serviceId = labels[StandardLabel.ServiceId];
 
+        // We must begin a new session since the previous was interrupted
+        const session = await beginServiceSession(serviceId);
         // Reattach and watch the container
-        await engine.reattach(containerId, buildRunListener(serviceId));
+        await engine.reattach(containerId, buildRunListener(session));
 
         // Save session in-memory
         const info: RunningService = {
             id: serviceId,
-            session: {
+            session,
+            internalSession: {
                 containerId
             }
         };

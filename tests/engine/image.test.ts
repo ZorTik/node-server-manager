@@ -6,7 +6,6 @@ import getDb from "@nsm/database";
 import {Database} from "@nsm/database";
 import {StartedMariaDbContainer} from "@testcontainers/mariadb";
 import {initDbContainerForTest} from "../testUtils";
-import {initClientForTest} from "@nsm/database/manager";
 import {PrismaClient} from "@prisma/client";
 import {processImage} from "@nsm/engine/image";
 import {createLogger} from "@nsm/logger";
@@ -31,8 +30,7 @@ beforeAll(async () => {
     // Just to prevent assertion errors
     docker_host: "///var/run/docker.sock"
   });
-  db = getDb();
-  initClientForTest(new PrismaClient({
+  db = getDb(new PrismaClient({
     datasourceUrl: dbUrl_,
   }));
 }, 20000);

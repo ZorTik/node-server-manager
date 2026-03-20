@@ -48,7 +48,7 @@ it("test sets service id in action error", async () => {
 
   let customManager: ServiceManager = {
     ...manager,
-    async resumeService(serviceId: string) {
+    async resumeService(_: string) {
       throw new Error("Failed to resume service");
     }
   };
