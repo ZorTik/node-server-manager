@@ -1,5 +1,5 @@
 import {RunListener} from "@nsm/engine/engine";
-import {CreateLogRecordArgs, Database} from "@nsm/database";
+import {CreateLogRecordArgs, Database, ServiceLogRecordModel} from "@nsm/database";
 
 export interface ServiceSession {
   id: string;
@@ -79,7 +79,7 @@ export const beginServiceSession = async (serviceId: string): Promise<ActiveServ
  * @return A function that can be called to push a log record, which will be debounced and pushed in bulk.
  */
 const debounceBulkPush = () => {
-  const logRecordsBulk: CreateLogRecordArgs[] = [];
+  const logRecordsBulk: Omit<ServiceLogRecordModel, 'id'>[] = [];
 
   const MAX_BATCH_SIZE = 50;
   const DEBOUNCE_MS = 500;
@@ -133,7 +133,7 @@ const debounceBulkPush = () => {
     // Also return flush to be able to forcibly push logs into the database
     flush,
     debounce: (log: CreateLogRecordArgs) => {
-      logRecordsBulk.push(log);
+      logRecordsBulk.push({ ...log, timestamp: new Date(Date.now()) });
 
       // If we reached the bulk size limit, flush immediately
       if (logRecordsBulk.length >= MAX_BATCH_SIZE) {
@@ -153,5 +153,7 @@ const debounceBulkPush = () => {
 }
 
 // TODO: get service session
+
+// TODO: get service session history for service
 
 // TODO: list service session logs
