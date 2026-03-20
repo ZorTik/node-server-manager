@@ -37,24 +37,20 @@ export const beginServiceSession = async (serviceId: string): Promise<ActiveServ
 
   const runListener: RunListener = {
     onStateChange: async (state) => {
-      const log: CreateLogRecordArgs = {
+      pushRecord({
         sessionId: session.id,
         source: 'ENGINE',
         logLevel: 'INFO',
         message: state.description
-      }
-
-      pushRecord(log);
+      });
     },
     onMessage: async (record) => {
-      const log: CreateLogRecordArgs = {
+      pushRecord({
         sessionId: session.id,
         source: 'CONTAINER',
         logLevel: record.level.toUpperCase(),
         message: record.message
-      }
-
-      pushRecord(log);
+      });
     },
     onClose: async () => {
       // Push remaining logs now

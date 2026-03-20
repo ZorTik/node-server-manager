@@ -1,6 +1,6 @@
-vyřešit logging u servis a logování změn stavů takže i stavy služeb - už jen stavy služeb
 abstrahovat template management a udělat další sources jako například používání images z docker registry
 předělat usages monitoring na nějaký standardizovaný formát/způsob
 pořešit /resources/config.yml aby měl víc možností a možná byl uložený jinde v systému podle platformy
 port retrieval strategy pro spouštění servis, aby nebyla jenom random ale i jiné strategies
 udělat nějaký auto packaging do balíčků na githubu jako bundle aby se dal spustit jako systémový proces v systemctl například
+restart policy
