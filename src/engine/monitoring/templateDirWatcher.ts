@@ -55,7 +55,7 @@ const watchBaseDir = (logger: winston.Logger) => {
   watcher.on("addDir", async (path_) => {
     const template = path.basename(path_);
     if (template && !watchers.has(template)) {
-      logger.info(`New template directory detected: ${template}. Starting to watch for changes...`);
+      logger.debug(`New template directory detected: ${template}. Starting to watch for changes...`);
 
       await watchTemplateDir(template);
     }
@@ -65,7 +65,7 @@ const watchBaseDir = (logger: winston.Logger) => {
     if (template && watchers.has(template)) {
       const tWatcher = watchers.get(template);
       if (tWatcher) {
-        logger.info(
+        logger.debug(
           `Template directory removed: ${template}. Stopping watch and removing hash from cache...`);
 
         await tWatcher.close();
@@ -110,6 +110,11 @@ const watchTemplateDir = async (template: string) => {
   watchers.set(template, watcher);
 }
 
+/**
+ * Recalculates the hash of a template directory and updates the cache.
+ *
+ * @param template The name of the template to recalculate the hash for.
+ */
 const recalculateTemplateHash = async (template: string) => {
   const dir = buildDir(template);
   const excluded = getFilteredPaths(dir);
