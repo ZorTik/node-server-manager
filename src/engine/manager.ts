@@ -688,7 +688,7 @@ export async function deleteService(id: string) {
             )
           ))
           .then(() => {
-              currentContext.logger.info(`Service ${id} deleted`);
+              currentContext.logger.debug(`Service ${id} deleted`);
           });
     };
 
@@ -778,13 +778,7 @@ export async function stopRunning() {
 export async function waitForBusyAction(id: string) {
     return new Promise<void>(
       (resolve, reject) => {
-          whenUnlocked(id, (_, __, err) => {
-              if (err) {
-                  reject(err);
-              } else {
-                  resolve(null);
-              }
-          });
+          whenUnlocked(id, (_, __, err) => err ? reject(err) : resolve(null));
       }
     );
 }
