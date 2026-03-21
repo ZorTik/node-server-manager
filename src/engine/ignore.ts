@@ -1,6 +1,8 @@
 import fs from "fs";
 import ignore from "ignore";
 
+// TODO: předělat tento modul aby používal novou resources složku
+
 export const getRootFilesFiltered = (dir: string) => {
     let filtered = fs.readdirSync(dir);
     if (fs.existsSync(dir + '/.nsmignore')) {
