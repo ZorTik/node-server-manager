@@ -1,7 +1,8 @@
 import {loadYamlFile} from "@nsm/util/yaml";
 import path from "path";
-import {resourcesTargetPath} from "@nsm/filestructure";
+import {currentPaths} from "@nsm/filestructure";
 import {saveResource} from "@nsm/resources";
+import z from "zod";
 
 export interface AppConfig {
   getNodeId(): string;
@@ -11,6 +12,8 @@ export interface AppConfig {
   getAuth(): string;
 
   getDockerHost(): string;
+
+  getResourcesPath(): string|undefined;
 }
 
 /**
@@ -19,12 +22,20 @@ export interface AppConfig {
  * @author ZorTik
  */
 export class YamlAppConfig implements AppConfig {
+  private static readonly schema: z.ZodObject<any> = z.object({
+    node_id: z.string(),
+    port: z.number().int().positive(),
+    auth: z.string(),
+    docker_host: z.string(),
+    resources_path: z.string().optional()
+  }).strict();
+
   private readonly data: any;
 
   constructor() {
     this.data = YamlAppConfig.loadData();
 
-    // TODO: validate
+    this.validate();
   }
 
   getNodeId(): string {
@@ -43,18 +54,29 @@ export class YamlAppConfig implements AppConfig {
     return this.data["docker_host"];
   }
 
+  getResourcesPath(): string | undefined {
+    return this.data["resources_path"];
+  }
+
+  private validate = () => {
+    const result = YamlAppConfig.schema.safeParse(this.data);
+    if (!result.success) {
+      throw new Error('Invalid config file. ' + result.error.toString());
+    }
+  }
+
   private static loadData = () => {
     // Copy if it does not exist
-    saveResource('config.yml', 'config.yml', true);
+    saveResource('config.yml', 'config.yml', true, currentPaths.config);
 
-    const config = loadYamlFile(path.join(resourcesTargetPath, 'config.yml'));
-    for (let key in config) {
+    const config = loadYamlFile(path.join(currentPaths.config, 'config.yml'));
+    for (let key in YamlAppConfig.schema.shape) {
       // Overwrite with env variable if exists.
       // Sync
       const envKey = 'CONFIG_' + key.toUpperCase();
       if (process.env[envKey]) {
         config[key] = process.env[envKey];
-      } else {
+      } else if (config[key]) {
         process.env[envKey] = config[key];
       }
     }

@@ -1,11 +1,13 @@
 import dotenv from "dotenv";
 import {loadAppConfig} from "@nsm/config";
+import {init as initFileStructure, getResourcesTargetPath} from "@nsm/filestructure";
 
 // Load .env
 dotenv.config();
 // Preload app config here to set needed env variables
 // before some modules require them.
 const appConfig = loadAppConfig();
+initFileStructure(appConfig);
 
 import {Router} from 'express';
 import {Database} from "@nsm/database";
@@ -25,7 +27,6 @@ import {middleLayer} from "@nsm/engine/middle";
 import {SessionManager} from "@nsm/engine/session";
 import {mkdirResource, saveResource} from "@nsm/resources";
 import path from "path";
-import {resourcesTargetPath} from "@nsm/filestructure";
 import {AppConfig} from "@nsm/config";
 
 export type AppBootContext = AppContext & { steps: any };
@@ -148,7 +149,7 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
 }
 
 const prepareTestResources = () => {
-    if (fs.existsSync(path.join(resourcesTargetPath, 'templates', 'test'))) {
+    if (fs.existsSync(path.join(getResourcesTargetPath(), 'templates', 'test'))) {
         return;
     }
 

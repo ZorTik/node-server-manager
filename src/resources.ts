@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import {resourcesPath, resourcesTargetPath} from "@nsm/filestructure";
+import {getResourcesTargetPath, resourcesPath} from "@nsm/filestructure";
 
 /**
  * Reads resource from target dir.
@@ -8,7 +8,7 @@ import {resourcesPath, resourcesTargetPath} from "@nsm/filestructure";
  * @param name The name of the resource in the target dir.
  */
 export const readResource = (name: string) => {
-  const p = path.join(resourcesTargetPath, name);
+  const p = path.join(getResourcesTargetPath(), name);
 
   return fs.readFileSync(p, 'utf8');
 }
@@ -19,7 +19,7 @@ export const readResource = (name: string) => {
  * @param name The name of the dir in the target dir.
  */
 export const mkdirResource = (name: string) => {
-  const p = path.join(resourcesTargetPath, name);
+  const p = path.join(getResourcesTargetPath(), name);
 
   fs.mkdirSync(p, { recursive: true });
 }
@@ -30,13 +30,15 @@ export const mkdirResource = (name: string) => {
  * @param name The name of the resource in the resources dir.
  * @param targetName The target name where to copy.
  * @param skipIfExists If true, the resource will not be copied if a file with the same name already exists in the target dir. Default is false.
+ * @param targetDirPath The target dir path. Default is the platform-agnostic resources dir.
  */
 export const saveResource = (
   name: string,
   targetName: string,
-  skipIfExists: boolean = false
+  skipIfExists: boolean = false,
+  targetDirPath: string = getResourcesTargetPath()
 ) => {
-  const targetPath = path.join(resourcesTargetPath, targetName);
+  const targetPath = path.join(targetDirPath, targetName);
   // Create parent dirs if missing
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
 

@@ -1,9 +1,9 @@
 import path from 'path';
-import {templatesPath} from "@nsm/filestructure";
+import {getTemplatesPath} from "@nsm/filestructure";
 
 // Returns the build directory for the template
 export function templateBuildDir(template: string) {
-  return path.join(templatesPath, template);
+  return path.join(getTemplatesPath(), template);
 }
 
 /**

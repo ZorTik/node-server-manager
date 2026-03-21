@@ -5,7 +5,7 @@ import {getAllTemplates} from "@nsm/engine/template";
 import winston from "winston";
 import chokidar, {FSWatcher} from "chokidar";
 import path from "path";
-import {templatesPath} from "@nsm/filestructure";
+import {getTemplatesPath} from "@nsm/filestructure";
 
 export type TemplateDirWatcher = {
 
@@ -47,7 +47,7 @@ export const watchTemplateDirChanges = (logger: winston.Logger) => {
  * When a template directory is removed, it stops watching that directory and removes its hash from the cache.
  */
 const watchBaseDir = (logger: winston.Logger) => {
-  const dir = templatesPath;
+  const dir = getTemplatesPath();
 
   const watcher = chokidar.watch(dir, {
     ignoreInitial: true,
