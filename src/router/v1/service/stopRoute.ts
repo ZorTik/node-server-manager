@@ -1,6 +1,7 @@
 import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
 import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
+import {consumeEnginePowerAction} from "@nsm/helpers";
 
 export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
     return {
@@ -23,14 +24,13 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                     return;
                 }
 
-                (
-                  req.query.force === 'true'
-                    ? manager.stopServiceForcibly(id)
-                    : manager.stopService(id)
-                )
-                  .then(() => {
-                      // Service stopped successfully, do nothing here for now.
-                  });
+                consumeEnginePowerAction(async () => {
+                    if (req.query.force === 'true') {
+                        await manager.stopServiceForcibly(id);
+                    } else {
+                        await manager.stopService(id)
+                    }
+                });
 
                 res.status(200).json({
                     status: 200,

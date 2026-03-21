@@ -1,9 +1,9 @@
 import {AppContext} from "@nsm/app";
 import {RouterHandler} from "../../index";
-import {handleErr} from "@nsm/util/routes";
 import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
+import {consumeEnginePowerAction} from "@nsm/helpers";
 
-export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
+export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
         url: '/service/:id/resume',
         routes: {
@@ -13,31 +13,24 @@ export default async function ({manager, logger}: AppContext): Promise<RouterHan
                     res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
                     return;
                 }
-                try {
-                    if (!await checkServiceExists(id, manager, res)) {
-                        return;
-                    }
-                    if (!checkServicePending(id, res)) {
-                        return;
-                    }
-                    if (manager.isRunning(id)) {
-                        res.status(409).json({status: 400, message: 'Service is already running.'});
-                        return;
-                    }
-
-                    manager.resumeService(id)
-                      .then(() => {
-                          // Service resumed successfully, do nothing here for now.
-                      });
-
-                    res.status(200).json({
-                        status: 200,
-                        message: 'Service resume action successfully registered to be completed in a moment.',
-                        statusPath: '/v1/service/' + id + '/powerstatus',
-                    });
-                } catch (e) {
-                    handleErr(e, res);
+                if (!await checkServiceExists(id, manager, res)) {
+                    return;
                 }
+                if (!checkServicePending(id, res)) {
+                    return;
+                }
+                if (manager.isRunning(id)) {
+                    res.status(409).json({status: 400, message: 'Service is already running.'});
+                    return;
+                }
+
+                consumeEnginePowerAction(() => manager.resumeService(id));
+
+                res.status(200).json({
+                    status: 200,
+                    message: 'Service resume action successfully registered to be completed in a moment.',
+                    statusPath: '/v1/service/' + id + '/powerstatus',
+                });
             }
         },
     }

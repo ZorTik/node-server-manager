@@ -1,9 +1,9 @@
-
 import {RouterHandler} from "../../index";
 import {AppContext} from "@nsm/app";
 import {Options} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {prepareEnvForTemplate} from "@nsm/engine/template";
+import {consumeEnginePowerAction} from "@nsm/helpers";
 
 export default async function ({manager}: AppContext): Promise<RouterHandler> {
     return {
@@ -36,10 +36,7 @@ export default async function ({manager}: AppContext): Promise<RouterHandler> {
                     const serviceId = await manager.createService(template.id, options);
 
                     // Resume right afterward
-                    manager.resumeService(serviceId)
-                      .then(() => {
-                          // Service resumed successfully, do nothing here for now.
-                      });
+                    consumeEnginePowerAction(() => manager.resumeService(serviceId));
 
                     res.status(200).json({
                         status: 200,

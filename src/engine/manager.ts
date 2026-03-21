@@ -11,7 +11,6 @@ import * as templateManager from "./template";
 import * as templateDirWatcher from "./monitoring/templateDirWatcher";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
-import {loadYamlFile} from "@nsm/util/yaml";
 import {Database, PermaModel} from "../database";
 import {
     isServicePending,
@@ -23,10 +22,8 @@ import {
     whenUnlocked, whenUnlockedAll
 } from "./asyncp";
 import winston from "winston";
-import path from "path";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
-import {templateBuildDir} from "@nsm/engine/monitoring/util";
 import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
 import {processImage, init as initImageEngine, deleteImageIfUnused} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
@@ -325,11 +322,6 @@ export let nodeId: string;
 let db: Database;
 let appConfig: any;
 
-// Returns the settings.yml file for the template
-function settings(template: string) {
-    return loadYamlFile(templateBuildDir(template) + path.sep + 'settings.yml');
-}
-
 // Save errors somewhere else?
 // Could it be a memory leak if there are tons of them??
 const errors = {};
@@ -454,7 +446,7 @@ export async function createService(template: string, options: Options) {
         env,
         network
     } = options;
-    const serviceSettings = settings(template);
+    const serviceSettings = reqTemplate(template).settings;
 
     // Join meta supplied by user and template meta
     const meta = {
@@ -513,7 +505,7 @@ export async function resumeService(id: string) {
         port,
     } = await getPermaModel(id);
 
-    const {defaults, env: settingsEnv} = settings(template);
+    const {defaults, env: settingsEnv} = reqTemplate(template).settings;
     // Filter env to only those that are defined in settings.yml, because those are the only ones that
     // we can guarantee to be used and will not make problems when handling images.
     env = {
@@ -917,6 +909,8 @@ function getServiceState(id: string) {
     return startedStates.get(id) ?? 'STOPPED';
 }
 
+// ---------------------------------------------------------------------------------------
+
 async function getPermaModel(id: string) {
     const perma_ = await db.permaRepository.getPerma(id);
     if (!perma_) {
@@ -949,4 +943,13 @@ function reqNotRunning(id: string) {
     if (isRunning(id)) {
         throw new _InternalError('Already running.', 2);
     }
+}
+
+function reqTemplate(id: string) {
+    const template = getTemplate(id);
+    if (!template) {
+        throw new _InternalError('Template not found.', 3);
+    }
+
+    return template;
 }
