@@ -28,6 +28,7 @@ import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher
 import {processImage, init as initImageEngine, deleteImageIfUnused} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 import {ActiveServiceSession, beginServiceSession, ServiceSession, init as initSessionEngine} from "@nsm/engine/session";
+import {AppConfig} from "@nsm/config";
 
 export type Options = {
     /**
@@ -320,7 +321,6 @@ export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
 
 let db: Database;
-let appConfig: any;
 
 // Save errors somewhere else?
 // Could it be a memory leak if there are tons of them??
@@ -343,18 +343,17 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
     };
 });
 
-export async function init(db_: Database, appConfig_: any, logger: winston.Logger) {
-    const nodeId_ = appConfig_['node_id'] as string;
+export async function init(db_: Database, appConfig_: AppConfig, logger: winston.Logger) {
+    const nodeId_ = appConfig_.getNodeId();
 
     logger.info(`Initializing service manager for node ${nodeId_}...`);
 
     db = db_;
-    appConfig = appConfig_;
     if (!engine) {
         // Init only if it has not already been force-initialized
         await initEngineForcibly();
     }
-    nodeId = appConfig['node_id'] as string;
+    nodeId = nodeId_ as string;
 
     initImageEngine(engine, templateManager, templateDirWatcher, db_, currentContext.logger);
     initSessionEngine(db_);

@@ -1,18 +1,20 @@
 import DockerClient from "dockerode";
+import {AppConfig} from "@nsm/config";
 
-export function initDockerClient(appConfig: { docker_host: string }) {
+export function initDockerClient(appConfig: AppConfig) {
+    let host = appConfig.getDockerHost();
+
     let client: DockerClient;
-    if (appConfig.docker_host && (
-        appConfig.docker_host.endsWith('.sock') ||
-        appConfig.docker_host.startsWith('\\\\.\\pipe')
+    if (host && (
+        host.endsWith('.sock') ||
+        host.startsWith('\\\\.\\pipe')
     )) {
-        client = new DockerClient({ socketPath: appConfig.docker_host });
-    } else if (appConfig.docker_host) {
+        client = new DockerClient({ socketPath: host });
+    } else if (host) {
         // http(s)://host:port
-        let host = appConfig.docker_host;
         host = host.substring(0, host.lastIndexOf(':') + 1);
 
-        let port = parseInt(appConfig.docker_host.replace(host, ''));
+        let port = parseInt(appConfig.getDockerHost().replace(host, ''));
 
         host = host.substring(0, host.length - 1);
 

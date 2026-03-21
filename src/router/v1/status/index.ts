@@ -56,7 +56,7 @@ export default async function ({manager, appConfig, database}: AppContext): Prom
         url: '/status',
         routes: {
             get: async (req, res) => {
-                const nodeId = appConfig['node_id'];
+                const nodeId = appConfig.getNodeId();
                 const all = await database.permaRepository.listPerma(nodeId);
                 const [free, size] = await manager.engine.calcHostUsage();
                 const system = {

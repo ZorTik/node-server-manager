@@ -13,6 +13,7 @@ import {Template, TemplateManager} from "@nsm/engine/template";
 import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
 import * as templateManager from "@nsm/engine/template";
 import * as templateDirWatcher from "@nsm/engine/monitoring/templateDirWatcher";
+import {YamlAppConfig} from "@nsm/config";
 
 let container: StartedMariaDbContainer;
 
@@ -26,10 +27,10 @@ beforeAll(async () => {
   ] = await initDbContainerForTest();
 
   container = container_;
-  engine = createEngine({
+  engine = createEngine(
     // Just to prevent assertion errors
-    docker_host: "///var/run/docker.sock"
-  });
+    new YamlAppConfig()
+  );
   db = getDb(new PrismaClient({
     datasourceUrl: dbUrl_,
   }));

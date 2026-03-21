@@ -2,6 +2,7 @@ import DockerClient from "dockerode";
 import buildDockerEngine from "./docker";
 import {getSingleton} from "../depend";
 import {MetaStorage} from "./manager";
+import {AppConfig} from "@nsm/config";
 
 /**
  * The options for running a service.
@@ -299,7 +300,7 @@ export const combineRunListeners = (listeners: RunListener[]): RunListener => {
     }
 }
 
-export default function (appConfig: any): ServiceEngineI {
+export default function (appConfig: AppConfig): ServiceEngineI {
     let engine = getSingleton<ServiceEngine>('engine');
     if (!engine) {
         const engineId = process.env.NSM_ENGINE ?? 'docker';

@@ -1,11 +1,11 @@
 import dotenv from "dotenv";
-import {getAppConfig, saveAppConfig} from "@nsm/configuration/appConfig";
+import {loadAppConfig} from "@nsm/config";
 
 // Load .env
 dotenv.config();
 // Preload app config here to set needed env variables
 // before some modules require them.
-saveAppConfig();
+const appConfig = loadAppConfig();
 
 import {Router} from 'express';
 import {Database} from "@nsm/database";
@@ -26,6 +26,7 @@ import {SessionManager} from "@nsm/engine/session";
 import {mkdirResource, saveResource} from "@nsm/resources";
 import path from "path";
 import {resourcesTargetPath} from "@nsm/filestructure";
+import {AppConfig} from "@nsm/config";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -35,7 +36,7 @@ export type AppContext = {
     manager: ServiceManager;
     sessionManager: SessionManager;
     database: Database;
-    appConfig: any;
+    appConfig: AppConfig;
     logger: winston.Logger;
     debug: boolean;
     workers: boolean;
@@ -94,7 +95,6 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
     const steps = await loadAddons(logger);
 
     steps('BEFORE_CONFIG', { logger });
-    const appConfig = getAppConfig();
 
     // Database connection layer
     steps('BEFORE_DB', { logger, appConfig });
@@ -139,8 +139,8 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
     let srv = undefined;
     if (options?.test == undefined || options.test == false) {
         logger.info(`Starting server`);
-        srv = router.listen(appConfig.port, () => {
-            logger.info(`Server started on port ${appConfig.port}`);
+        srv = router.listen(appConfig.getPort(), () => {
+            logger.info(`Server started on port ${appConfig.getPort()}`);
         });
     }
     steps('BOOT', ctx, srv);
