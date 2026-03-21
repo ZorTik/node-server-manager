@@ -1,11 +1,16 @@
+import envPaths, {Paths} from "env-paths";
+// This app's paths object
+// Pre-define to avoid circular dependency
+export const currentPaths: Paths = envPaths("nsm");
+
 import dotenv from "dotenv";
-import config from "@nsm/configuration/appConfig";
+import {getAppConfig, saveAppConfig} from "@nsm/configuration/appConfig";
 
 // Load .env
 dotenv.config();
 // Preload app config here to set needed env variables
 // before some modules require them.
-config();
+saveAppConfig();
 
 import {Router} from 'express';
 import {Database} from "@nsm/database";
@@ -14,7 +19,6 @@ import loadAddons from "./addon";
 import loadAppRoutes from '@nsm/router';
 import createDbManager from '@nsm/database';
 import loadSecurity from "@nsm/security";
-import * as r from "@nsm/configuration/resources";
 import * as manager from "@nsm/engine/manager";
 import * as sessionManager from "@nsm/engine/session";
 import * as logging from "./logger";
@@ -24,6 +28,9 @@ import fs from "fs";
 import isInsideContainer from "@nsm/lib/isInsideContainer";
 import {middleLayer} from "@nsm/engine/middle";
 import {SessionManager} from "@nsm/engine/session";
+import {mkdirResource, saveResource} from "@nsm/resources";
+import path from "path";
+import {resourcesTargetPath} from "@nsm/filestructure";
 
 export type AppBootContext = AppContext & { steps: any };
 
@@ -44,17 +51,7 @@ export type AppBootOptions = {
     disableWorkers?: boolean;
 }
 
-let currentContext: AppContext;
-
-function prepareServiceLogs(appConfig: any, logger: winston.Logger) {
-    if (appConfig.service_logs === true) {
-        logger.info('Service logs are enabled');
-        const path = process.cwd() + '/service_logs';
-        if (!fs.existsSync(path)) {
-            fs.mkdirSync(path);
-        }
-    }
-}
+export let currentContext: AppContext;
 
 function initGlobalLogger() {
     logging.createLatestLogFile();
@@ -81,23 +78,27 @@ function managerForUnsafeUse() {
     return new Proxy(manager, handler);
 }
 
-// App orchestration code
+/**
+ * App orchestration code.
+ *
+ * @param router The app router.
+ * @param options The optional boot options.
+ */
 export const init = async (router: Application, options?: AppBootOptions): Promise<AppBootContext> => {
     // Prepare logging
     const logger = initGlobalLogger();
 
-    r.prepareTemplatesFolder();
+    // Prepare templates folder
+    mkdirResource("templates");
     if (options?.test === true) {
-        r.prepareTestResources(); // Copy resources for test
+        prepareTestResources(); // Copy resources for test
     }
 
     // Load addon steps
     const steps = await loadAddons(logger);
 
     steps('BEFORE_CONFIG', { logger });
-    const appConfig = config();
-
-    prepareServiceLogs(appConfig, logger);
+    const appConfig = getAppConfig();
 
     // Database connection layer
     steps('BEFORE_DB', { logger, appConfig });
@@ -150,8 +151,12 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
     return { ...ctx, steps };
 }
 
-export {
-    Database,
-    ServiceManager,
-    currentContext
+const prepareTestResources = () => {
+    if (fs.existsSync(path.join(resourcesTargetPath, 'templates', 'test'))) {
+        return;
+    }
+
+    saveResource('template/test/test_settings.yml', 'templates/test/settings.yml')
+    saveResource('template/test/test_dockerfile', 'templates/test/Dockerfile')
+    saveResource('template/test/test_nsmignore', 'templates/test/.nsmignore')
 }

@@ -1,4 +1,4 @@
-import {currentContext, Database} from "../app";
+import {currentContext} from "../app";
 import createEngine, {
     RunOptions,
     RunListener,
@@ -12,7 +12,7 @@ import * as templateDirWatcher from "./monitoring/templateDirWatcher";
 import crypto from "crypto";
 import {randomPort as retrieveRandomPort} from "@nsm/util/port";
 import {loadYamlFile} from "@nsm/util/yaml";
-import {PermaModel} from "../database";
+import {Database, PermaModel} from "../database";
 import {
     isServicePending,
     lckStatusTp,
@@ -26,7 +26,7 @@ import winston from "winston";
 import path from "path";
 import {isDebug} from "../helpers";
 import {resolveSequentially} from "@nsm/util/promises";
-import {buildDir} from "@nsm/engine/monitoring/util";
+import {templateBuildDir} from "@nsm/engine/monitoring/util";
 import {watchTemplateDirChanges} from "@nsm/engine/monitoring/templateDirWatcher";
 import {processImage, init as initImageEngine, deleteImageIfUnused} from "@nsm/engine/image";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
@@ -327,7 +327,7 @@ let appConfig: any;
 
 // Returns the settings.yml file for the template
 function settings(template: string) {
-    return loadYamlFile(buildDir(template) + path.sep + 'settings.yml');
+    return loadYamlFile(templateBuildDir(template) + path.sep + 'settings.yml');
 }
 
 // Save errors somewhere else?

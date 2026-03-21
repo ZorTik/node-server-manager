@@ -1,7 +1,7 @@
 import {Database, ImageModel} from "@nsm/database";
 import winston from "winston";
 import {MessageListener, ServiceEngineI} from "@nsm/engine/engine";
-import {buildDir} from "@nsm/engine/monitoring/util";
+import {templateBuildDir} from "@nsm/engine/monitoring/util";
 import {TemplateManager} from "@nsm/engine/template";
 import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
 
@@ -154,7 +154,7 @@ const buildImage = async (
   messageListener?: MessageListener
 ): Promise<string> => {
   const hash = templateDirWatcher.getTemplateHash(templateId);
-  imageId = await engine.build(imageId, buildDir(templateId), options, messageListener);
+  imageId = await engine.build(imageId, templateBuildDir(templateId), options, messageListener);
 
   await db.imageRepository.saveImage({
     id: imageId,

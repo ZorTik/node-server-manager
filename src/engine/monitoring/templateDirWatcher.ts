@@ -1,10 +1,11 @@
-import {baseTemplatesDir, buildDir, debounce} from "@nsm/engine/monitoring/util";
+import {templateBuildDir, debounce} from "@nsm/engine/monitoring/util";
 import {hashElement} from "folder-hash";
 import {getFilteredPaths} from "@nsm/engine/ignore";
 import {getAllTemplates} from "@nsm/engine/template";
 import winston from "winston";
 import chokidar, {FSWatcher} from "chokidar";
 import path from "path";
+import {templatesPath} from "@nsm/filestructure";
 
 export type TemplateDirWatcher = {
 
@@ -46,7 +47,7 @@ export const watchTemplateDirChanges = (logger: winston.Logger) => {
  * When a template directory is removed, it stops watching that directory and removes its hash from the cache.
  */
 const watchBaseDir = (logger: winston.Logger) => {
-  const dir = baseTemplatesDir();
+  const dir = templatesPath;
 
   const watcher = chokidar.watch(dir, {
     ignoreInitial: true,
@@ -89,7 +90,7 @@ const watchTemplateDir = async (template: string) => {
 
   await recalculateTemplateHash(template);
 
-  const dir = buildDir(template);
+  const dir = templateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   const recalc = debounce(() => recalculateTemplateHash(template), 2000);
@@ -116,7 +117,7 @@ const watchTemplateDir = async (template: string) => {
  * @param template The name of the template to recalculate the hash for.
  */
 const recalculateTemplateHash = async (template: string) => {
-  const dir = buildDir(template);
+  const dir = templateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   if (hashingInProgress.has(template)) {

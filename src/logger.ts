@@ -1,15 +1,17 @@
 import winston from "winston";
 import fs from "fs";
+import path from "path";
+import {resourcesTargetPath} from "@nsm/filestructure";
 
 const { combine, timestamp, label, errors, printf } = winston.format;
 
 export function createLatestLogFile() {
-    if (fs.existsSync(process.cwd() + '/logs/latest.log')) {
+    if (fs.existsSync(path.join(resourcesTargetPath, 'logs', 'latest.log'))) {
         const date = new Date(Date.now()).toJSON().slice(2, 10) + '.'
             + new Date(Date.now()).getHours() + '.'
             + new Date(Date.now()).getMinutes();
 
-        fs.renameSync(process.cwd() + '/logs/latest.log', process.cwd() + '/logs/' + date + '.log');
+        fs.renameSync(path.join(resourcesTargetPath, 'logs', 'latest.log'), path.join(resourcesTargetPath, 'logs', date + '.log'));
     }
 }
 
@@ -29,13 +31,7 @@ export function createLogger(options?: { label?: string }) {
         ),
         transports: [
             new winston.transports.Console(),
-            new winston.transports.File({dirname: 'logs', filename: 'latest.log'})
+            new winston.transports.File({dirname: path.join(resourcesTargetPath, 'logs'), filename: 'latest.log'})
         ]
     });
-}
-
-export function logService(id: string, str: any) {
-    // Isn't this thing blocking??? Look at it later, zort - by zort xdd
-    const log_path = process.cwd() + '/service_logs/' + id + '.log';
-    fs.appendFileSync(log_path, (str ?? '').toString() + '\n');
 }

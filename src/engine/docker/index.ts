@@ -1,3 +1,4 @@
+import {currentPaths} from "@nsm/app";
 import {DockerServiceEngine} from "@nsm/engine";
 import {initDockerClient} from "@nsm/engine/docker/client";
 
@@ -25,7 +26,7 @@ export default function buildDockerEngine(appConfig: any) {
     engine.dockerClient = client;
     engine.rws = {};
     // engine.cast - Being replaced in manager.
-    engine.build = build(client);
+    engine.build = build(client, currentPaths);
     engine.run = run(engine, client);
     engine.stop = stop(client);
     engine.kill = kill(client);

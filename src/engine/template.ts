@@ -1,6 +1,7 @@
 import {loadYamlFile} from "@nsm/util/yaml";
 import * as fs from "fs";
-import {baseTemplatesDir} from "@nsm/engine/monitoring/util";
+import path from "path";
+import {templatesPath} from "@nsm/filestructure";
 
 export type Template = {
     /**
@@ -81,7 +82,7 @@ export const getTemplate = (id: string): Template|null => {
     if (templateCache[id]) {
         return templateCache[id];
     }
-    const settingsPath = `${baseTemplatesDir()}/${id}/settings.yml`;
+    const settingsPath = path.join(templatesPath, id, 'settings.yml');
     if (!fs.existsSync(settingsPath)) {
         return null;
     }
@@ -97,14 +98,13 @@ export const getTemplate = (id: string): Template|null => {
 }
 
 export const getAllTemplates = () => {
-    const templatesDir = baseTemplatesDir();
-    if (!fs.existsSync(templatesDir)) {
+    if (!fs.existsSync(templatesPath)) {
         return [];
     }
 
     return fs
-      .readdirSync(templatesDir)
-      .filter(file => fs.statSync(`${templatesDir}/${file}`).isDirectory())
+      .readdirSync(templatesPath)
+      .filter(file => fs.statSync(path.join(templatesPath, file)).isDirectory())
       .map(id => getTemplate(id))
       .filter(template => template !== null);
 }

@@ -1,12 +1,9 @@
 import path from 'path';
-
-export function baseTemplatesDir() {
-  return `${process.cwd()}${path.sep}templates`;
-}
+import {templatesPath} from "@nsm/filestructure";
 
 // Returns the build directory for the template
-export function buildDir(template: string) {
-  return `${baseTemplatesDir()}${path.sep}${template}`;
+export function templateBuildDir(template: string) {
+  return path.join(templatesPath, template);
 }
 
 /**
