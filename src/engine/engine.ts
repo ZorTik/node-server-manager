@@ -50,7 +50,7 @@ export type ContainerFilter = {
 
 export type ServiceLogRecord = {
     level: 'error' | 'info';
-    message: string,
+    message: string;
 }
 
 export type ServiceState = {
@@ -69,20 +69,22 @@ export type ServiceState = {
     ready: boolean;
 }
 
-export type RunListener = {
-    /**
-     * Called when the container progress changes state.
-     *
-     * @param state The new state.
-     */
-    onStateChange?: (state: ServiceState) => Promise<void>|void;
-
+export type MessageListener = {
     /**
      * Called when there is a message from the container, with the message.
      *
      * @param message The message from the container
      */
     onMessage?: (message: ServiceLogRecord) => Promise<void>|void;
+}
+
+export type RunListener = MessageListener & {
+    /**
+     * Called when the container progress changes state.
+     *
+     * @param state The new state.
+     */
+    onStateChange?: (state: ServiceState) => Promise<void>|void;
 
     /**
      * Called when the container is closed, either by stop or kill, or by itself.
@@ -119,11 +121,23 @@ export type ServiceEngine = {
      * @param imageId The image ID to build. If this is undefined, the engine should generate a random image ID and return it.
      * @param buildDir The build dir path
      * @param buildOptions The build options
+     * @param listener The listener to use for calling back up messages from the process
      */
     build(
       imageId: string|undefined,
-      buildDir: string, buildOptions: { [key: string]: string }): Promise<string>;
+      buildDir: string,
+      buildOptions: { [key: string]: string },
+      listener?: MessageListener): Promise<string>;
 
+    /**
+     * Runs a container from an image, with the given options.
+     *
+     * @param imageId The ID of the image to use
+     * @param volumeId The ID of the volume to use
+     * @param options The options
+     * @param meta The meta storage
+     * @param listener An optional listener for back propagation
+     */
     run(
       imageId: string,
       volumeId: string,

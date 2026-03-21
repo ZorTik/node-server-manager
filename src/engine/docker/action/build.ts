@@ -3,37 +3,40 @@ import fs from "fs";
 import path from "path";
 import tar from "tar";
 import {currentContext, currentContext as ctx} from "../../../app";
-import {ServiceEngine} from "@nsm/engine";
+import {MessageListener, ServiceEngine} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 import {getRootFilesFiltered} from "@nsm/engine/ignore";
+import {Paths} from "env-paths";
 
 async function prepareImage(
-  options: {
+  args: {
       imageName: string|undefined,
       client: DockerClient,
       arDir: string,
       buildDir: string,
-      env: any
-  },
-  logger = currentContext.logger,
+      env: any,
+      messageListener?: MessageListener
+  }
 ): Promise<string> {
     let {
-        imageName,
-        client,
-        arDir,
-        buildDir,
-        env
-    } = options;
+      imageName,
+      client,
+      arDir,
+      buildDir,
+      env,
+      messageListener
+    } = args;
 
     if (!imageName) {
         // Generate an unique image name
         imageName = "nsm-template-" + path.basename(buildDir) + '-' + Date.now() + ':latest'; // TODO: better unique name generation, maybe hash of the build context?
     }
 
-    // TODO: make this in temp folder
-    const archive = arDir + '/' + imageName + '.tar';
+    // temp archive
+    const archive = path.join(arDir, imageName + '.tar');
     try {
+        // try to delete if there is already a file
         fs.unlinkSync(archive);
     } catch (e) {
         if (!e.message.includes('ENOENT')) {
@@ -54,7 +57,8 @@ async function prepareImage(
           const msgHandler = (msg: any) => {
               if (Array.isArray(msg)) {
                   msg.forEach(m => {
-                      // TODO: log message line into service logs?
+                      // Push service log record
+                      // TODO: publish log record using messageListener
                   });
               } else {
                   // Final message, resolve the promise with the image tag.
@@ -118,15 +122,12 @@ async function prepareImage(
     );
 }
 
-export default function (client: DockerClient): ServiceEngine['build'] {
-    const arDir = process.cwd() + path.sep + "archives";
-    if (!fs.existsSync(arDir)) {
-        fs.mkdirSync(arDir);
-    }
+export default function (client: DockerClient, paths: Paths): ServiceEngine['build'] {
+    const arDir = path.join(paths.temp, "archives");
 
-    return async (imageId, buildDir, options) => {
+    return async (imageId, buildDir, options, messageListener) => {
         const imageBuildClock = clock();
-        const imageTag = await prepareImage({imageName: imageId, client, arDir, buildDir, env: options});
+        const imageTag = await prepareImage({imageName: imageId, client, arDir, buildDir, env: options, messageListener});
         currentContext.logger.info('Image built in ' + imageBuildClock.durFromCreation() + 'ms');
 
         return imageTag;

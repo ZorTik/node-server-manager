@@ -549,7 +549,7 @@ export async function resumeService(id: string) {
     // Omit the always-changing args from build env, since they would always trigger an
     // image rebuild
     const { SERVICE_ID, SERVICE_PORT, SERVICE_PORTS, ...buildEnv } = runOptions.env;
-    const processedImage = await processImage(image, template, buildEnv);
+    const processedImage = await processImage(image, template, buildEnv); // TODO: tato funkce má poslední parametr messageListener, vymyslet jak sem propagovat message listener z session
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
     if (processedImage != image) {
         image = processedImage;

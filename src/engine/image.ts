@@ -1,6 +1,6 @@
 import {Database, ImageModel} from "@nsm/database";
 import winston from "winston";
-import {ServiceEngineI} from "@nsm/engine/engine";
+import {MessageListener, ServiceEngineI} from "@nsm/engine/engine";
 import {buildDir} from "@nsm/engine/monitoring/util";
 import {TemplateManager} from "@nsm/engine/template";
 import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
@@ -38,11 +38,12 @@ export const init = (
  * @param id The ID of the current image
  * @param templateId The ID of the template
  * @param buildOptions Build arguments used when building the image
+ * @param messageListener A message listener to use when building the image
  * @returns The ID of the image that should be used
  */
 export const processImage = async (
   id: string | undefined | null,
-  templateId: string, buildOptions: BuildOptionsMap
+  templateId: string, buildOptions: BuildOptionsMap, messageListener?: MessageListener
 ) => {
   const template = templateManager.getTemplate(templateId);
   // Checks if the provided options are still compatible with the template
@@ -72,7 +73,7 @@ export const processImage = async (
       logger.info(`Image ${id} is outdated due to template changes. Rebuilding...`);
 
       // Template changed, we need to rebuild the image
-      await rebuildImage(imageModel);
+      await rebuildImage(imageModel, messageListener);
     }
   }
 
@@ -143,11 +144,17 @@ const getImage = async (id: string) => {
  * @param templateId The ID of the template to build the image from
  * @param options Build options to use when building the image
  * @param imageId (Optional) The ID of the image to overwrite. If not provided, a new image will be created.
+ * @param messageListener A message listener to use for logs propagation
  * @return The ID of the built image
  */
-const buildImage = async (templateId: string, options: BuildOptionsMap, imageId?: string): Promise<string> => {
+const buildImage = async (
+  templateId: string,
+  options: BuildOptionsMap,
+  imageId?: string,
+  messageListener?: MessageListener
+): Promise<string> => {
   const hash = templateDirWatcher.getTemplateHash(templateId);
-  imageId = await engine.build(imageId, buildDir(templateId), options);
+  imageId = await engine.build(imageId, buildDir(templateId), options, messageListener);
 
   await db.imageRepository.saveImage({
     id: imageId,
@@ -169,8 +176,8 @@ const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<
   return image.id;
 }
 
-const rebuildImage = async (image: ImageModel) => {
-  return buildImage(image.templateId, image.buildOptions, image.id);
+const rebuildImage = async (image: ImageModel, messageListener?: MessageListener) => {
+  return buildImage(image.templateId, image.buildOptions, image.id, messageListener);
 }
 
 export const deleteImageIfUnused = async (image: ImageModel) => {
