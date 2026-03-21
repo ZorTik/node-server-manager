@@ -368,9 +368,14 @@ export async function init(db_: Database, appConfig_: any, logger: winston.Logge
     initSessionEngine(db_);
     watchTemplateDirChanges(currentContext.logger);
 
+    await deleteGarbage(logger);
     await reattachStaleContainers(logger);
 
     logger.info(`Using engine: ${engine.name}`);
+}
+
+async function deleteGarbage(logger: winston.Logger) {
+    // TODO: delete containers that are not running and remained from last session
 }
 
 /**
