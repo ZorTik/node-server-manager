@@ -49,35 +49,6 @@ export type TemplateManager = {
 
 const templateCache = {};
 
-export const prepareEnvForTemplate = (template: Template | string, env: any) => {
-    env = { ...env }; // Shallow copy to avoid mutating the original object
-    if (typeof template === 'string') {
-        template = getTemplate(template); // Load the template if ID provided
-    }
-
-    for (const key of Object.keys(template.settings['env'])) {
-        if (env[key] && typeof env[key] == typeof template.settings['env'][key]) {
-            // Keep the value
-        } else if (env[key]) {
-            throw new Error('Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.');
-        } else if (isRequiredOption(template.settings['env'][key])) {
-            throw new Error('Missing required option ' + key);
-        } else {
-            // Set default
-            env[key] = template.settings['env'][key];
-        }
-    }
-    return env;
-}
-
-// Defines if the value represents required option.
-const isRequiredOption = (value: any) => {
-    return (
-      (typeof value == "string" && value === "") ||
-      (typeof value === "number" && value == -1)
-    )
-}
-
 export const getTemplate = (id: string): Template|null => {
     if (templateCache[id]) {
         return templateCache[id];
@@ -107,4 +78,33 @@ export const getAllTemplates = () => {
       .filter(file => fs.statSync(path.join(templatesPath, file)).isDirectory())
       .map(id => getTemplate(id))
       .filter(template => template !== null);
+}
+
+export const prepareEnvForTemplate = (template: Template | string, env: any) => {
+    env = { ...env }; // Shallow copy to avoid mutating the original object
+    if (typeof template === 'string') {
+        template = getTemplate(template); // Load the template if ID provided
+    }
+
+    for (const key of Object.keys(template.settings['env'])) {
+        if (env[key] && typeof env[key] == typeof template.settings['env'][key]) {
+            // Keep the value
+        } else if (env[key]) {
+            throw new Error('Invalid option type for ' + key + '. Got ' + typeof env[key] + ' but expected ' + typeof template.settings['env'][key] + '.');
+        } else if (isRequiredOption(template.settings['env'][key])) {
+            throw new Error('Missing required option ' + key);
+        } else {
+            // Set default
+            env[key] = template.settings['env'][key];
+        }
+    }
+    return env;
+}
+
+// Defines if the value represents required option.
+const isRequiredOption = (value: any) => {
+    return (
+      (typeof value == "string" && value === "") ||
+      (typeof value === "number" && value == -1)
+    )
 }

@@ -6,3 +6,5 @@ pořešit /resources/config.yml aby měl víc možností a možná byl uložený
 port retrieval strategy pro spouštění servis, aby nebyla jenom random ale i jiné strategies
 udělat nějaký auto packaging do balíčků na githubu jako bundle aby se dal spustit jako systémový proces v systemctl například
 restart policy
+předělat addons systém
+flagy servis, každý flag bude mít jiný účel a půjdou přidávat přes addony které je budou taky managovat
