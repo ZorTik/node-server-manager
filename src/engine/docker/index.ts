@@ -1,4 +1,3 @@
-import {currentPaths} from "@nsm/app";
 import {DockerServiceEngine} from "@nsm/engine";
 import {initDockerClient} from "@nsm/engine/docker/client";
 
@@ -17,6 +16,7 @@ import stat from "./action/stat";
 import statAll from "./action/statall";
 import calcHostUsage from "./action/calcHostUsage";
 import listRunning from "./action/listRunning";
+import {currentPaths} from "@nsm/filestructure";
 
 export default function buildDockerEngine(appConfig: any) {
     // Default engine implementation

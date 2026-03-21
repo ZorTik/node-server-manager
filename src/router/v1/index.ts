@@ -11,6 +11,7 @@ import stopCmdRoute from "@nsm/router/v1/service/stopCmdRoute";
 import optionsRoute from "@nsm/router/v1/service/optionsRoute";
 import sessionsRoute from "@nsm/router/v1/service/sessionsRoute";
 import sessionLogsRoute from "@nsm/router/v1/session/sessionLogsRoute";
+import logsRoute from "@nsm/router/v1/service/logsRoute";
 
 export default [
   // v1 routes
@@ -26,5 +27,6 @@ export default [
   optionsRoute,
   listRoute,
   sessionsRoute,
+  logsRoute,
   sessionLogsRoute
 ]

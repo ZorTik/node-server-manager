@@ -96,17 +96,18 @@ export type PermaModel = {
 };
 
 export type ImageModel = {
-    id: string,
-    templateId: string,
-    hash: string,
+    id: string;
+    templateId: string;
+    hash: string;
     buildOptions: {
-        [key: string]: string,
+        [key: string]: string;
     }
 }
 
 export type ServiceSessionModel = {
-    id: string,
-    serviceId: string,
+    id: string;
+    serviceId: string;
+    startedAt: Date;
 }
 
 export type ServiceLogRecordModel = {

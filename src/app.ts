@@ -1,8 +1,3 @@
-import envPaths, {Paths} from "env-paths";
-// This app's paths object
-// Pre-define to avoid circular dependency
-export const currentPaths: Paths = envPaths("nsm");
-
 import dotenv from "dotenv";
 import {getAppConfig, saveAppConfig} from "@nsm/configuration/appConfig";
 
@@ -55,6 +50,7 @@ export let currentContext: AppContext;
 
 function initGlobalLogger() {
     logging.createLatestLogFile();
+
     return logging.createLogger();
 }
 

@@ -547,4 +547,5 @@ paths:
                 $ref: "#/components/schemas/Result"
 
 # TODO: /v1/service/{serviceId}/sessions
+# TODO: /v1/service/{serviceId}/logs
 # TODO: /v1/session/{sessionId}/logs

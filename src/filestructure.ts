@@ -1,5 +1,7 @@
 import path from "path";
-import {currentPaths} from "@nsm/app";
+import envPaths, {Paths} from "env-paths";
+
+export const currentPaths: Paths = envPaths("nsm");
 
 // The local resources dir (not the source of truth)
 export const resourcesPath = path.join(process.cwd(), "resources");

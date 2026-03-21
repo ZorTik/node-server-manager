@@ -1,11 +1,10 @@
 import fs from "fs";
 import ignore from "ignore";
-
-// TODO: předělat tento modul aby používal novou resources složku
+import path from "path";
 
 export const getRootFilesFiltered = (dir: string) => {
     let filtered = fs.readdirSync(dir);
-    if (fs.existsSync(dir + '/.nsmignore')) {
+    if (fs.existsSync(path.join(dir, '.nsmignore'))) {
         const ig = buildIgnore(dir);
 
         filtered = ig.filter(filtered);
@@ -24,8 +23,8 @@ export const getFilteredPaths = (dir: string) => {
     const walk = (currentDir: string) => {
         const files = fs.readdirSync(currentDir);
         for (const file of files) {
-            const relativePath = currentDir === dir ? file : currentDir.substring(dir.length + 1) + '/' + file;
-            const fullPath = currentDir + '/' + file;
+            const relativePath = currentDir === dir ? file : currentDir.substring(dir.length + 1) + path.sep + file;
+            const fullPath = currentDir + path.sep + file;
 
             if (ig.ignores(relativePath)) {
                 const isDir = fs.statSync(fullPath).isDirectory();
@@ -53,8 +52,9 @@ export const getFilteredPaths = (dir: string) => {
 
 const buildIgnore = (dir: string) => {
     const ig = ignore();
-    if (fs.existsSync(dir + '/.nsmignore')) {
-        ig.add(fs.readFileSync(dir + '/.nsmignore', 'utf8'));
+    const ignorePath = path.join(dir, '.nsmignore');
+    if (fs.existsSync(ignorePath)) {
+        ig.add(fs.readFileSync(ignorePath, 'utf8'));
     }
 
     return ig;

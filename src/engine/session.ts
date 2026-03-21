@@ -20,7 +20,8 @@ export interface SessionManager {
 export interface ServiceSession {
   id: string;
   serviceId: string;
-  // TODO: begin timestamp, end timestamp
+  startedAt: Date;
+  // TODO: end timestamp
 }
 
 export interface ActiveServiceSession extends ServiceSession {
