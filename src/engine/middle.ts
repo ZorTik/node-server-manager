@@ -23,12 +23,7 @@ export interface ErrorPublisher {
 }
 
 const publishers: ErrorPublisher[] = [
-  {
-    // Logger publisher
-    async publishError(action: ServiceActionError) {
-      currentContext.logger.error(`${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`);
-    }
-  }
+  // The publishers
 ];
 
 /**
@@ -73,6 +68,8 @@ const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
         message: e instanceof Error ? e.message : String(e),
       };
       await publishError(action);
+
+      currentContext.logger.error(`${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`, e);
 
       throw e;
     }

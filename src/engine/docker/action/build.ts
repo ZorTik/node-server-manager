@@ -8,6 +8,7 @@ import {clock} from "@nsm/util/clock";
 import {Worker} from "worker_threads";
 import {getRootFilesFiltered} from "@nsm/engine/ignore";
 import {Paths} from "env-paths";
+import {getTempPath} from "@nsm/filestructure";
 
 async function prepareImage(
   args: {
@@ -65,7 +66,7 @@ async function prepareImage(
                   resolve(msg);
               }
           }
-          if (ctx.workers) {
+          /*if (ctx.workers) {
               // Build using workers
               const w = new Worker(__dirname + path.sep + 'build.worker.js', {
                   workerData: {
@@ -78,37 +79,38 @@ async function prepareImage(
               });
               w.on('message', msgHandler);
           } else {
-              // In container, worker threads are not supported. Or they
-              // are disabled.
-              client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
-                  logs.push('--------- Begin Build Log ---------');
-                  client.modem.followProgress(stream, (err, res) => {
-                      if (err) {
-                          console.error(err);
-                      } else {
-                          let errorOccurred = false;
-                          res.forEach(r => {
-                              if (r.errorDetail) {
-                                  errorOccurred = true;
+              // Here comes the normal build
+          }*/
+        // In container, worker threads are not supported. Or they
+        // are disabled.
+        client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
+          logs.push('--------- Begin Build Log ---------');
+          client.modem.followProgress(stream, (err, res) => {
+            if (err) {
+              console.error(err);
+            } else {
+              let errorOccurred = false;
+              res.forEach(r => {
+                if (r.errorDetail) {
+                  errorOccurred = true;
 
-                                  reject(r.errorDetail);
-                              } else {
-                                  const msg = r.stream?.trim();
+                  reject(r.errorDetail);
+                } else {
+                  const msg = r.stream?.trim();
 
-                                  logs.push(msg);
-                              }
-                          });
-                          if (errorOccurred) {
-                              return;
-                          }
-                          logs.push('--------- End Of Build Log ---------\n');
-                          fs.unlinkSync(archive);
-                          msgHandler(logs);
-                          msgHandler(imageTag);
-                      }
-                  });
+                  logs.push(msg);
+                }
               });
-          }
+              if (errorOccurred) {
+                return;
+              }
+              logs.push('--------- End Of Build Log ---------\n');
+              fs.unlinkSync(archive);
+              msgHandler(logs);
+              msgHandler(imageTag);
+            }
+          });
+        });
       }).finally(() => {
           // Clean up archive file if it still exists
           try {
@@ -123,7 +125,10 @@ async function prepareImage(
 }
 
 export default function (client: DockerClient, paths: Paths): ServiceEngine['build'] {
-    const arDir = path.join(paths.temp, "archives");
+    const arDir = path.join(getTempPath(), "archives");
+    if (!fs.existsSync(arDir)) {
+      fs.mkdirSync(arDir, { recursive: true });
+    }
 
     return async (imageId, buildDir, options, messageListener) => {
         const imageBuildClock = clock();

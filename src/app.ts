@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import {loadAppConfig} from "@nsm/config";
-import {init as initFileStructure, getResourcesTargetPath} from "@nsm/filestructure";
+import {init as initFileStructure, getResourcesTargetPath, prepareFolders} from "@nsm/filestructure";
 
 // Load .env
 dotenv.config();
@@ -85,6 +85,8 @@ function managerForUnsafeUse() {
 export const init = async (router: Application, options?: AppBootOptions): Promise<AppBootContext> => {
     // Prepare logging
     const logger = initGlobalLogger();
+
+    prepareFolders();
 
     // Prepare templates folder
     mkdirResource("templates");
