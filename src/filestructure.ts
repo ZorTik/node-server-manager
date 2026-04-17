@@ -12,11 +12,10 @@ export const init = (appConfig_: AppConfig) => {
 
 // The local resources dir (not the source of truth)
 export const resourcesPath = path.join(process.cwd(), "resources");
-// The target (platform-agnostic) resources dir (the source of truth)
-const defaultResourcesTargetPath = path.join(currentPaths.data);
 
+// The target (platform-agnostic) resources dir (the source of truth)
 export const getResourcesTargetPath = () => {
-  return appConfig.getResourcesPath() ?? defaultResourcesTargetPath;
+  return appConfig.getResourcesPath() ?? path.join(currentPaths.data);
 }
 
 export const getTemplatesPath = () => {
