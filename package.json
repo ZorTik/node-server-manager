@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
     "start": "cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
-    "test": "npm run build && cross-env TS_NODE_BASEURL=./dist jest"
+    "test": "jest"
   },
   "keywords": [],
   "author": "ZorTik",
@@ -54,7 +54,7 @@
     "crypto": "^1.0.1",
     "dockerode": "^4.0.2",
     "dotenv": "^16.4.5",
-    "env-paths": "^4.0.0",
+    "env-paths": "^3.0.0",
     "express": "^4.18.2",
     "express-fileupload": "^1.5.0",
     "folder-hash": "^4.1.1",
