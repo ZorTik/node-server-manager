@@ -120,14 +120,12 @@ describe("Test v1 API models", () => {
         expect(res.status).toBe(200);
         expectProps(res.body, [
             "id", id,
-            "template.id", "test",
-            "template.name", undefined,
-            "template.description", undefined,
-            "template.settings", undefined,
+            "templateId", "test",
             "port", undefined,
             "options", undefined,
             "env", undefined,
-            "session.containerId", undefined,
+            "session.id", undefined,
+            "session.startedAt", undefined,
         ]);
     }, 20000);
 

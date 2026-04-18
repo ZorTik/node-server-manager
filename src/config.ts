@@ -24,7 +24,8 @@ export interface AppConfig {
 export class YamlAppConfig implements AppConfig {
   private static readonly schema: z.ZodObject<any> = z.object({
     node_id: z.string(),
-    port: z.number().int().positive(),
+    // Coerce port to auto-parse from env if overwritten
+    port: z.coerce.number().int().positive(),
     auth: z.string(),
     docker_host: z.string(),
     resources_path: z.string().optional()
