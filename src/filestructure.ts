@@ -27,6 +27,19 @@ export const getTempPath = () => {
   return currentPaths.temp;
 }
 
+export const mkdirTemp = (...p: string[]) => {
+  const dir = path.join(getTempPath(), ...p);
+  if (fs.existsSync(dir)) {
+    if (!fs.statSync(dir).isDirectory()) {
+      throw new Error('Temp path already exists and is not a directory: ' + dir);
+    }
+  } else {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  return dir;
+}
+
 export const prepareFolders = () => {
   const resourcesTargetPath = getResourcesTargetPath();
   if (!fs.existsSync(resourcesTargetPath)) {

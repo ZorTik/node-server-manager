@@ -16,7 +16,6 @@ import stat from "./action/stat";
 import statAll from "./action/statall";
 import calcHostUsage from "./action/calcHostUsage";
 import listRunning from "./action/listRunning";
-import {currentPaths} from "@nsm/filestructure";
 import {AppConfig} from "@nsm/config";
 
 export default function buildDockerEngine(appConfig: AppConfig) {
@@ -27,7 +26,7 @@ export default function buildDockerEngine(appConfig: AppConfig) {
     engine.dockerClient = client;
     engine.rws = {};
     // engine.cast - Being replaced in manager.
-    engine.build = build(client, currentPaths);
+    engine.build = build(client);
     engine.run = run(engine, client);
     engine.stop = stop(client);
     engine.kill = kill(client);

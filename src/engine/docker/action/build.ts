@@ -2,13 +2,11 @@ import DockerClient from "dockerode";
 import fs from "fs";
 import path from "path";
 import tar from "tar";
-import {currentContext, currentContext as ctx} from "../../../app";
 import {MessageListener, ServiceEngine} from "@nsm/engine";
 import {clock} from "@nsm/util/clock";
-import {Worker} from "worker_threads";
 import {getRootFilesFiltered} from "@nsm/engine/ignore";
-import {Paths} from "env-paths";
-import {getTempPath} from "@nsm/filestructure";
+import {mkdirTemp} from "@nsm/filestructure";
+import {currentContext} from "@nsm/app";
 
 async function prepareImage(
   args: {
@@ -66,21 +64,6 @@ async function prepareImage(
                   resolve(msg);
               }
           }
-          /*if (ctx.workers) {
-              // Build using workers
-              const w = new Worker(__dirname + path.sep + 'build.worker.js', {
-                  workerData: {
-                      archive,
-                      imageTag,
-                      env,
-                      appConfig: ctx.appConfig,
-                      debug: ctx.debug
-                  }
-              });
-              w.on('message', msgHandler);
-          } else {
-              // Here comes the normal build
-          }*/
         // In container, worker threads are not supported. Or they
         // are disabled.
         client.buildImage(archive, { t: imageTag, buildargs: env }).then(stream => {
@@ -124,11 +107,8 @@ async function prepareImage(
     );
 }
 
-export default function (client: DockerClient, paths: Paths): ServiceEngine['build'] {
-    const arDir = path.join(getTempPath(), "archives");
-    if (!fs.existsSync(arDir)) {
-      fs.mkdirSync(arDir, { recursive: true });
-    }
+export default function (client: DockerClient): ServiceEngine['build'] {
+    const arDir = mkdirTemp("archives");
 
     return async (imageId, buildDir, options, messageListener) => {
         const imageBuildClock = clock();
