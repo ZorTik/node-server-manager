@@ -22,7 +22,6 @@ import * as logging from "./logger";
 import winston from "winston";
 import {Application} from "express-ws";
 import fs from "fs";
-import isInsideContainer from "@nsm/lib/isInsideContainer";
 import {middleLayer} from "@nsm/engine/middle";
 import {SessionManager} from "@nsm/engine/session";
 import {mkdirResource, saveResource} from "@nsm/resources";
@@ -40,12 +39,10 @@ export type AppContext = {
     appConfig: AppConfig;
     logger: winston.Logger;
     debug: boolean;
-    workers: boolean;
 };
 
 export type AppBootOptions = {
     test?: boolean;
-    disableWorkers?: boolean;
 }
 
 export let currentContext: AppContext;
@@ -112,7 +109,6 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
         appConfig,
         logger,
         debug: process.env.DEBUG === 'true',
-        workers: !options?.disableWorkers && !isInsideContainer()
     };
 
     // Service (virtualization) layer
@@ -132,12 +128,6 @@ export const init = async (router: Application, options?: AppBootOptions): Promi
 
     // Start the server
     steps('BEFORE_SERVER', ctx);
-
-    if (isInsideContainer()) {
-        logger.info('Running in container! Worker threads will be unavailable.');
-    } else if(!ctx.workers) {
-        logger.info('Worker threads are forcibly disabled.');
-    }
 
     let srv = undefined;
     if (options?.test == undefined || options.test == false) {

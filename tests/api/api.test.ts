@@ -43,7 +43,6 @@ describe("Test v1 API models", () => {
     beforeAll((done) => {
         const options: AppBootOptions = {
             test: true,
-            disableWorkers: true,
         };
         boot(server, options).then((ctx_) => {
             ctx = ctx_;

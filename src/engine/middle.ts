@@ -1,4 +1,4 @@
-import {ServiceManager} from "@nsm/engine/manager";
+import {_InternalError, ServiceManager} from "@nsm/engine/manager";
 import {currentContext} from "@nsm/app";
 
 export type ServiceActionType = 'create' | 'resume' | 'stop' | 'forceStop' | 'sendStopSignal' | 'delete';
@@ -69,7 +69,12 @@ const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
       };
       await publishError(action);
 
-      currentContext.logger.error(`${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`, e);
+      // don't log stack trace of known errors
+      const errorMeta: any[] = e instanceof _InternalError && e.code != 1 ? [] : [e];
+      currentContext.logger.error(
+        `${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`,
+        ...errorMeta
+      );
 
       throw e;
     }

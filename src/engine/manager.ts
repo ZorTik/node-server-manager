@@ -306,7 +306,7 @@ export type State = 'RUNNING' | 'BUILDING' | 'STOPPED';
 // 1 = unknown, 2 = conflict, 3 = not found
 export type StatusCode = 1 | 2 | 3;
 
-class _InternalError extends Error {
+export class _InternalError extends Error {
     readonly code: StatusCode;
     readonly msg: string;
 
@@ -512,7 +512,6 @@ export async function resumeService(id: string) {
           .filter(([key]) => settingsEnv && key in settingsEnv)
           .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
     }
-
 
     const meta = metaStorageForService(id);
     const unlock = lockBusyAction(id, 'resume');
@@ -803,10 +802,6 @@ function metaStorageForService(id: string): MetaStorage { // service id
     };
 }
 
-export function initialized() {
-    return engine !== undefined;
-}
-
 export async function initEngineForcibly() {
     if (engine) {
         throw new Error("Engine is already loaded.");
@@ -941,7 +936,8 @@ function reqNotRunning(id: string) {
 function reqTemplate(id: string) {
     const template = getTemplate(id);
     if (!template) {
-        throw new _InternalError('Template not found.', 3);
+        throw new _InternalError('' +
+          'Template not found.', 3);
     }
 
     return template;
