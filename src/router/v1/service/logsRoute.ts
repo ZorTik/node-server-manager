@@ -1,19 +1,24 @@
-import {AppContext} from "@nsm/app";
-import {RouterHandler} from "@nsm/router";
-import {ListRecordsArgs} from "@nsm/database";
-import {checkServiceExists} from "@nsm/router/util/preconditions";
+import { AppContext } from "@nsm/app";
+import { RouterHandler } from "@nsm/router";
+import { ListRecordsArgs } from "@nsm/database";
+import { checkServiceExists } from "@nsm/router/util/preconditions";
 
-export default async function(ctx: AppContext): Promise<RouterHandler> {
+export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {
-    url: '/service/:id/logs',
+    url: "/service/:id/logs",
     routes: {
       get: async (req, res) => {
         const id = req.params.id;
         if (!id) {
-          res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
+          res
+            .status(400)
+            .json({
+              status: 400,
+              message: "Required 'id' field not present in the body.",
+            });
           return;
         }
-        if (!await checkServiceExists(id, ctx.manager, res)) {
+        if (!(await checkServiceExists(id, ctx.manager, res))) {
           return;
         }
 
@@ -28,7 +33,7 @@ export default async function(ctx: AppContext): Promise<RouterHandler> {
           const lastSession = await ctx.sessionManager.listSessions({
             filter: { serviceId: id },
             sort: { by: "startedAt", direction: "desc" },
-            page: { index: 0, size: 1 }
+            page: { index: 0, size: 1 },
           });
           if (lastSession && lastSession.length > 0) {
             sessionId = lastSession[0].id;
@@ -36,7 +41,9 @@ export default async function(ctx: AppContext): Promise<RouterHandler> {
         }
 
         if (!sessionId) {
-          res.status(400).json({status: 400, message: 'Service was never active.'});
+          res
+            .status(400)
+            .json({ status: 400, message: "Service was never active." });
           return;
         }
 
@@ -44,29 +51,28 @@ export default async function(ctx: AppContext): Promise<RouterHandler> {
         const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 10;
 
         // Use pagination only if it was requested by params
-        const page = req.query.pageIndex || req.query.pageSize
-          ? (
-            {
-              index: pageIndex,
-              size: pageSize
-            }
-          )
-          : undefined;
+        const page =
+          req.query.pageIndex || req.query.pageSize
+            ? {
+                index: pageIndex,
+                size: pageSize,
+              }
+            : undefined;
 
         const args: ListRecordsArgs = {
           filter: {
-            sessionId
+            sessionId,
           },
           sort: {
             by: "timestamp",
-            direction: "asc"
+            direction: "asc",
           },
-          page
+          page,
         };
         const logs = await ctx.sessionManager.listSessionLogs(args);
 
         res.status(200).json({ logs });
-      }
-    }
-  }
+      },
+    },
+  };
 }

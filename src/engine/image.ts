@@ -1,12 +1,12 @@
-import {Database, ImageModel} from "@nsm/database";
+import { Database, ImageModel } from "@nsm/database";
 import winston from "winston";
-import {MessageListener, ServiceEngineI} from "@nsm/engine/engine";
-import {templateBuildDir} from "@nsm/engine/monitoring/util";
-import {TemplateManager} from "@nsm/engine/template";
-import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
+import { MessageListener, ServiceEngineI } from "@nsm/engine/engine";
+import { templateBuildDir } from "@nsm/engine/monitoring/util";
+import { TemplateManager } from "@nsm/engine/template";
+import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
 
 type BuildOptionsMap = {
-  [key: string]: string
+  [key: string]: string;
 };
 
 let engine: ServiceEngineI;
@@ -20,14 +20,14 @@ export const init = (
   templateManager_: TemplateManager,
   templateDirWatcher_: TemplateDirWatcher,
   db_: Database,
-  logger_: winston.Logger
+  logger_: winston.Logger,
 ) => {
   engine = engine_;
   templateManager = templateManager_;
   templateDirWatcher = templateDirWatcher_;
   db = db_;
   logger = logger_;
-}
+};
 
 /**
  * Ensures that the image associated with the given ID is up to date and
@@ -43,7 +43,9 @@ export const init = (
  */
 export const processImage = async (
   id: string | undefined | null,
-  templateId: string, buildOptions: BuildOptionsMap, messageListener?: MessageListener
+  templateId: string,
+  buildOptions: BuildOptionsMap,
+  messageListener?: MessageListener,
 ) => {
   const template = templateManager.getTemplate(templateId);
   // Checks if the provided options are still compatible with the template
@@ -56,21 +58,29 @@ export const processImage = async (
 
   const imageModel = await getImage(id);
   if (imageModel.templateId != templateId) {
-    throw new Error(`Image ${id} is based on template ${imageModel.templateId}, but template ${templateId} was expected`);
+    throw new Error(
+      `Image ${id} is based on template ${imageModel.templateId}, but template ${templateId} was expected`,
+    );
   }
 
-  const imageOutdated = imageModel.hash != templateDirWatcher.getTemplateHash(imageModel.templateId);
+  const imageOutdated =
+    imageModel.hash !=
+    templateDirWatcher.getTemplateHash(imageModel.templateId);
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
     if (optionsChanged) {
-      logger.info(`The target options differ, finding or building a new compatible image...`);
+      logger.info(
+        `The target options differ, finding or building a new compatible image...`,
+      );
       id = await pickImageOrBuild(templateId, buildOptions);
 
       // If the image becomes unused after the switch, delete it
       await deleteImageIfUnused(imageModel);
     } else {
-      logger.info(`Image ${id} is outdated due to template changes. Rebuilding...`);
+      logger.info(
+        `Image ${id} is outdated due to template changes. Rebuilding...`,
+      );
 
       // Template changed, we need to rebuild the image
       await rebuildImage(imageModel, messageListener);
@@ -78,7 +88,7 @@ export const processImage = async (
   }
 
   return id;
-}
+};
 
 /**
  * Tries to find an existing image that is compatible with the given template ID and build options.
@@ -88,7 +98,10 @@ export const processImage = async (
  * @param buildOptions Build options to use when finding/building the image
  * @returns The ID of the found or built image
  */
-const pickImageOrBuild = async (templateId: string, buildOptions: BuildOptionsMap) => {
+const pickImageOrBuild = async (
+  templateId: string,
+  buildOptions: BuildOptionsMap,
+) => {
   let id = await pickImage(templateId, buildOptions);
   if (id == null) {
     logger.info(`No compatible image found for request. Building new image...`);
@@ -98,9 +111,12 @@ const pickImageOrBuild = async (templateId: string, buildOptions: BuildOptionsMa
   }
 
   return id;
-}
+};
 
-export const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsMap): boolean => {
+export const optionsDiffer = (
+  options1: BuildOptionsMap,
+  options2: BuildOptionsMap,
+): boolean => {
   const keys1 = Object.keys(options1);
   const keys2 = Object.keys(options2);
 
@@ -119,7 +135,7 @@ export const optionsDiffer = (options1: BuildOptionsMap, options2: BuildOptionsM
   }
 
   return false;
-}
+};
 
 /**
  * Retrieves the image information from the database for the given image ID.
@@ -135,7 +151,7 @@ const getImage = async (id: string) => {
   }
 
   return image;
-}
+};
 
 /**
  * Builds a new image based on the given template ID and build options, and saves it to the database.
@@ -151,10 +167,15 @@ const buildImage = async (
   templateId: string,
   options: BuildOptionsMap,
   imageId?: string,
-  messageListener?: MessageListener
+  messageListener?: MessageListener,
 ): Promise<string> => {
   const hash = templateDirWatcher.getTemplateHash(templateId);
-  imageId = await engine.build(imageId, templateBuildDir(templateId), options, messageListener);
+  imageId = await engine.build(
+    imageId,
+    templateBuildDir(templateId),
+    options,
+    messageListener,
+  );
 
   await db.imageRepository.saveImage({
     id: imageId,
@@ -163,10 +184,16 @@ const buildImage = async (
     buildOptions: options,
   });
   return imageId;
-}
+};
 
-const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<string|null> => {
-  const images = await db.imageRepository.listImagesByOptions(templateId, options);
+const pickImage = async (
+  templateId: string,
+  options: BuildOptionsMap,
+): Promise<string | null> => {
+  const images = await db.imageRepository.listImagesByOptions(
+    templateId,
+    options,
+  );
   if (images.length == 0) {
     return null;
   }
@@ -174,20 +201,32 @@ const pickImage = async (templateId: string, options: BuildOptionsMap): Promise<
   const image = images[Math.floor(Math.random() * images.length)]; // TODO: implement better image picking strategy (e.g. based on usage)
 
   return image.id;
-}
+};
 
-const rebuildImage = async (image: ImageModel, messageListener?: MessageListener) => {
-  return buildImage(image.templateId, image.buildOptions, image.id, messageListener);
-}
+const rebuildImage = async (
+  image: ImageModel,
+  messageListener?: MessageListener,
+) => {
+  return buildImage(
+    image.templateId,
+    image.buildOptions,
+    image.id,
+    messageListener,
+  );
+};
 
 export const deleteImageIfUnused = async (image: ImageModel) => {
-  const servicesUsingImage = await db.permaRepository.listPermaUsingImage(image.id);
+  const servicesUsingImage = await db.permaRepository.listPermaUsingImage(
+    image.id,
+  );
   if (servicesUsingImage.length > 0) {
     // Image is still in use, do not delete
     return;
   }
 
-  logger.debug(`Image ${image.id} is no longer used by any service. Deleting...`);
+  logger.debug(
+    `Image ${image.id} is no longer used by any service. Deleting...`,
+  );
 
   try {
     await engine.deleteImage(image.id);
@@ -195,4 +234,4 @@ export const deleteImageIfUnused = async (image: ImageModel) => {
     logger.error(`Failed to delete image ${image.id}`, e);
   }
   await db.imageRepository.deleteImage(image.id);
-}
+};

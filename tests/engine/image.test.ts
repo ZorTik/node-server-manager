@@ -1,19 +1,19 @@
-import {afterAll, beforeAll, expect, it} from "@jest/globals";
-import {ServiceEngineI} from "@nsm/engine";
+import { afterAll, beforeAll, expect, it } from "@jest/globals";
+import { ServiceEngineI } from "@nsm/engine";
 import createEngine from "@nsm/engine/engine";
-import {init as initImageEngine} from "@nsm/engine/image";
+import { init as initImageEngine } from "@nsm/engine/image";
 import getDb from "@nsm/database";
-import {Database} from "@nsm/database";
-import {StartedMariaDbContainer} from "@testcontainers/mariadb";
-import {initDbContainerForTest} from "../testUtils";
-import {PrismaClient} from "@prisma/client";
-import {processImage} from "@nsm/engine/image";
-import {createLogger} from "@nsm/logger";
-import {Template, TemplateManager} from "@nsm/engine/template";
-import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
+import { Database } from "@nsm/database";
+import { StartedMariaDbContainer } from "@testcontainers/mariadb";
+import { initDbContainerForTest } from "../testUtils";
+import { PrismaClient } from "@prisma/client";
+import { processImage } from "@nsm/engine/image";
+import { createLogger } from "@nsm/logger";
+import { Template, TemplateManager } from "@nsm/engine/template";
+import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
 import * as templateManager from "@nsm/engine/template";
 import * as templateDirWatcher from "@nsm/engine/monitoring/templateDirWatcher";
-import {YamlAppConfig} from "@nsm/config";
+import { YamlAppConfig } from "@nsm/config";
 
 let container: StartedMariaDbContainer;
 
@@ -21,19 +21,18 @@ let engine: ServiceEngineI;
 let db: Database;
 
 beforeAll(async () => {
-  const [
-    container_,
-    dbUrl_
-  ] = await initDbContainerForTest();
+  const [container_, dbUrl_] = await initDbContainerForTest();
 
   container = container_;
   engine = createEngine(
     // Just to prevent assertion errors
-    new YamlAppConfig()
+    new YamlAppConfig(),
   );
-  db = getDb(new PrismaClient({
-    datasourceUrl: dbUrl_,
-  }));
+  db = getDb(
+    new PrismaClient({
+      datasourceUrl: dbUrl_,
+    }),
+  );
 }, 20000);
 
 afterAll(async () => {
@@ -51,22 +50,28 @@ it("reuses image with same options", async () => {
       env: {
         option1: "",
         option2: "",
-      }
-    }
-  }
+      },
+    },
+  };
 
   let buildCount = 0;
 
   const customEngine: ServiceEngineI = {
     ...engine,
-    build(imageId: string | undefined, _: string | undefined, __: {
-      [p: string]: string
-    }): Promise<string> {
+    build(
+      imageId: string | undefined,
+      _: string | undefined,
+      __: {
+        [p: string]: string;
+      },
+    ): Promise<string> {
       buildCount++;
 
-      return Promise.resolve(imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0));
-    }
-  }
+      return Promise.resolve(
+        imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0),
+      );
+    },
+  };
   const customTemplateManager: TemplateManager = {
     ...templateManager,
     getTemplate(id: string): Template | null {
@@ -75,7 +80,7 @@ it("reuses image with same options", async () => {
       }
 
       return null;
-    }
+    },
   };
   const customTemplateDirWatcher: TemplateDirWatcher = {
     ...templateDirWatcher,
@@ -85,10 +90,16 @@ it("reuses image with same options", async () => {
       }
 
       throw new Error(`Unknown template ${template}`);
-    }
+    },
   };
 
-  initImageEngine(customEngine, customTemplateManager, customTemplateDirWatcher, db, createLogger());
+  initImageEngine(
+    customEngine,
+    customTemplateManager,
+    customTemplateDirWatcher,
+    db,
+    createLogger(),
+  );
 
   const buildOptions = {
     option1: "value1",

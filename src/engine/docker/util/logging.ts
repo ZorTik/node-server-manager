@@ -1,15 +1,15 @@
-import {ServiceLogRecord} from "@nsm/engine";
+import { ServiceLogRecord } from "@nsm/engine";
 
 export const infoRecord = (message: string): ServiceLogRecord => {
   return {
-    level: 'info',
-    message
-  }
-}
+    level: "info",
+    message,
+  };
+};
 
 export const errorRecord = (message: string): ServiceLogRecord => {
   return {
-    level: 'error',
-    message
-  }
-}
+    level: "error",
+    message,
+  };
+};

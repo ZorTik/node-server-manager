@@ -1,13 +1,16 @@
-import {PrismaClient} from "@prisma/client";
-import {MetaRepository} from "@nsm/database/models";
+import { PrismaClient } from "@prisma/client";
+import { MetaRepository } from "@nsm/database/models";
 
 let client: PrismaClient;
 
 export const init = (client_: PrismaClient) => {
   client = client_;
-}
+};
 
-export const getMetaVal: MetaRepository["getMetaVal"] = async (key, defaultVal) => {
+export const getMetaVal: MetaRepository["getMetaVal"] = async (
+  key,
+  defaultVal,
+) => {
   try {
     let meta = await client.meta.findUnique({ where: { key } });
     if (!meta) {
@@ -19,6 +22,6 @@ export const getMetaVal: MetaRepository["getMetaVal"] = async (key, defaultVal) 
     return meta.value;
   } catch (e) {
     console.log(e);
-    return '';
+    return "";
   }
-}
+};

@@ -28,5 +28,5 @@ export default [
   listRoute,
   sessionsRoute,
   logsRoute,
-  sessionLogsRoute
-]
+  sessionLogsRoute,
+];

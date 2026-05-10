@@ -1,5 +1,5 @@
-import path from 'path';
-import {getTemplatesPath} from "@nsm/filestructure";
+import path from "path";
+import { getTemplatesPath } from "@nsm/filestructure";
 
 // Returns the build directory for the template
 export function templateBuildDir(template: string) {

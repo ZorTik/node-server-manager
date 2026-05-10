@@ -1,11 +1,22 @@
 import DockerClient from "dockerode";
-import {DockerServiceEngine, ServiceEngine, ServiceLogRecord} from "@nsm/engine";
-import {getActionType} from "@nsm/engine/asyncp";
-import {currentContext} from "@nsm/app";
-import {deleteNetwork as doDeleteNetwork, isInNetwork} from "@nsm/networking/manager";
+import {
+  DockerServiceEngine,
+  ServiceEngine,
+  ServiceLogRecord,
+} from "@nsm/engine";
+import { getActionType } from "@nsm/engine/asyncp";
+import { currentContext } from "@nsm/app";
+import {
+  deleteNetwork as doDeleteNetwork,
+  isInNetwork,
+} from "@nsm/networking/manager";
 import winston from "winston";
 
-async function deleteContainer(id: string, client: DockerClient, options: { deleteNetwork?: boolean }) {
+async function deleteContainer(
+  id: string,
+  client: DockerClient,
+  options: { deleteNetwork?: boolean },
+) {
   try {
     const c = client.getContainer(id);
     try {
@@ -18,7 +29,9 @@ async function deleteContainer(id: string, client: DockerClient, options: { dele
     const networkId = await isInNetwork(client, id);
     if (networkId) {
       // Disconnect this container from the attached network.
-      await client.getNetwork(networkId).disconnect({ Container: id, Force: true });
+      await client
+        .getNetwork(networkId)
+        .disconnect({ Container: id, Force: true });
       if (options.deleteNetwork == true) {
         // Delete network if requested.
         await doDeleteNetwork(client, id);
@@ -26,8 +39,11 @@ async function deleteContainer(id: string, client: DockerClient, options: { dele
     }
     return true;
   } catch (e) {
-    if (e.message.includes('No such container:') || e.message.includes('removal of container')) {
-      currentContext?.logger.warn('Ignoring error: ' + e.message);
+    if (
+      e.message.includes("No such container:") ||
+      e.message.includes("removal of container")
+    ) {
+      currentContext?.logger.warn("Ignoring error: " + e.message);
       return true;
     }
 
@@ -36,7 +52,10 @@ async function deleteContainer(id: string, client: DockerClient, options: { dele
   }
 }
 
-export default function reattach(self: ServiceEngine, client: DockerClient): ServiceEngine["reattach"] {
+export default function reattach(
+  self: ServiceEngine,
+  client: DockerClient,
+): ServiceEngine["reattach"] {
   return async (id, listener) => {
     const container = client.getContainer(id);
     const logger = currentContext.logger;
@@ -45,23 +64,31 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
       await deleteContainer(container.id, client, { deleteNetwork: true });
 
       await listener.onClose?.();
-    }
+    };
 
     const info = await container.inspect();
     if (!info.State.Running) {
       // If the container is not running, we can delete it right after
       await handleClosed();
-      throw new Error("Container is not running. Maybe it stopped before it could be attached?");
+      throw new Error(
+        "Container is not running. Maybe it stopped before it could be attached?",
+      );
     }
 
-    const attachOptions = { stream: true, stdin: true, stdout: true, stderr: true, hijack: true };
+    const attachOptions = {
+      stream: true,
+      stdin: true,
+      stdout: true,
+      stderr: true,
+      hijack: true,
+    };
     const rws = await container.attach(attachOptions);
-    rws.on('data', (data) => {
+    rws.on("data", (data) => {
       try {
-        data = Buffer.from(data).toString('ascii');
+        data = Buffer.from(data).toString("ascii");
         const record: ServiceLogRecord = {
-          level: 'info',
-          message: data
+          level: "info",
+          message: data,
         };
 
         listener.onMessage?.(record);
@@ -69,8 +96,8 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
         logger.error("Error producing container output: " + e);
       }
     }); // no-op, keepalive
-    rws.on('end', async () => {
-      if (getActionType(container.id) != 'stop') {
+    rws.on("end", async () => {
+      if (getActionType(container.id) != "stop") {
         // Stopped from the inside
 
         await handleClosed();
@@ -82,6 +109,10 @@ export default function reattach(self: ServiceEngine, client: DockerClient): Ser
     });
     (self as DockerServiceEngine).rws[container.id] = rws;
 
-    await listener.onStateChange?.({ id: 'watching_changes', description: 'Watching changes', ready: true });
-  }
+    await listener.onStateChange?.({
+      id: "watching_changes",
+      description: "Watching changes",
+      ready: true,
+    });
+  };
 }

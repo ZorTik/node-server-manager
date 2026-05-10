@@ -1,7 +1,13 @@
-import {_InternalError, ServiceManager} from "@nsm/engine/manager";
-import {currentContext} from "@nsm/app";
+import { _InternalError, ServiceManager } from "@nsm/engine/manager";
+import { currentContext } from "@nsm/app";
 
-export type ServiceActionType = 'create' | 'resume' | 'stop' | 'forceStop' | 'sendStopSignal' | 'delete';
+export type ServiceActionType =
+  | "create"
+  | "resume"
+  | "stop"
+  | "forceStop"
+  | "sendStopSignal"
+  | "delete";
 
 /**
  * Represents an error that occurred during a service action.
@@ -13,7 +19,6 @@ export interface ServiceActionError {
 }
 
 export interface ErrorPublisher {
-
   /**
    * Publishes an error that occurred during a service action.
    *
@@ -35,15 +40,15 @@ const publishers: ErrorPublisher[] = [
  */
 export const registerErrorPublisher = (publisher: ErrorPublisher) => {
   publishers.push(publisher);
-}
+};
 
 const publishError = async (action: ServiceActionError) => {
   try {
-    await Promise.all(publishers.map(p => p.publishError(action)));
+    await Promise.all(publishers.map((p) => p.publishError(action)));
   } catch (e) {
-    currentContext.logger.error('Failed to publish service action error', e);
+    currentContext.logger.error("Failed to publish service action error", e);
   }
-}
+};
 
 /**
  * Decorates an asynchronous function to allow for additional behavior, such as error handling or logging.
@@ -56,7 +61,7 @@ const publishError = async (action: ServiceActionError) => {
 const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
   fn: F,
   actionType: ServiceActionType,
-  serviceIdExtractor: (args: Parameters<F>) => string = (args) => args[0] as string,
+  serviceIdExtractor?: (args: Parameters<F>) => string,
 ) => {
   return async (...args: Parameters<F>) => {
     try {
@@ -70,16 +75,53 @@ const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
       await publishError(action);
 
       // don't log stack trace of known errors
-      const errorMeta: any[] = e instanceof _InternalError && e.code != 1 ? [] : [e];
+      const errorMeta: any[] =
+        e instanceof _InternalError && e.code != 1 ? [] : [e];
       currentContext.logger.error(
         `${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`,
-        ...errorMeta
+        ...errorMeta,
       );
 
       throw e;
     }
-  }
-}
+  };
+};
+
+/**
+ * Creates a service ID extractor function that extracts the service ID from the
+ * specified argument index of the function arguments.
+ *
+ * @param argIndex The index of the argument from which to extract the service ID.
+ * @returns A function that takes the function arguments and returns the extracted service ID.
+ */
+const argServiceIdExtractor = (
+  argIndex: number,
+): (<T, F extends (...args: Parameters<F>) => Promise<T>>(
+  args: Parameters<F>,
+) => string) => {
+  return (args) => {
+    if (!Array.isArray(args)) {
+      throw new Error("Expected function call arguments to be an array");
+    }
+
+    const argsArray = args as unknown[];
+    // Check if the argument index is within bounds
+    if (argsArray.length <= argIndex) {
+      throw new Error(
+        `Expected at least ${argIndex + 1} arguments, but got ${argsArray.length}`,
+      );
+    }
+
+    const serviceId = argsArray[argIndex];
+    if (typeof serviceId !== "string") {
+      throw new Error(
+        `Expected service ID argument to be a string, but got ${typeof serviceId}`,
+      );
+    }
+
+    return serviceId;
+  };
+};
 
 /**
  * Wraps a {@link ServiceManager} instance with additional capabilities.
@@ -93,16 +135,36 @@ export const middleLayer = (manager: ServiceManager): ServiceManager => {
   return {
     ...manager,
 
-    createService: decorateFunc(manager.createService, "create", null),
+    createService: decorateFunc(manager.createService, "create"),
 
-    resumeService: decorateFunc(manager.resumeService, "resume"),
+    resumeService: decorateFunc(
+      manager.resumeService,
+      "resume",
+      argServiceIdExtractor(0),
+    ),
 
-    stopService: decorateFunc(manager.stopService, "stop"),
+    stopService: decorateFunc(
+      manager.stopService,
+      "stop",
+      argServiceIdExtractor(0),
+    ),
 
-    stopServiceForcibly: decorateFunc(manager.stopServiceForcibly, "forceStop"),
+    stopServiceForcibly: decorateFunc(
+      manager.stopServiceForcibly,
+      "forceStop",
+      argServiceIdExtractor(0),
+    ),
 
-    sendStopSignal: decorateFunc(manager.sendStopSignal, "sendStopSignal"),
+    sendStopSignal: decorateFunc(
+      manager.sendStopSignal,
+      "sendStopSignal",
+      argServiceIdExtractor(0),
+    ),
 
-    deleteService: decorateFunc(manager.deleteService, "delete"),
-  }
-}
+    deleteService: decorateFunc(
+      manager.deleteService,
+      "delete",
+      argServiceIdExtractor(0),
+    ),
+  };
+};

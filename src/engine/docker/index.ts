@@ -1,45 +1,45 @@
-import {DockerServiceEngine} from "@nsm/engine";
-import {initDockerClient} from "@nsm/engine/docker/client";
+import { DockerServiceEngine } from "@nsm/engine";
+import { initDockerClient } from "@nsm/engine/docker/client";
 
-import build from './action/build';
+import build from "./action/build";
 import run from "./action/run";
-import stop from './action/stop';
-import kill from './action/kill';
+import stop from "./action/stop";
+import kill from "./action/kill";
 import reattach from "./action/reattach";
-import delVolume from './action/deletev';
-import delImage from './action/deletei';
-import cmd from './action/cmd';
-import getLabels from './action/getLabels';
-import listContainers from './action/listc';
-import listAttachedPorts from './action/listp';
+import delVolume from "./action/deletev";
+import delImage from "./action/deletei";
+import cmd from "./action/cmd";
+import getLabels from "./action/getLabels";
+import listContainers from "./action/listc";
+import listAttachedPorts from "./action/listp";
 import stat from "./action/stat";
 import statAll from "./action/statall";
 import calcHostUsage from "./action/calcHostUsage";
 import listRunning from "./action/listRunning";
-import {AppConfig} from "@nsm/config";
+import { AppConfig } from "@nsm/config";
 
 export default function buildDockerEngine(appConfig: AppConfig) {
-    // Default engine implementation
-    const client = initDockerClient(appConfig);
-    const engine = {} as DockerServiceEngine;
-    engine.name = "Docker";
-    engine.dockerClient = client;
-    engine.rws = {};
-    // engine.cast - Being replaced in manager.
-    engine.build = build(client);
-    engine.run = run(engine, client);
-    engine.stop = stop(client);
-    engine.kill = kill(client);
-    engine.reattach = reattach(engine, client);
-    engine.deleteVolume = delVolume(engine, client);
-    engine.deleteImage = delImage(client);
-    engine.cmd = cmd(engine, client);
-    engine.getLabels = getLabels(client);
-    engine.listContainers = listContainers(engine, client);
-    engine.listAttachedPorts = listAttachedPorts(engine, client);
-    engine.stat = stat(engine, client);
-    engine.statAll = statAll(engine);
-    engine.calcHostUsage = calcHostUsage(client);
-    engine.listRunning = listRunning(client);
-    return engine;
+  // Default engine implementation
+  const client = initDockerClient(appConfig);
+  const engine = {} as DockerServiceEngine;
+  engine.name = "Docker";
+  engine.dockerClient = client;
+  engine.rws = {};
+  // engine.cast - Being replaced in manager.
+  engine.build = build(client);
+  engine.run = run(engine, client);
+  engine.stop = stop(client);
+  engine.kill = kill(client);
+  engine.reattach = reattach(engine, client);
+  engine.deleteVolume = delVolume(engine, client);
+  engine.deleteImage = delImage(client);
+  engine.cmd = cmd(engine, client);
+  engine.getLabels = getLabels(client);
+  engine.listContainers = listContainers(engine, client);
+  engine.listAttachedPorts = listAttachedPorts(engine, client);
+  engine.stat = stat(engine, client);
+  engine.statAll = statAll(engine);
+  engine.calcHostUsage = calcHostUsage(client);
+  engine.listRunning = listRunning(client);
+  return engine;
 }

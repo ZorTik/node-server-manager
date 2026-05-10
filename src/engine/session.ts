@@ -1,11 +1,11 @@
-import {RunListener} from "@nsm/engine/engine";
+import { RunListener } from "@nsm/engine/engine";
 import {
   CreateLogRecordArgs,
   Database,
   ListRecordsArgs,
   ListSessionsArgs,
   ServiceLogRecordModel,
-  ServiceSessionModel
+  ServiceSessionModel,
 } from "@nsm/database";
 
 export interface SessionManager {
@@ -13,8 +13,12 @@ export interface SessionManager {
 
   beginServiceSession(serviceId: string): Promise<ActiveServiceSession>;
 
-  listSessions(args: ListSessionsArgs): Promise<ServiceSessionModel[]|undefined>;
-  listSessionLogs(args: ListRecordsArgs): Promise<ServiceLogRecordModel[]|undefined>;
+  listSessions(
+    args: ListSessionsArgs,
+  ): Promise<ServiceSessionModel[] | undefined>;
+  listSessionLogs(
+    args: ListRecordsArgs,
+  ): Promise<ServiceLogRecordModel[] | undefined>;
 }
 
 export interface ServiceSession {
@@ -35,7 +39,7 @@ let db: Database;
 
 export const init = (db_: Database) => {
   db = db_;
-}
+};
 
 /**
  * Begins a new service session for the given service ID.
@@ -43,47 +47,43 @@ export const init = (db_: Database) => {
  * @param serviceId The ID of the service for which to begin a session.
  * @return An object representing the active service session.
  */
-export const beginServiceSession: SessionManager["beginServiceSession"] = async (
-  serviceId: string
-): Promise<ActiveServiceSession> => {
-  let session = await db.sessionRepository.createSession(serviceId);
+export const beginServiceSession: SessionManager["beginServiceSession"] =
+  async (serviceId: string): Promise<ActiveServiceSession> => {
+    let session = await db.sessionRepository.createSession(serviceId);
 
-  // Debounce the push in bulk to prevent database overhead
-  const {
-    flush: flushRecords,
-    debounce: pushRecord
-  } = debounceBulkPush();
+    // Debounce the push in bulk to prevent database overhead
+    const { flush: flushRecords, debounce: pushRecord } = debounceBulkPush();
 
-  const runListener: RunListener = {
-    onStateChange: async (state) => {
-      pushRecord({
-        sessionId: session.id,
-        source: 'ENGINE',
-        logLevel: 'INFO',
-        message: state.description
-      });
-    },
-    onMessage: async (record) => {
-      pushRecord({
-        sessionId: session.id,
-        source: 'CONTAINER',
-        logLevel: record.level.toUpperCase(),
-        message: record.message
-      });
-    },
-    onClose: async () => {
-      // Push remaining logs now
-      await flushRecords();
+    const runListener: RunListener = {
+      onStateChange: async (state) => {
+        pushRecord({
+          sessionId: session.id,
+          source: "ENGINE",
+          logLevel: "INFO",
+          message: state.description,
+        });
+      },
+      onMessage: async (record) => {
+        pushRecord({
+          sessionId: session.id,
+          source: "CONTAINER",
+          logLevel: record.level.toUpperCase(),
+          message: record.message,
+        });
+      },
+      onClose: async () => {
+        // Push remaining logs now
+        await flushRecords();
 
-      // TODO: mark session as closed
-    }
-  }
+        // TODO: mark session as closed
+      },
+    };
 
-  return {
-    ...session,
-    runListener
-  }
-}
+    return {
+      ...session,
+      runListener,
+    };
+  };
 
 /**
  * Creates a debounced function for pushing log records in bulk to the database.
@@ -94,12 +94,12 @@ export const beginServiceSession: SessionManager["beginServiceSession"] = async 
  * @return A function that can be called to push a log record, which will be debounced and pushed in bulk.
  */
 const debounceBulkPush = () => {
-  const logRecordsBulk: Omit<ServiceLogRecordModel, 'id'>[] = [];
+  const logRecordsBulk: Omit<ServiceLogRecordModel, "id">[] = [];
 
   const MAX_BATCH_SIZE = 50;
   const DEBOUNCE_MS = 500;
 
-  let timeout: NodeJS.Timeout|null = null;
+  let timeout: NodeJS.Timeout | null = null;
   let isFlushing = false;
 
   const flush = async () => {
@@ -163,16 +163,20 @@ const debounceBulkPush = () => {
 
       // Renew timer
       renew();
-    }
-  }
-}
+    },
+  };
+};
 
 // TODO: get service session
 
-export const listSessions: SessionManager["listSessions"] = async (args: ListSessionsArgs) => {
+export const listSessions: SessionManager["listSessions"] = async (
+  args: ListSessionsArgs,
+) => {
   return db.sessionRepository.listSessions(args);
-}
+};
 
-export const listSessionLogs: SessionManager["listSessionLogs"] = async (args: ListRecordsArgs) => {
+export const listSessionLogs: SessionManager["listSessionLogs"] = async (
+  args: ListRecordsArgs,
+) => {
   return db.serviceLogRepository.listRecords(args);
-}
+};

@@ -1,10 +1,13 @@
-import {ServiceEngine} from "@nsm/engine";
+import { ServiceEngine } from "@nsm/engine";
 import DockerClient from "dockerode";
-import {adaptContainerStatsFromDocker} from "@nsm/util/docker";
+import { adaptContainerStatsFromDocker } from "@nsm/util/docker";
 
-export default function (self: ServiceEngine, client: DockerClient): ServiceEngine['stat'] {
-    return async (id) => {
-        const stats = await client.getContainer(id).stats({ stream: false });
-        return adaptContainerStatsFromDocker(id, stats);
-    }
+export default function (
+  self: ServiceEngine,
+  client: DockerClient,
+): ServiceEngine["stat"] {
+  return async (id) => {
+    const stats = await client.getContainer(id).stats({ stream: false });
+    return adaptContainerStatsFromDocker(id, stats);
+  };
 }

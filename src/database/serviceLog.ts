@@ -1,14 +1,14 @@
-import {Prisma, PrismaClient} from "@prisma/client";
-import {ServiceLogRepository} from "@nsm/database/models";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { ServiceLogRepository } from "@nsm/database/models";
 
 let client: PrismaClient;
 
 export const init = (client_: PrismaClient) => {
   client = client_;
-}
+};
 
 export const createRecords: ServiceLogRepository["createRecords"] = async (
-  records
+  records,
 ) => {
   try {
     await client.serviceLogRecord.createMany({ data: records });
@@ -18,21 +18,19 @@ export const createRecords: ServiceLogRepository["createRecords"] = async (
 
     return false;
   }
-}
+};
 
-export const listRecords: ServiceLogRepository["listRecords"] = async (args) => {
-  const {
-    filter,
-    sort,
-    page
-  } = args;
+export const listRecords: ServiceLogRepository["listRecords"] = async (
+  args,
+) => {
+  const { filter, sort, page } = args;
 
   const query: Prisma.ServiceLogRecordFindManyArgs = {};
   if (filter?.sessionId) {
     query.where = filter;
   }
   query.orderBy = {
-    [sort?.by ?? "timestamp"]: sort?.direction ?? "desc"
+    [sort?.by ?? "timestamp"]: sort?.direction ?? "desc",
   };
   if (page) {
     query.skip = page.index * page.size;
@@ -46,4 +44,4 @@ export const listRecords: ServiceLogRepository["listRecords"] = async (args) => 
 
     return undefined;
   }
-}
+};

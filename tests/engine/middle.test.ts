@@ -1,7 +1,11 @@
-import {expect, it} from "@jest/globals";
-import {middleLayer, registerErrorPublisher, ServiceActionError} from "@nsm/engine/middle";
+import { expect, it } from "@jest/globals";
+import {
+  middleLayer,
+  registerErrorPublisher,
+  ServiceActionError,
+} from "@nsm/engine/middle";
 import * as manager from "@nsm/engine/manager";
-import {Options, ServiceManager} from "@nsm/engine/manager";
+import { Options, ServiceManager } from "@nsm/engine/manager";
 
 it("test receives action error", async () => {
   let receivedError: ServiceActionError | null = null;
@@ -10,14 +14,14 @@ it("test receives action error", async () => {
       receivedError = action;
 
       return Promise.resolve();
-    }
+    },
   });
 
   let customManager: ServiceManager = {
     ...manager,
     async createService(_: string, __: Options) {
       throw new Error("Failed to create service");
-    }
+    },
   };
   customManager = middleLayer(customManager);
 
@@ -43,14 +47,14 @@ it("test sets service id in action error", async () => {
       receivedError = action;
 
       return Promise.resolve();
-    }
+    },
   });
 
   let customManager: ServiceManager = {
     ...manager,
     async resumeService(_: string) {
       throw new Error("Failed to resume service");
-    }
+    },
   };
   customManager = middleLayer(customManager);
 

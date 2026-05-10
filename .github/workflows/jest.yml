@@ -13,9 +13,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: 'mysql://test:test@localhost:3306/test'
-      CONFIG_DOCKER_HOST: '///var/run/docker.sock'
-      DEBUG: 'true'
+      DATABASE_URL: "mysql://test:test@localhost:3306/test"
+      CONFIG_DOCKER_HOST: "///var/run/docker.sock"
+      DEBUG: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -31,9 +31,9 @@ jobs:
       - name: Setup MySQL
         uses: mirromutth/mysql-action@v1.1
         with:
-          mysql database: 'test'
-          mysql user: 'test'
-          mysql password: 'test'
+          mysql database: "test"
+          mysql user: "test"
+          mysql password: "test"
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
