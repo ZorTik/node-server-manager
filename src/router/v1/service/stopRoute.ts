@@ -15,6 +15,7 @@ export default async function ({
     routes: {
       post: async (req, res) => {
         const id = req.params.id;
+        const isForce = req.query.force === "true";
         if (!id) {
           res
             .status(400)
@@ -27,7 +28,7 @@ export default async function ({
         if (!(await checkServiceExists(id, manager, res))) {
           return;
         }
-        if (!checkServicePending(id, res)) {
+        if (!isForce && !checkServicePending(id, res)) {
           return;
         }
         if (!manager.isRunning(id)) {

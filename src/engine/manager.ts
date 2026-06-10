@@ -636,29 +636,36 @@ export async function stopService(id: string, force?: boolean) {
   await reqExists(id);
 
   const { internalSession } = reqRunning(id);
-
-  lckStatusTp(internalSession.containerId, "stop");
-  const unlock = lockBusyAction(id, "stop");
-
   try {
-    on("stop", ({ id: stoppedId, error }) => {
-      if (stoppedId !== id) {
-        // This call is not for me
-        return false;
-      }
-
-      if (isServicePending(id)) {
-        unlock(error);
-      }
-      ulckStatusTp(internalSession.containerId);
-      return true;
-    });
-
-    const meta = metaStorageForService(id);
     if (force) {
-      await engine.kill(internalSession.containerId, meta);
+      await engine.kill(internalSession.containerId, metaStorageForService(id));
     } else {
-      await engine.stop(internalSession.containerId);
+      // lock only on soft stop, to allow hard-killing if any issues happen during stopping
+      const unlock = lockBusyAction(id, "stop");
+      // wait for stop
+      on("stop", ({ id: stoppedId, error }) => {
+        if (stoppedId !== id) {
+          // This call is not for me
+          return false;
+        }
+
+        if (isServicePending(id)) {
+          unlock(error);
+        }
+        ulckStatusTp(internalSession.containerId);
+        return true;
+      });
+
+      // TODO: stop strategy
+      const service = await getService(id);
+      const stopCmd = service.meta?.stopCmd;
+      if (stopCmd) {
+        // send stop cmd if set
+        await engine.cmd(internalSession.containerId, stopCmd);
+      } else {
+        // send stop signal
+        await engine.stop(internalSession.containerId);
+      }
     }
   } catch (e) {
     currentContext.logger.error(e);
