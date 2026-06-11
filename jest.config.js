@@ -3,6 +3,18 @@ const moduleNameMapper = require("tsconfig-paths-jest")(tsconfig);
 
 module.exports = {
   moduleNameMapper,
-  transformIgnorePatterns: ["/node_modules/(?!(env-paths)/)"],
-  reporters: ["default", ["jest-ctrf-json-reporter", {}]],
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/dist/"
+  ],
+  modulePathIgnorePatterns: [
+    "<rootDir>/dist/"
+  ],
+  transformIgnorePatterns: [
+      "/node_modules/(?!(env-paths)/)"
+  ],
+  reporters: [
+      "default",
+      ["jest-ctrf-json-reporter", {}]
+  ],
 };
