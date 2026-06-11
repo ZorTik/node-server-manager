@@ -1,5 +1,6 @@
 import DockerClient from "dockerode";
 import { AppConfig } from "@nsm/config";
+import {currentGlobalLogger} from "@nsm/logger";
 
 export function initDockerClient(appConfig: AppConfig) {
   let host = appConfig.getDockerHost();
@@ -27,6 +28,8 @@ export function initDockerClient(appConfig: AppConfig) {
         "Docker host must be in this format: protocol://host:port",
       );
     }
+
+    currentGlobalLogger.info(`Initializing Docker client on ${protocol}://${host}:${port}`);
 
     client = new DockerClient({ protocol, host, port });
   } else {

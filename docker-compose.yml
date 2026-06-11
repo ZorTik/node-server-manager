@@ -2,7 +2,6 @@ services:
   nsm:
     build: .
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
       - "./dev/templates/test:/data/resources/templates/test:ro"
       - "./tests:/data/tests:ro"
     ports:
@@ -10,11 +9,14 @@ services:
     extra_hosts:
       - "docker.host.internal:host-gateway"
     environment:
-      - "CONFIG_DOCKER_HOST=///var/run/docker.sock"
+      - "CONFIG_DOCKER_HOST=http://docker:2375"
       - "CONFIG_RESOURCES_PATH=/data/resources"
       - "DATABASE_URL=mysql://root:test@db:3306/nsm"
+      - "DOCKER_HOST=tcp://docker:2375"
     depends_on:
       db:
+        condition: service_healthy
+      docker:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
@@ -31,7 +33,22 @@ services:
             - ./logs
             - ./node_packages
             - ./package-lock.json
-
+  docker:
+    image: docker:29.1.3-dind
+    privileged: true
+    volumes:
+      - docker_data:/var/lib/docker
+    environment:
+      # in dev environment, we don't need TLS for Dind.
+      DOCKER_TLS_CERTDIR: ""
+    ports:
+      - "2377:2375"
+    healthcheck:
+      test: ["CMD", "docker", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
   db:
     image: mariadb:10.4
     environment:
@@ -50,3 +67,4 @@ services:
 
 volumes:
   nsm_db:
+  docker_data:

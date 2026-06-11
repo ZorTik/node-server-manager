@@ -99,6 +99,7 @@ export const init = async (
 ): Promise<AppBootContext> => {
   // Prepare logging
   const logger = initGlobalLogger();
+  logging.setCurrentGlobalLogger(logger);
 
   prepareFolders();
 

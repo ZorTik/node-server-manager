@@ -5,6 +5,12 @@ import { getResourcesTargetPath } from "@nsm/filestructure";
 
 const { combine, timestamp, label, errors, printf } = winston.format;
 
+export let currentGlobalLogger: winston.Logger;
+
+export function setCurrentGlobalLogger(logger: winston.Logger) {
+  currentGlobalLogger = logger;
+}
+
 export function createLatestLogFile() {
   if (
     fs.existsSync(path.join(getResourcesTargetPath(), "logs", "latest.log"))

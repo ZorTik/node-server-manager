@@ -5,8 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "node installTempDeps.js && tsc && tscp",
-    "start": "cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
-    "test": "jest"
+    "migrate": "prisma migrate deploy",
+    "start": "npm run migrate && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
+    "test": "npm run migrate && jest"
   },
   "keywords": [],
   "author": "ZorTik",
