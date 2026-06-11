@@ -30,7 +30,7 @@ jobs:
       - name: Prepare resources folder for tests
         run: |
           # Create test template folder
-          mkdir -p /resources/templates/test
+          mkdir -p ./resources/templates/test
           # Copy test template files to the resources folder
           cp -r ./dev/templates/test/* /resources/templates/test/
       - name: Shutdown default MySQL
