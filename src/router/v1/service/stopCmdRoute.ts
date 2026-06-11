@@ -6,7 +6,7 @@ import { checkServicePending } from "@nsm/router/util/preconditions";
 
 export default async function ({
   manager,
-}: AppContext): Promise<RouterHandler> {
+}: AppContext): Promise<RouterHandler> { // TODO: remove this
   return {
     url: "/service/:id/stopcmd",
     routes: {
