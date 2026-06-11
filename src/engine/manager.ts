@@ -194,6 +194,7 @@ export type ServiceManager = ServiceManagerEventBus & {
 
   /**
    * Stop a service.
+   * This hereby sends a stop signal and does not wait for it to be stopped. For waiting, use {@link waitForStopped}.
    *
    * @param id The service ID
    * @param force Whether to force stop (kill) the service.
@@ -649,6 +650,8 @@ export async function stopService(id: string, force?: boolean) {
       // lock only on soft stop, to allow hard-killing if any issues happen during stopping
       const unlock = lockBusyAction(id, "stop");
       // wait for stop
+      // this is really not necessary because any busy action is unlocked on stop, but
+      // just in case
       on("stop", ({ id: stoppedId, error }) => {
         if (stoppedId !== id) {
           // This call is not for me

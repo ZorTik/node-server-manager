@@ -8,13 +8,13 @@ import { consumeEnginePowerAction } from "@nsm/helpers";
 
 export default async function ({
   manager,
-  logger,
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/reboot",
     routes: {
       post: async (req, res) => {
         const id = req.params.id;
+        const isForce = req.query.force === "true";
         if (!id) {
           res
             .status(400)
@@ -32,17 +32,11 @@ export default async function ({
         }
 
         consumeEnginePowerAction(() =>
-          manager.stopService(id).then(() => {
-            // Service stopped successfully, now wait for it to be unlocked before resuming.
-
-            manager.whenUnlocked(id, (_, __, err) => {
-              if (err) {
-                logger.error(err);
-              } else {
-                manager.resumeService(id);
-              }
-            });
-          }),
+          manager.stopService(id, isForce)
+            // continue after service is stopped
+            .then(() => manager.waitForStopped(id))
+            // resume
+            .then(() => manager.resumeService(id)),
         );
 
         res.status(200).json({

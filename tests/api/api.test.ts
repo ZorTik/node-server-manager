@@ -187,7 +187,7 @@ describe("Test v1 API models", () => {
   test("Test /v1/service/{serviceId}/reboot", async () => {
     const id = await miniService(ctx);
     log(id);
-    const res = await request(server).post("/v1/service/" + id + "/reboot");
+    const res = await request(server).post("/v1/service/" + id + "/reboot?force=true");
     expect(res.status).toBe(200);
     expectProps(res.body, ["status", 200, "message", undefined]);
     // Wait for it to be started
