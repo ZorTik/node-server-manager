@@ -118,9 +118,14 @@ type ServiceEvent = {
   error?: Error;
 };
 
+type ServiceStateChangeEvent = ServiceEvent & {
+  state: State;
+}
+
 type ServiceManagerEvents = {
   resume: ServiceEvent;
   stop: ServiceEvent;
+  statechange: ServiceStateChangeEvent;
 };
 
 /**
@@ -947,7 +952,7 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
   // The internal run listener of this manager
   const internalRunListener: RunListener = {
     onStateChange: (state) => {
-      startedStates.set(serviceId, state.ready ? "RUNNING" : "BUILDING");
+      setServiceState(serviceId, state.ready ? "RUNNING" : "BUILDING");
     },
     onClose: async () => {
       clearRunningServiceIfExists(serviceId);
@@ -961,8 +966,6 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
         }
       }
 
-      // Call stop event on the manager for the stopService() to potentially
-      // unlock a busy action
       callManagerEvent("stop", { id: serviceId });
 
       currentContext.logger.debug("Service " + serviceId + " stopped");
@@ -974,6 +977,15 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
     // Add listener from the session
     session.runListener,
   ]);
+}
+
+function setServiceState(id: string, state: State) {
+  startedStates.set(id, state);
+
+  callManagerEvent("statechange", {
+    id,
+    state,
+  });
 }
 
 /**

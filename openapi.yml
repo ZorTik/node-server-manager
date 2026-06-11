@@ -468,6 +468,11 @@ paths:
           required: true
           schema:
             type: "string"
+        - name: "force"
+          in: "query"
+          required: false
+          schema:
+            type: boolean
       responses:
         "200":
           description: "Successfully rebooted service."
