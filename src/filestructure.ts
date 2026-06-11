@@ -16,7 +16,12 @@ export const resourcesPath = path.join(process.cwd(), "resources");
 
 // The target (platform-agnostic) resources dir (the source of truth)
 export const getResourcesTargetPath = () => {
-  return appConfig.getResourcesPath() ?? path.join(currentPaths.data);
+  const result = appConfig.getResourcesPath();
+  if (result) {
+    return path.resolve(result);
+  } else {
+    return path.join(currentPaths.data);
+  }
 };
 
 export const getTemplatesPath = () => {
