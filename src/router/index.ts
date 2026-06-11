@@ -5,7 +5,7 @@ import { measureEventLoop } from "@nsm/profiler";
 
 export type RouterHandler = {
   url: string;
-  routes: { [method: string]: RequestHandler };
+  routes: { [method: string]: RequestHandler|RequestHandler[] };
 };
 
 type RouterInit = (context: AppContext) => Promise<RouterHandler>;
@@ -15,7 +15,7 @@ async function api(ver: string, context: AppContext, routes: RouterInit[]) {
   const router = Router();
   router.use(json());
   if (context.debug) {
-    router.use((req, res, next) => {
+    router.use((req, _, next) => {
       if (req.body) {
         context.logger.debug(`Body: ${JSON.stringify(req.body)}`);
       } else {
@@ -36,16 +36,22 @@ async function api(ver: string, context: AppContext, routes: RouterInit[]) {
     let reg = false;
 
     for (const method of ["get", "post", "put", "delete"]) {
-      if (handler.routes[method]) {
-        // Register handler to express
-        router[method](
-          handler.url,
-          (req, res, next) => {
+      const userDefinedRoutes = handler.routes[method];
+      if (userDefinedRoutes) {
+        const handlers: RequestHandler[] = [
+          (req, _, next) => {
             context.logger.debug(`${method.toUpperCase()} ${req.url}`);
             next();
-          },
-          handler.routes[method],
-        );
+          }
+        ];
+        if (Array.isArray(userDefinedRoutes)) {
+          handlers.push(...userDefinedRoutes);
+        } else {
+          handlers.push(userDefinedRoutes);
+        }
+
+        // Register handler to express
+        router[method](handler.url, ...handlers);
         reg = true;
       }
     }
