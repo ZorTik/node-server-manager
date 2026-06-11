@@ -1,8 +1,10 @@
 import { loadYamlFile } from "@nsm/util/yaml";
 import path from "path";
-import { currentPaths } from "@nsm/filestructure";
 import { saveResource } from "@nsm/resources";
 import z from "zod";
+import envPaths, {Paths} from "env-paths";
+
+export const currentPaths: Paths = envPaths("nsm");
 
 export interface AppConfig {
   getNodeId(): string;
@@ -13,7 +15,13 @@ export interface AppConfig {
 
   getDockerHost(): string;
 
-  getResourcesPath(): string | undefined;
+  getResourcesPath(): string;
+
+  getTemplatesPath(): string;
+
+  getTemplateBuildDir(template: string): string;
+
+  getTempPath(): string;
 }
 
 /**
@@ -57,8 +65,22 @@ export class YamlAppConfig implements AppConfig {
     return this.data["docker_host"];
   }
 
-  getResourcesPath(): string | undefined {
-    return this.data["resources_path"];
+  getResourcesPath(): string {
+    const resourcesPath = this.data["resources_path"];
+
+    return resourcesPath ? path.resolve(resourcesPath) : path.join(currentPaths.data);
+  }
+
+  getTemplatesPath(): string {
+    return path.join(this.getResourcesPath(), "templates");
+  }
+
+  getTemplateBuildDir(template: string): string {
+    return path.join(this.getTemplatesPath(), template);
+  }
+
+  getTempPath(): string {
+    return currentPaths.temp;
   }
 
   private validate = () => {

@@ -149,12 +149,6 @@ export const middleLayer = (manager: ServiceManager): ServiceManager => {
       argServiceIdExtractor(0),
     ),
 
-    stopServiceForcibly: decorateFunc(
-      manager.stopServiceForcibly,
-      "forceStop",
-      argServiceIdExtractor(0),
-    ),
-
     sendStopSignal: decorateFunc(
       manager.sendStopSignal,
       "sendStopSignal",

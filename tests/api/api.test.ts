@@ -32,9 +32,9 @@ async function miniService(ctx: AppBootContext) {
   }
 }
 
-async function stopMini(ctx: AppBootContext, id: string) {
-  await ctx.manager.stopService(id);
-  await ctx.manager.waitForBusyAction(id); // Await stop
+async function killMini(ctx: AppBootContext, id: string) {
+  await ctx.manager.stopService(id, true);
+  await ctx.manager.waitForStopped(id);
 }
 
 describe("Test v1 API models", () => {
@@ -160,7 +160,7 @@ describe("Test v1 API models", () => {
   test("Test /v1/service/{serviceId}/resume", async () => {
     const id = await miniService(ctx);
     log(id);
-    await stopMini(ctx, id);
+    await killMini(ctx, id);
     const res = await request(server).post("/v1/service/" + id + "/resume");
     expect(res.status).toBe(200);
     expectProps(res.body, ["status", 200, "message", undefined]);
@@ -218,7 +218,7 @@ describe("Test v1 API models", () => {
       return;
     }
 
-    return ctx.manager.stopRunning();
+    return ctx.manager.killRunning();
   }, 60000);
 
   // TODO: /v1/service/<id>/options

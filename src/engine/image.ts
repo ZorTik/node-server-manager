@@ -1,31 +1,34 @@
 import { Database, ImageModel } from "@nsm/database";
 import winston from "winston";
-import { MessageListener, ServiceEngineI } from "@nsm/engine/engine";
-import { templateBuildDir } from "@nsm/engine/monitoring/util";
+import {MessageListener, ServiceEngine} from "@nsm/engine/engine";
 import { TemplateManager } from "@nsm/engine/template";
 import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
+import {AppConfig} from "@nsm/config";
 
 type BuildOptionsMap = {
   [key: string]: string;
 };
 
-let engine: ServiceEngineI;
+let engine: ServiceEngine;
 let templateManager: TemplateManager;
 let templateDirWatcher: TemplateDirWatcher;
+let appConfig: AppConfig;
 let db: Database;
 let logger: winston.Logger;
 
 export const init = (
-  engine_: ServiceEngineI,
+  engine_: ServiceEngine,
   templateManager_: TemplateManager,
   templateDirWatcher_: TemplateDirWatcher,
   db_: Database,
+  appConfig_: AppConfig,
   logger_: winston.Logger,
 ) => {
   engine = engine_;
   templateManager = templateManager_;
   templateDirWatcher = templateDirWatcher_;
   db = db_;
+  appConfig = appConfig_;
   logger = logger_;
 };
 
@@ -172,7 +175,7 @@ const buildImage = async (
   const hash = templateDirWatcher.getTemplateHash(templateId);
   imageId = await engine.build(
     imageId,
-    templateBuildDir(templateId),
+    appConfig.getTemplateBuildDir(templateId),
     options,
     messageListener,
   );

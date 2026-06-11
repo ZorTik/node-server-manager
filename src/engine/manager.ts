@@ -19,10 +19,8 @@ import { randomPort as retrieveRandomPort } from "@nsm/util/port";
 import { Database, PermaModel } from "../database";
 import {
   isServicePending,
-  lckStatusTp,
   lockBusyAction,
-  reqNotPending,
-  ulckStatusTp,
+  reqNotPending, unlockBusyAction,
   UnlockObserver,
   whenUnlocked,
   whenUnlockedAll,
@@ -125,6 +123,10 @@ type ServiceManagerEvents = {
   stop: ServiceEvent;
 };
 
+/**
+ * The event handler for service manager events.
+ * If the handler returns true or nothing, it will be unsubscribed after this call.
+ */
 type EventHandler<T extends keyof ServiceManagerEvents> = (
   event: ServiceManagerEvents[T],
 ) => boolean | void;
@@ -194,15 +196,9 @@ export type ServiceManager = ServiceManagerEventBus & {
    * Stop a service.
    *
    * @param id The service ID
+   * @param force Whether to force stop (kill) the service.
    */
-  stopService(id: string): Promise<void>;
-
-  /**
-   * Stop a service forcibly (kill).
-   *
-   * @param id The service ID
-   */
-  stopServiceForcibly(id: string): Promise<void>;
+  stopService(id: string, force?: boolean): Promise<void>;
 
   /**
    * Send pre-configured stop signal to the service.
@@ -287,9 +283,16 @@ export type ServiceManager = ServiceManagerEventBus & {
    */
   stopRunning(): Promise<void>;
 
+  /**
+   * Kill all running services on this instance.
+   */
+  killRunning(): Promise<void>;
+
   isRunning(id: string): boolean;
 
   waitForBusyAction(id: string): Promise<void>;
+
+  waitForStopped(id: string): Promise<void>;
 
   // DON'T call those until you really know what you are doing.
   expandEngine<T extends EngineExpansion>(exp?: T): Promise<ServiceEngineI & T>;
@@ -383,6 +386,7 @@ export async function init(
     templateManager,
     templateDirWatcher,
     db_,
+    appConfig_,
     currentContext.logger,
   );
   initSessionEngine(db_);
@@ -639,6 +643,8 @@ export async function stopService(id: string, force?: boolean) {
   try {
     if (force) {
       await engine.kill(internalSession.containerId, metaStorageForService(id));
+
+
     } else {
       // lock only on soft stop, to allow hard-killing if any issues happen during stopping
       const unlock = lockBusyAction(id, "stop");
@@ -652,7 +658,6 @@ export async function stopService(id: string, force?: boolean) {
         if (isServicePending(id)) {
           unlock(error);
         }
-        ulckStatusTp(internalSession.containerId);
         return true;
       });
 
@@ -672,10 +677,6 @@ export async function stopService(id: string, force?: boolean) {
 
     callManagerEvent("stop", { id, error: e });
   }
-}
-
-export async function stopServiceForcibly(id: string) {
-  return stopService(id, true);
 }
 
 export async function sendStopSignal(id: string) {
@@ -820,9 +821,39 @@ export async function stopRunning() {
   await Promise.all(tasks);
 }
 
+export async function killRunning() {
+  await Promise.all(
+    started.map(
+      async ({ id }) => stopService(id, true).catch((e) => currentContext.logger.error(e))
+    )
+  )
+}
+
 export async function waitForBusyAction(id: string) {
   return new Promise<void>((resolve, reject) => {
     whenUnlocked(id, (_, __, err) => (err ? reject(err) : resolve(null)));
+  });
+}
+
+export async function waitForStopped(id: string) {
+  if (!isRunning(id)) {
+    // service not running, so we continue immediately
+    return;
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    on("stop", ({ id, error }) => {
+      if (id !== id) {
+        // This call is not for me
+        return false;
+      }
+
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
   });
 }
 
@@ -918,6 +949,14 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
     onClose: async () => {
       clearRunningServiceIfExists(serviceId);
       startedStates.delete(serviceId);
+      // clear any busy action that may potentially still be locked
+      try {
+        unlockBusyAction(serviceId);
+      } catch (e) {
+        if (e.message && e.message.includes("No busy action")) {
+          // ignore, since it just means there is no busy action to unlock, so nothing to do
+        }
+      }
 
       // Call stop event on the manager for the stopService() to potentially
       // unlock a busy action

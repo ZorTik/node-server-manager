@@ -1,45 +1,13 @@
-import { afterAll, beforeAll, expect, it } from "@jest/globals";
-import { ServiceEngineI } from "@nsm/engine";
-import createEngine from "@nsm/engine/engine";
-import { init as initImageEngine } from "@nsm/engine/image";
-import getDb from "@nsm/database";
-import { Database } from "@nsm/database";
-import { StartedMariaDbContainer } from "@testcontainers/mariadb";
-import { initDbContainerForTest } from "../testUtils";
-import { PrismaClient } from "@prisma/client";
-import { processImage } from "@nsm/engine/image";
-import { createLogger } from "@nsm/logger";
-import { Template, TemplateManager } from "@nsm/engine/template";
-import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
-import * as templateManager from "@nsm/engine/template";
-import * as templateDirWatcher from "@nsm/engine/monitoring/templateDirWatcher";
-import { YamlAppConfig } from "@nsm/config";
-
-let container: StartedMariaDbContainer;
-
-let engine: ServiceEngineI;
-let db: Database;
-
-beforeAll(async () => {
-  const [container_, dbUrl_] = await initDbContainerForTest();
-
-  container = container_;
-  engine = createEngine(
-    // Just to prevent assertion errors
-    new YamlAppConfig(),
-  );
-  db = getDb(
-    new PrismaClient({
-      datasourceUrl: dbUrl_,
-    }),
-  );
-}, 20000);
-
-afterAll(async () => {
-  if (container) {
-    await container.stop();
-  }
-});
+import {expect, it} from "@jest/globals";
+import {ServiceEngine} from "@nsm/engine";
+import {init as initImageEngine} from "@nsm/engine/image";
+import {processImage } from "@nsm/engine/image";
+import {prepareEnvForTemplate, Template, TemplateManager} from "@nsm/engine/template";
+import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
+import {DeepMockProxy, mock, mockDeep} from "jest-mock-extended";
+import {Database, ImageModel} from "@nsm/database";
+import {createTestLogger} from "../testUtils";
+import {AppConfig} from "@nsm/config";
 
 it("reuses image with same options", async () => {
   const template: Template = {
@@ -54,51 +22,40 @@ it("reuses image with same options", async () => {
     },
   };
 
-  let buildCount = 0;
+  const engineMock = mock<ServiceEngine>();
+  engineMock
+    .build
+    .mockImplementation(async (imageId) =>
+      imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0));
 
-  const customEngine: ServiceEngineI = {
-    ...engine,
-    build(
-      imageId: string | undefined,
-      _: string | undefined,
-      __: {
-        [p: string]: string;
-      },
-    ): Promise<string> {
-      buildCount++;
+  const templateManagerMock = mock<TemplateManager>();
+  templateManagerMock
+    .prepareEnvForTemplate
+    .mockImplementation((template, env) => prepareEnvForTemplate(template, env));
+  templateManagerMock
+    .getTemplate
+    .mockImplementation((id) => id === "test-template" ? template : null)
 
-      return Promise.resolve(
-        imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0),
-      );
-    },
-  };
-  const customTemplateManager: TemplateManager = {
-    ...templateManager,
-    getTemplate(id: string): Template | null {
-      if (id == "test-template") {
-        return template;
-      }
+  const templateDirWatcherMock = mock<TemplateDirWatcher>();
+  templateDirWatcherMock.getTemplateHash.mockImplementation((template) => {
+    if (template == "test-template") {
+      return "test-hash";
+    }
 
-      return null;
-    },
-  };
-  const customTemplateDirWatcher: TemplateDirWatcher = {
-    ...templateDirWatcher,
-    getTemplateHash(template: string): string {
-      if (template == "test-template") {
-        return "test-hash";
-      }
+    throw new Error(`Unknown template ${template}`);
+  });
 
-      throw new Error(`Unknown template ${template}`);
-    },
-  };
+  const dbMock = createMockDatabase();
+  const appConfigMock = mock<AppConfig>();
+  appConfigMock.getTemplateBuildDir.mockImplementation(() => "/tmp/test-build-dir");
 
   initImageEngine(
-    customEngine,
-    customTemplateManager,
-    customTemplateDirWatcher,
-    db,
-    createLogger(),
+    engineMock,
+    templateManagerMock,
+    templateDirWatcherMock,
+    dbMock,
+    appConfigMock,
+    createTestLogger(),
   );
 
   const buildOptions = {
@@ -112,5 +69,42 @@ it("reuses image with same options", async () => {
   expect(imageId2).not.toBeNull();
   expect(imageId2).toEqual(imageId);
 
-  expect(buildCount).toBe(1);
+  expect(engineMock.build).toBeCalledTimes(1);
 });
+
+const createMockDatabase = (): DeepMockProxy<Database> => {
+  const images: ImageModel[] = [];
+
+  const db = mockDeep<Database>();
+  db.imageRepository.saveImage.mockImplementation(async (image) => {
+    const existingIndex = images.findIndex((img) => img.id === image.id);
+    if (existingIndex !== -1) {
+      images[existingIndex] = image; // Overwrite existing image
+    } else {
+      images.push(image); // Add new image
+    }
+    return true;
+  });
+  db.imageRepository.getImage.mockImplementation(async (id) => {
+    return images.find((image) => image.id === id);
+  });
+  db.imageRepository.listImagesByOptions.mockImplementation(async (templateId, options) => {
+    return images.filter((image) => {
+      if (image.templateId !== templateId) {
+        return false;
+      }
+
+      for (const key in options) {
+        if (image.buildOptions[key] !== options[key]) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  });
+  db.permaRepository.listPermaUsingImage.mockImplementation(async () => {{
+    return []; // In this mock, no services ae using any image
+  }});
+  return db;
+}

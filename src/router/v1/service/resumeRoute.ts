@@ -32,7 +32,7 @@ export default async function ({
         if (manager.isRunning(id)) {
           res
             .status(409)
-            .json({ status: 400, message: "Service is already running." });
+            .json({ status: 409, message: "Service is already running." });
           return;
         }
 

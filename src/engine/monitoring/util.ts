@@ -1,11 +1,3 @@
-import path from "path";
-import { getTemplatesPath } from "@nsm/filestructure";
-
-// Returns the build directory for the template
-export function templateBuildDir(template: string) {
-  return path.join(getTemplatesPath(), template);
-}
-
 /**
  * Returns a debounced version of the given function.
  * The debounced function will only be called after it has not been called for the specified number of milliseconds.

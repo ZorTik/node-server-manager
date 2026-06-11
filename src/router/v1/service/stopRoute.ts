@@ -8,7 +8,6 @@ import { consumeEnginePowerAction } from "@nsm/helpers";
 
 export default async function ({
   manager,
-  logger,
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/stop",
@@ -38,13 +37,7 @@ export default async function ({
           return;
         }
 
-        consumeEnginePowerAction(async () => {
-          if (req.query.force === "true") {
-            await manager.stopServiceForcibly(id);
-          } else {
-            await manager.stopService(id);
-          }
-        });
+        consumeEnginePowerAction(async () => manager.stopService(id, req.query.force === "true"));
 
         res.status(200).json({
           status: 200,

@@ -1,9 +1,6 @@
 import path from "path";
-import envPaths, { Paths } from "env-paths";
 import { AppConfig } from "@nsm/config";
 import fs from "fs";
-
-export const currentPaths: Paths = envPaths("nsm");
 
 let appConfig: AppConfig;
 
@@ -11,25 +8,21 @@ export const init = (appConfig_: AppConfig) => {
   appConfig = appConfig_;
 };
 
-// The local resources dir (not the source of truth)
-export const resourcesPath = path.join(process.cwd(), "resources");
-
 // The target (platform-agnostic) resources dir (the source of truth)
-export const getResourcesTargetPath = () => {
-  const result = appConfig.getResourcesPath();
-  if (result) {
-    return path.resolve(result);
-  } else {
-    return path.join(currentPaths.data);
-  }
+export const getResourcesPath = () => {
+  return appConfig.getResourcesPath();
 };
 
 export const getTemplatesPath = () => {
-  return path.join(getResourcesTargetPath(), "templates");
+  return appConfig.getTemplatesPath();
 };
 
+export const getTemplateBuildDir = (template: string) => {
+  return appConfig.getTemplateBuildDir(template);
+}
+
 export const getTempPath = () => {
-  return currentPaths.temp;
+  return appConfig.getTempPath();
 };
 
 export const mkdirTemp = (...p: string[]) => {
@@ -48,7 +41,7 @@ export const mkdirTemp = (...p: string[]) => {
 };
 
 export const prepareFolders = () => {
-  const resourcesTargetPath = getResourcesTargetPath();
+  const resourcesTargetPath = getResourcesPath();
   if (!fs.existsSync(resourcesTargetPath)) {
     fs.mkdirSync(resourcesTargetPath, { recursive: true });
   }

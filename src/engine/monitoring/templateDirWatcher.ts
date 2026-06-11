@@ -1,11 +1,11 @@
-import { templateBuildDir, debounce } from "@nsm/engine/monitoring/util";
+import { debounce } from "@nsm/engine/monitoring/util";
 import { hashElement } from "folder-hash";
 import { getFilteredPaths } from "@nsm/engine/ignore";
 import { getAllTemplates } from "@nsm/engine/template";
 import winston from "winston";
 import chokidar, { FSWatcher } from "chokidar";
 import path from "path";
-import { getTemplatesPath } from "@nsm/filestructure";
+import {getTemplateBuildDir, getTemplatesPath} from "@nsm/filestructure";
 
 export type TemplateDirWatcher = {
   /**
@@ -92,7 +92,7 @@ const watchTemplateDir = async (template: string) => {
 
   await recalculateTemplateHash(template);
 
-  const dir = templateBuildDir(template);
+  const dir = getTemplateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   const recalc = debounce(() => recalculateTemplateHash(template), 2000);
@@ -119,7 +119,7 @@ const watchTemplateDir = async (template: string) => {
  * @param template The name of the template to recalculate the hash for.
  */
 const recalculateTemplateHash = async (template: string) => {
-  const dir = templateBuildDir(template);
+  const dir = getTemplateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   if (hashingInProgress.has(template)) {

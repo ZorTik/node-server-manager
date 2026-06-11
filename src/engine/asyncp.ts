@@ -20,17 +20,32 @@ export function lockBusyAction(id: string, tp: string) {
   status_types[id] = tp; // type of action
 
   return (err?: any) => {
-    delete statuses[id];
-    delete status_types[id];
-
-    (obs.get(id) ?? []).forEach((o) => o(id, tp, err));
-    obs.delete(id);
-
-    if (pendingCount() == 0) {
-      obsAll.forEach((o) => o());
-      obsAll.splice(0, obsAll.length);
+    if (getActionType(id) !== tp) {
+      throw new Error(
+        `Unlocking action type ${tp} does not match the current action type ${getActionType(id)} for service ${id}`,
+      );
     }
+
+    unlockBusyAction(id, err);
   };
+}
+
+export function unlockBusyAction(id: string, err?: any) {
+  const tp = getActionType(id);
+  if (!tp) {
+    throw new Error("No busy action in process");
+  }
+
+  delete statuses[id];
+  delete status_types[id];
+
+  (obs.get(id) ?? []).forEach((o) => o(id, tp, err));
+  obs.delete(id);
+
+  if (pendingCount() == 0) {
+    obsAll.forEach((o) => o());
+    obsAll.splice(0, obsAll.length);
+  }
 }
 
 export function whenUnlocked(id: string, cb: UnlockObserver) {
@@ -48,14 +63,6 @@ export function whenUnlockedAll(cb: () => void) {
   } else {
     cb();
   }
-}
-
-export function lckStatusTp(id: string, tp: string) {
-  status_types[id] = tp;
-}
-
-export function ulckStatusTp(id: string) {
-  delete status_types[id];
 }
 
 export function isServicePending(id: string): boolean {

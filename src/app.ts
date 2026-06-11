@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import { loadAppConfig } from "@nsm/config";
 import {
   init as initFileStructure,
-  getResourcesTargetPath,
+  getResourcesPath,
   prepareFolders,
 } from "@nsm/filestructure";
 
@@ -159,7 +159,7 @@ export const init = async (
 };
 
 const prepareTestResources = () => {
-  if (fs.existsSync(path.join(getResourcesTargetPath(), "templates", "test"))) {
+  if (fs.existsSync(path.join(getResourcesPath(), "templates", "test"))) {
     return;
   }
 
