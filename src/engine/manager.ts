@@ -345,7 +345,7 @@ export type ServiceInfo = PermaModel & {
   internalSession?: InternalSession;
 };
 
-export type State = "RUNNING" | "BUILDING" | "STOPPED";
+export type State = "BUILDING" | "RUNNING" | "STOPPING" | "STOPPED";
 
 export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
@@ -1041,6 +1041,11 @@ function setServiceState(id: string, state: State) {
  * @returns The state of the service
  */
 function getServiceState(id: string) {
+  if (getActionType(id) === "stop") {
+    // service has stop locked, so is stopping
+    return "STOPPING";
+  }
+
   return startedStates.get(id) ?? "STOPPED";
 }
 

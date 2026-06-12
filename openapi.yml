@@ -142,10 +142,11 @@ components:
           description: "The template ID used to create the service"
         state:
           type: string
-          description: "The current state of the service. One of: 'RUNNING', 'BUILDING', 'STOPPED'."
+          description: "The current state of the service. One of: 'RUNNING', 'BUILDING', 'STOPPING', 'STOPPED'."
           enum:
             - "RUNNING"
             - "BUILDING"
+            - "STOPPING"
             - "STOPPED"
         port:
           type: "integer"
