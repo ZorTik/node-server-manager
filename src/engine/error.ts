@@ -23,7 +23,7 @@ export class ServiceNotFoundError extends KnownError {
   constructor(
     public readonly serviceId: string
   ) {
-    super(404, `Service with ID ${serviceId} not found.`);
+    super(404, `Service not found.`);
   }
 }
 
@@ -31,7 +31,7 @@ export class ServiceNotRunningError extends KnownError {
   constructor(
     public readonly serviceId: string
   ) {
-    super(409, `Service with ID ${serviceId} is not running.`);
+    super(409, `Service is not running.`);
   }
 }
 
@@ -39,7 +39,7 @@ export class ServiceAlreadyRunningError extends KnownError {
   constructor(
     public readonly serviceId: string
   ) {
-    super(409, `Service with ID ${serviceId} is already running.`);
+    super(409, `Service is already running.`);
   }
 }
 
