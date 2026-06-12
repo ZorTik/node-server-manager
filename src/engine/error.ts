@@ -49,6 +49,15 @@ export class ServiceWasNeverActiveError extends KnownError {
   }
 }
 
+export class ServicePendingActionError extends KnownError {
+  constructor(
+    public readonly serviceId: string,
+    public readonly pendingAction: string
+  ) {
+    super(409, `Service has a pending action '${pendingAction}'.`);
+  }
+}
+
 export class TemplateNotFoundError extends KnownError {
   constructor(
     public readonly templateId: string

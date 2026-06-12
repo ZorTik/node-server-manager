@@ -19,6 +19,7 @@ import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
 import { Database, PermaModel } from "../database";
 import {
+  getActionType,
   isServicePending,
   lockBusyAction,
   reqNotPending, unlockBusyAction,
@@ -48,7 +49,7 @@ import {
   InvalidMetaError,
   ServiceAlreadyRunningError,
   ServiceNotFoundError,
-  ServiceNotRunningError, ServiceWasNeverActiveError, TemplateNotFoundError
+  ServiceNotRunningError, ServicePendingActionError, ServiceWasNeverActiveError, TemplateNotFoundError
 } from "@nsm/engine/error";
 
 export type Options = {
@@ -322,8 +323,6 @@ export type ServiceManager = ServiceManagerEventBus & {
 
   initEngineForcibly(): Promise<void>;
   //
-} & {
-  whenUnlocked: typeof whenUnlocked;
 };
 
 type RunningService = {
@@ -654,36 +653,52 @@ export async function stopService(id: string, force?: boolean) {
   await reqExists(id);
 
   const { internalSession } = reqRunning(id);
-  try {
-    let awaitingPromise: Promise<void>;
-    if (force) {
-      await engine.kill(internalSession.containerId, metaStorageForService(id));
-      // resolves immediately on kill
-      awaitingPromise = Promise.resolve();
-    } else {
-      // lock only on soft stop, to allow hard-killing if any issues happen during stopping
-      const unlock = lockBusyAction(id, "stop");
-      awaitingPromise = new Promise((resolve) => {
-        // wait for stop
-        // this is really not necessary because any busy action is unlocked on stop, but
-        // just in case and for the promise
-        on("stop", ({ id: stoppedId, error }) => {
-          if (stoppedId !== id) {
-            // This call is not for me
-            return false;
-          }
 
-          if (isServicePending(id)) {
-            unlock(error);
-          }
-          resolve();
-          return true;
-        });
-      })
+  const callEngine = async (task: () => Promise<any>) => {
+    try {
+      await task();
+    } catch (e) {
+      currentContext.logger.error(e);
+      callManagerEvent("stop", { id, error: e });
+    }
+  }
 
-      // TODO: stop strategy
-      const service = await getService(id);
-      const stopCmd = service.meta?.stopCmd;
+  let awaitingPromise: Promise<void>;
+  if (force) {
+    const pendingAction = getActionType(id);
+    if (pendingAction && getActionType(id) !== "stop") {
+      // the service is locked and not stopping, the force stop can't be allowed
+      throw new ServicePendingActionError(id, pendingAction);
+    }
+
+    await callEngine(async () => engine.kill(internalSession.containerId, metaStorageForService(id)));
+    // resolves immediately on kill
+    awaitingPromise = Promise.resolve();
+  } else {
+    // lock only on soft stop, to allow hard-killing if any issues happen during stopping
+    const unlock = lockBusyAction(id, "stop");
+    awaitingPromise = new Promise((resolve) => {
+      // wait for stop
+      // this is really not necessary because any busy action is unlocked on stop, but
+      // just in case and for the promise
+      on("stop", ({ id: stoppedId, error }) => {
+        if (stoppedId !== id) {
+          // This call is not for me
+          return false;
+        }
+
+        if (isServicePending(id)) {
+          unlock(error);
+        }
+        resolve();
+        return true;
+      });
+    });
+
+    // TODO: stop strategy
+    const service = await getService(id);
+    const stopCmd = service.meta?.stopCmd;
+    await callEngine(async () => {
       if (stopCmd) {
         // send stop cmd if set
         await engine.cmd(internalSession.containerId, stopCmd);
@@ -691,14 +706,11 @@ export async function stopService(id: string, force?: boolean) {
         // send stop signal
         await engine.stop(internalSession.containerId);
       }
-    }
-
-    return new AsyncTask(awaitingPromise);
-  } catch (e) {
-    currentContext.logger.error(e);
-
-    callManagerEvent("stop", { id, error: e });
+    });
   }
+  awaitingPromise = awaitingPromise.then(() => waitForStopped(id));
+
+  return new AsyncTask(awaitingPromise);
 }
 
 export async function sendStopSignal(id: string) {
@@ -949,8 +961,6 @@ export function on<T extends keyof ServiceManagerEvents>(
   }
   evtHandlers.get(evt).push(h);
 }
-
-export { whenUnlocked };
 
 function clearRunningServiceIfExists(id: string) {
   const service = getRunningService(id);

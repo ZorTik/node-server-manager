@@ -1,3 +1,5 @@
+import {ServicePendingActionError} from "@nsm/engine/error";
+
 export type UnlockObserver = (id: string, status?: string, err?: any) => void;
 
 const statuses = {};
@@ -75,7 +77,7 @@ export function getActionType(id: string): string | undefined {
 
 export function reqNotPending(id: string) {
   if (stopping == false && isServicePending(id)) {
-    throw new Error("Service is pending another action.");
+    throw new ServicePendingActionError(id, getActionType(id));
   }
 }
 
