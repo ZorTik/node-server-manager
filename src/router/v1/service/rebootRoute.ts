@@ -1,5 +1,6 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
+import {KnownError, ServiceNotRunningError} from "@nsm/engine/error";
 
 export default async function ({
   manager,
@@ -20,8 +21,32 @@ export default async function ({
           return;
         }
 
-        const task = await manager.stopService(id, isForce);
-        task.promise.then(() => manager.resumeService(id));
+        let promise: Promise<void>;
+        try {
+          const task = await manager.stopService(id, isForce);
+          promise = task.promise;
+        } catch (e) {
+          if (e instanceof ServiceNotRunningError) {
+            // not running, just start it
+            promise = Promise.resolve();
+          } else {
+            throw e;
+          }
+        }
+        promise.then(async () => {
+          try {
+            const task = await manager.resumeService(id);
+
+            await task.promise;
+          } catch (e) {
+            // just log
+            if (e instanceof KnownError) {
+              console.error("Error while resuming service after reboot ", e.message);
+            } else {
+              console.error("Error while resuming service after reboot", e);
+            }
+          }
+        });
 
         res.status(200).json({
           status: 200,
