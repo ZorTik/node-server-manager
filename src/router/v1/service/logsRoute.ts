@@ -1,7 +1,7 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "@nsm/router";
-import { ListRecordsArgs } from "@nsm/database";
-import { checkServiceExists } from "@nsm/router/util/preconditions";
+import {ServiceWasNeverActiveError} from "@nsm/engine/error";
+import {ServiceLogRecordModel} from "@nsm/database";
 
 export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {
@@ -18,60 +18,40 @@ export default async function (ctx: AppContext): Promise<RouterHandler> {
             });
           return;
         }
-        if (!(await checkServiceExists(id, ctx.manager, res))) {
-          return;
-        }
-
-        let sessionId: string;
-
-        const runningService = ctx.manager.getRunningService(id);
-        if (runningService) {
-          // Service currently running, we can use logs from the current session
-          sessionId = runningService.session.id;
-        } else {
-          // Service not running, so we need to retrieve last session ID
-          const lastSession = await ctx.sessionManager.listSessions({
-            filter: { serviceId: id },
-            sort: { by: "startedAt", direction: "desc" },
-            page: { index: 0, size: 1 },
-          });
-          if (lastSession && lastSession.length > 0) {
-            sessionId = lastSession[0].id;
-          }
-        }
-
-        if (!sessionId) {
-          res
-            .status(400)
-            .json({ status: 400, message: "Service was never active." });
-          return;
-        }
-
-        const pageIndex = req.query.pageIndex ? Number(req.query.pageIndex) : 0;
-        const pageSize = req.query.pageSize ? Number(req.query.pageSize) : 10;
 
         // Use pagination only if it was requested by params
         const page =
           req.query.pageIndex || req.query.pageSize
             ? {
-                index: pageIndex,
-                size: pageSize,
-              }
+              index: req.query.pageIndex ? Number(req.query.pageIndex) : 0,
+              size: req.query.pageSize ? Number(req.query.pageSize) : 10,
+            }
             : undefined;
 
-        const args: ListRecordsArgs = {
-          filter: {
-            sessionId,
-          },
-          sort: {
-            by: "timestamp",
-            direction: "asc",
-          },
-          page,
-        };
-        const logs = await ctx.sessionManager.listSessionLogs(args);
+        let logs: ServiceLogRecordModel[];
+        try {
+          const session = await ctx.manager.getLastSession(id);
+          logs = await ctx.sessionManager.listSessionLogs({
+            filter: {
+              sessionId: session.id,
+            },
+            sort: {
+              by: "timestamp",
+              direction: "asc",
+            },
+            page,
+          });
+        } catch (e) {
+          if (e instanceof ServiceWasNeverActiveError) {
+            logs = [];
+          } else {
+            throw e;
+          }
+        }
 
-        res.status(200).json({ logs });
+        res.status(200).json({
+          logs
+        });
       },
     },
   };

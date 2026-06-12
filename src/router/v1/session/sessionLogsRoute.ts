@@ -1,6 +1,5 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "@nsm/router";
-import { ListRecordsArgs } from "@nsm/database";
 
 export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {
@@ -21,19 +20,20 @@ export default async function (ctx: AppContext): Promise<RouterHandler> {
               }
             : undefined;
 
-        const args: ListRecordsArgs = {
-          filter: {
-            sessionId: id,
-          },
-          sort: {
-            by: "timestamp",
-            direction: "asc",
-          },
-          page,
-        };
-        const logs = await ctx.sessionManager.listSessionLogs(args);
-
-        res.status(200).json({ logs });
+        res
+          .status(200)
+          .json({
+            logs: await ctx.sessionManager.listSessionLogs({
+              filter: {
+                sessionId: id,
+              },
+              sort: {
+                by: "timestamp",
+                direction: "asc",
+              },
+              page,
+            })
+          });
       },
     },
   };

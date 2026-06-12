@@ -1,10 +1,5 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
-import {
-  checkServiceExists,
-  checkServicePending,
-} from "@nsm/router/util/preconditions";
-import { consumeEnginePowerAction } from "@nsm/helpers";
 
 export default async function ({
   manager,
@@ -24,25 +19,12 @@ export default async function ({
             });
           return;
         }
-        if (!(await checkServiceExists(id, manager, res))) {
-          return;
-        }
-        if (!isForce && !checkServicePending(id, res)) {
-          return;
-        }
-        if (!manager.isRunning(id)) {
-          res
-            .status(409)
-            .json({ status: 400, message: "Service is not running." });
-          return;
-        }
 
-        consumeEnginePowerAction(async () => manager.stopService(id, req.query.force === "true"));
+        await manager.stopService(id, isForce);
 
         res.status(200).json({
           status: 200,
-          message:
-            "Service stop action successfully registered to be completed in a moment.",
+          message: "Service stop called.",
           statusPath: "/v1/service/" + id + "/powerstatus",
         });
       },

@@ -1,5 +1,7 @@
-import { _InternalError, ServiceManager } from "@nsm/engine/manager";
-import { currentContext } from "@nsm/app";
+import {ServiceManager} from "@nsm/engine/manager";
+import {currentContext} from "@nsm/app";
+import {KnownError} from "@nsm/engine/error";
+import {AsyncTask} from "@nsm/util/promises";
 
 export type ServiceActionType =
   | "create"
@@ -65,27 +67,47 @@ const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
 ) => {
   return async (...args: Parameters<F>) => {
     try {
-      return await fn(...args);
+      // @ts-ignore
+      const result = await fn(...args);
+      if (result instanceof AsyncTask) {
+        // if the result is a scheduled task, attach error handler to catch any errors during the execution of the task
+        result.promise.catch((e) => handleExecutionError(serviceIdExtractor, args, actionType, e));
+      }
+
+      return result;
     } catch (e) {
-      const action: ServiceActionError = {
-        serviceId: serviceIdExtractor?.(args),
-        type: actionType,
-        message: e instanceof Error ? e.message : String(e),
-      };
-      await publishError(action);
-
-      // don't log stack trace of known errors
-      const errorMeta: any[] =
-        e instanceof _InternalError && e.code != 1 ? [] : [e];
-      currentContext.logger.error(
-        `${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`,
-        ...errorMeta,
-      );
-
-      throw e;
+      await handleExecutionError(serviceIdExtractor, args, actionType, e);
     }
   };
 };
+
+/**
+ * Handles errors that occur during the execution of a service action.
+ *
+ * @see {@link decorateFunc}
+ */
+const handleExecutionError = async <T, F extends (...args: Parameters<F>) => Promise<T>>(
+  serviceIdExtractor: (args: Parameters<F>) => string,
+  args: Parameters<F>,
+  actionType: ServiceActionType,
+  e: Error
+) => {
+  const action: ServiceActionError = {
+    serviceId: serviceIdExtractor?.(args),
+    type: actionType,
+    message: e instanceof Error ? e.message : String(e),
+  };
+  await publishError(action);
+
+  // don't log stack trace of known errors
+  const errorMeta: any[] = e instanceof KnownError ? [] : [e];
+  currentContext.logger.error(
+    `${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`,
+    ...errorMeta,
+  );
+
+  throw e;
+}
 
 /**
  * Creates a service ID extractor function that extracts the service ID from the

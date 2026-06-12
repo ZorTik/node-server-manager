@@ -1,10 +1,5 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
-import {
-  checkServiceExists,
-  checkServicePending,
-} from "@nsm/router/util/preconditions";
-import { consumeEnginePowerAction } from "@nsm/helpers";
 
 export default async function ({
   manager,
@@ -23,25 +18,12 @@ export default async function ({
             });
           return;
         }
-        if (!(await checkServiceExists(id, manager, res))) {
-          return;
-        }
-        if (!checkServicePending(id, res)) {
-          return;
-        }
-        if (manager.isRunning(id)) {
-          res
-            .status(409)
-            .json({ status: 409, message: "Service is already running." });
-          return;
-        }
 
-        consumeEnginePowerAction(() => manager.resumeService(id));
+        await manager.resumeService(id);
 
         res.status(200).json({
           status: 200,
-          message:
-            "Service resume action successfully registered to be completed in a moment.",
+          message: "Service resumed.",
           statusPath: "/v1/service/" + id + "/powerstatus",
         });
       },

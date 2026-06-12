@@ -13,6 +13,7 @@ import {
   getAllTemplates,
 } from "./template";
 import * as templateManager from "./template";
+import * as sessionManager from "./session";
 import * as templateDirWatcher from "./monitoring/templateDirWatcher";
 import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
@@ -27,7 +28,7 @@ import {
 } from "./asyncp";
 import winston from "winston";
 import { isDebug } from "../helpers";
-import { resolveSequentially } from "@nsm/util/promises";
+import {AsyncTask, resolveSequentially} from "@nsm/util/promises";
 import { watchTemplateDirChanges } from "@nsm/engine/monitoring/templateDirWatcher";
 import {
   processImage,
@@ -42,6 +43,13 @@ import {
   init as initSessionEngine,
 } from "@nsm/engine/session";
 import { AppConfig } from "@nsm/config";
+import {
+  InternalError,
+  InvalidMetaError,
+  ServiceAlreadyRunningError,
+  ServiceNotFoundError,
+  ServiceNotRunningError, ServiceWasNeverActiveError, TemplateNotFoundError
+} from "@nsm/engine/error";
 
 export type Options = {
   /**
@@ -186,6 +194,7 @@ export type ServiceManager = ServiceManagerEventBus & {
    * @param template The template ID (folder name) to use
    * @param options The options to use. Options will be stored for later use.
    * @returns The service ID
+   * @throws InvalidMetaError if the template meta is invalid
    */
   createService(template: string, options: Options): Promise<string>; // Service ID
 
@@ -193,9 +202,8 @@ export type ServiceManager = ServiceManagerEventBus & {
    * Resume a service.
    *
    * @param id The service ID
-   * @returns Whether the service was resumed
    */
-  resumeService(id: string): Promise<boolean>;
+  resumeService(id: string): Promise<AsyncTask<void>>;
 
   /**
    * Stop a service.
@@ -204,13 +212,14 @@ export type ServiceManager = ServiceManagerEventBus & {
    * @param id The service ID
    * @param force Whether to force stop (kill) the service.
    */
-  stopService(id: string, force?: boolean): Promise<void>;
+  stopService(id: string, force?: boolean): Promise<AsyncTask<void>>;
 
   /**
    * Send pre-configured stop signal to the service.
    *
    * @param id The service ID
    * @returns Whether the signal has been sent
+   * @throws InvalidMetaError if the service does not have the required meta for stop signal (e.g. stop command)
    */
   sendStopSignal(id: string): Promise<boolean>;
 
@@ -256,6 +265,14 @@ export type ServiceManager = ServiceManagerEventBus & {
    * @param id The service ID
    */
   getLastPowerError(id: string): Error | undefined;
+
+  /**
+   * Get the last session ID of a service.
+   *
+   * @param id The service ID
+   * @throws ServiceWasNeverActiveError if the service was never active and thus does not have a last session
+   */
+  getLastSession(id: string): Promise<ServiceSession>;
 
   /**
    * Get list of running services on this node.
@@ -330,20 +347,6 @@ export type ServiceInfo = PermaModel & {
 };
 
 export type State = "RUNNING" | "BUILDING" | "STOPPED";
-
-// 1 = unknown, 2 = conflict, 3 = not found
-export type StatusCode = 1 | 2 | 3;
-
-export class _InternalError extends Error {
-  readonly code: StatusCode;
-  readonly msg: string;
-
-  constructor(msg: string, code?: StatusCode) {
-    super(msg);
-    this.code = code ?? 1;
-    this.msg = msg;
-  }
-}
 
 export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
@@ -500,7 +503,7 @@ export async function createService(template: string, options: Options) {
     ...(serviceSettings.meta ?? {}),
   };
   if (!meta || !meta.stopCmd) {
-    throw new _InternalError("Invalid template meta for " + template);
+    throw new InvalidMetaError("Invalid template meta for " + template);
   }
 
   const serviceId = crypto.randomUUID(); // Create new unique service id
@@ -525,7 +528,7 @@ export async function createService(template: string, options: Options) {
   let err: any;
   // Save permanent info
   if (!(await db.permaRepository.savePerma(perma))) {
-    err = new _InternalError("Failed to save perma info to database");
+    err = new InternalError("Failed to save perma info to database");
   }
 
   if (err) {
@@ -543,7 +546,7 @@ export async function createService(template: string, options: Options) {
 
 export async function resumeService(id: string) {
   reqNotRunning(id);
-  let { template, options, env, network, port } = await getPermaModel(id);
+  let { template, options, env, network, port } = await reqExists(id);
 
   const { defaults, env: settingsEnv } = reqTemplate(template).settings;
   // Filter env to only those that are defined in settings.yml, because those are the only ones that
@@ -575,7 +578,7 @@ export async function resumeService(id: string) {
   };
 
   const perma = await db.permaRepository.getPerma(id);
-  let image = perma.imageId;
+  //let image = perma.imageId;
 
   // Propagate other options to env, so they can be used in image processing and building
   propagateOptionsToEnv(runOptions, runOptions.env);
@@ -586,60 +589,65 @@ export async function resumeService(id: string) {
   // image rebuild
   const { SERVICE_ID, SERVICE_PORT, SERVICE_PORTS, ...buildEnv } =
     runOptions.env;
-  const processedImage = await processImage(image, template, buildEnv); // TODO: tato funkce má poslední parametr messageListener, vymyslet jak sem propagovat message listener z session
-  // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
-  if (processedImage != image) {
-    image = processedImage;
 
-    // Update image in database if it was changed by processing
-    perma.imageId = image;
-    await db.permaRepository.savePerma(perma);
-  }
+  return new AsyncTask(
+    // TODO: tato funkce má poslední parametr messageListener, vymyslet jak sem propagovat message listener z session
+    processImage(perma.imageId, template, buildEnv)
+      .then(async (image) => {
+        // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
+        if (image != perma.imageId) {
 
-  let session: ActiveServiceSession | undefined;
-  let containerId: string | undefined;
-  try {
-    // Run the container with the built image and save the container id for later use.
-    if (image) {
-      session = await beginServiceSession(id);
-      containerId = await engine.run(
-        image,
-        id,
-        runOptions,
-        meta,
-        buildRunListener(session),
-      );
-    }
-  } catch (e) {
-    currentContext.logger.error("Failed to run container for service " + id);
-    currentContext.logger.error(e);
-  }
+          // Update image in database if it was changed by processing
+          perma.imageId = image;
+          await db.permaRepository.savePerma(perma);
+        }
 
-  let success: boolean = false;
-  if (containerId) {
-    const runningService: RunningService = {
-      id,
-      session,
-      internalSession: {
-        containerId,
-      },
-    };
-    started.push(runningService);
-    success = true;
-  }
+        return image;
+      })
+      .then(async (image) => {
+        let session: ActiveServiceSession | undefined;
+        let containerId: string | undefined;
+        try {
+          // Run the container with the built image and save the container id for later use.
+          if (image) {
+            session = await beginServiceSession(id);
+            containerId = await engine.run(
+              image,
+              id,
+              runOptions,
+              meta,
+              buildRunListener(session),
+            );
+          }
+        } catch (e) {
+          currentContext.logger.error("Failed to run container for service " + id);
+          currentContext.logger.error(e);
+        }
 
-  if (success == true) {
-    currentContext.logger.debug("Service " + id + " resumed");
-    callManagerEvent("resume", { id });
-  } else {
-    errors[id] = new Error("Failed to resume service");
-    clearRunningServiceIfExists(id);
-    callManagerEvent("resume", { id, error: errors[id] });
-  }
+        let success: boolean = false;
+        if (containerId) {
+          const runningService: RunningService = {
+            id,
+            session,
+            internalSession: {
+              containerId,
+            },
+          };
+          started.push(runningService);
+          success = true;
+        }
 
-  unlock();
-
-  return true;
+        if (success == true) {
+          currentContext.logger.debug("Service " + id + " resumed");
+          callManagerEvent("resume", { id });
+        } else {
+          errors[id] = new Error("Failed to resume service");
+          clearRunningServiceIfExists(id);
+          callManagerEvent("resume", { id, error: errors[id] });
+        }
+      })
+      .finally(() => unlock())
+  );
 }
 
 export async function stopService(id: string, force?: boolean) {
@@ -647,27 +655,31 @@ export async function stopService(id: string, force?: boolean) {
 
   const { internalSession } = reqRunning(id);
   try {
+    let awaitingPromise: Promise<void>;
     if (force) {
       await engine.kill(internalSession.containerId, metaStorageForService(id));
-
-
+      // resolves immediately on kill
+      awaitingPromise = Promise.resolve();
     } else {
       // lock only on soft stop, to allow hard-killing if any issues happen during stopping
       const unlock = lockBusyAction(id, "stop");
-      // wait for stop
-      // this is really not necessary because any busy action is unlocked on stop, but
-      // just in case
-      on("stop", ({ id: stoppedId, error }) => {
-        if (stoppedId !== id) {
-          // This call is not for me
-          return false;
-        }
+      awaitingPromise = new Promise((resolve) => {
+        // wait for stop
+        // this is really not necessary because any busy action is unlocked on stop, but
+        // just in case and for the promise
+        on("stop", ({ id: stoppedId, error }) => {
+          if (stoppedId !== id) {
+            // This call is not for me
+            return false;
+          }
 
-        if (isServicePending(id)) {
-          unlock(error);
-        }
-        return true;
-      });
+          if (isServicePending(id)) {
+            unlock(error);
+          }
+          resolve();
+          return true;
+        });
+      })
 
       // TODO: stop strategy
       const service = await getService(id);
@@ -680,6 +692,8 @@ export async function stopService(id: string, force?: boolean) {
         await engine.stop(internalSession.containerId);
       }
     }
+
+    return new AsyncTask(awaitingPromise);
   } catch (e) {
     currentContext.logger.error(e);
 
@@ -693,7 +707,7 @@ export async function sendStopSignal(id: string) {
 
   const stopCmd = perma.meta?.stopCmd;
   if (!stopCmd) {
-    throw new _InternalError("Service does not have stop command set.");
+    throw new InvalidMetaError("Service does not have stop command set.");
   }
 
   await engine.cmd(internalSession.containerId, stopCmd);
@@ -705,7 +719,7 @@ export async function deleteService(id: string) {
     await stopService(id, true);
   } catch (e) {
     // Skip not running error
-    if (!(e.code && e.code == 2)) {
+    if (!(e instanceof ServiceNotRunningError)) {
       throw e;
     }
   }
@@ -799,6 +813,28 @@ export async function getService(
 
 export function getLastPowerError(id: string) {
   return errors[id];
+}
+
+export async function getLastSession(id: string) {
+  await reqExists(id);
+
+  const runningService = getRunningService(id);
+  if (runningService) {
+    // Service currently running, we can use logs from the current session
+    return runningService.session;
+  } else {
+    // Service not running, so we need to retrieve last session ID
+    const lastSession = await sessionManager.listSessions({
+      filter: { serviceId: id },
+      sort: { by: "startedAt", direction: "desc" },
+      page: { index: 0, size: 1 },
+    });
+    if (lastSession && lastSession.length > 0) {
+      return lastSession[0];
+    }
+  }
+
+  throw new ServiceWasNeverActiveError();
 }
 
 export async function listServices(options: ListServicesOptions) {
@@ -1000,29 +1036,20 @@ function getServiceState(id: string) {
 
 // ---------------------------------------------------------------------------------------
 
-async function getPermaModel(id: string) {
+async function reqExists(id: string) {
   const perma_ = await db.permaRepository.getPerma(id);
   if (!perma_) {
-    // Service does not exist
-    throw new _InternalError("Not found.", 3);
+    // service does not exist
+    throw new ServiceNotFoundError(id);
   }
 
   return perma_;
 }
 
-async function reqExists(id: string) {
-  const perma = await db.permaRepository.getPerma(id);
-  if (!perma) {
-    throw new _InternalError("Service not found.", 3);
-  }
-
-  return perma;
-}
-
 function reqRunning(id: string) {
   const session = getRunningService(id);
   if (!session) {
-    throw new _InternalError("This service is not running.", 2);
+    throw new ServiceNotRunningError(id);
   }
 
   return session;
@@ -1030,14 +1057,14 @@ function reqRunning(id: string) {
 
 function reqNotRunning(id: string) {
   if (isRunning(id)) {
-    throw new _InternalError("Already running.", 2);
+    throw new ServiceAlreadyRunningError(id);
   }
 }
 
 function reqTemplate(id: string) {
   const template = getTemplate(id);
   if (!template) {
-    throw new _InternalError("" + "Template not found.", 3);
+    throw new TemplateNotFoundError(id);
   }
 
   return template;

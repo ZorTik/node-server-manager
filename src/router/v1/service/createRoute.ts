@@ -3,7 +3,7 @@ import { AppContext } from "@nsm/app";
 import { Options } from "@nsm/engine";
 import { clock } from "@nsm/util/clock";
 import { prepareEnvForTemplate } from "@nsm/engine/template";
-import { consumeEnginePowerAction } from "@nsm/helpers";
+import {TemplateNotFoundError} from "@nsm/engine/error";
 
 export default async function ({
   manager,
@@ -22,12 +22,9 @@ export default async function ({
         }
         const template = manager.getTemplate(req.body.template);
         if (!template) {
-          res
-            .status(400)
-            .json({ status: 400, message: "Invalid template ID." })
-            .end();
-          return;
+          throw new TemplateNotFoundError(req.body.template);
         }
+
         let env = req.body.env ?? {};
         try {
           env = prepareEnvForTemplate(template, env);
@@ -39,27 +36,21 @@ export default async function ({
         // Build options
         const options: Options = req.body;
         options.env = env;
-        // Create the service
-        try {
-          const serviceId = await manager.createService(template.id, options);
 
-          // Resume right afterward
-          consumeEnginePowerAction(() => manager.resumeService(serviceId));
+        const serviceId = await manager.createService(template.id, options);
 
-          res
-            .status(200)
-            .json({
-              status: 200,
-              message:
-                "Service create action successfully registered to be completed in a moment.",
-              serviceId,
-              statusPath: "/v1/service/" + serviceId + "/powerstatus",
-              time: clk.durFromCreation(),
-            })
-            .end();
-        } catch (e) {
-          res.status(500).json({ status: 500, message: e.message }).end();
-        }
+        await manager.resumeService(serviceId);
+
+        res
+          .status(200)
+          .json({
+            status: 200,
+            message: "Service created successfully.",
+            serviceId,
+            statusPath: "/v1/service/" + serviceId + "/powerstatus",
+            time: clk.durFromCreation(),
+          })
+          .end();
       },
     },
   };

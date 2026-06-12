@@ -1,7 +1,6 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "@nsm/router";
 import { checkServiceExists } from "@nsm/router/util/preconditions";
-import { ListSessionsArgs } from "@nsm/database";
 
 export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {
@@ -17,24 +16,23 @@ export default async function (ctx: AppContext): Promise<RouterHandler> {
           return;
         }
 
-        const args: ListSessionsArgs = {
-          filter: {
-            serviceId: id,
-          },
-          sort: {
-            by: "startedAt",
-            direction: "desc",
-          },
-          page: {
-            index: pageIndex,
-            size: pageSize,
-          },
-        };
-        const sessionIds = await ctx.sessionManager
-          .listSessions(args)
-          .then((sessions) => sessions.map((session) => session.id));
-
-        res.status(200).json({ sessions: sessionIds });
+        res.status(200).json({
+          sessions: await ctx.sessionManager
+            .listSessions({
+              filter: {
+                serviceId: id,
+              },
+              sort: {
+                by: "startedAt",
+                direction: "desc",
+              },
+              page: {
+                index: pageIndex,
+                size: pageSize,
+              },
+            })
+            .then((sessions) => sessions.map((session) => session.id))
+        });
       },
     },
   };
