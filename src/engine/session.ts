@@ -9,13 +9,38 @@ import {
 } from "@nsm/database";
 
 export interface SessionManager {
+  /**
+   * Initializes the session manager with the given database instance.
+   *
+   * @param db The database instance to use for storing session and log data.
+   * This method must be called before using any other methods of the session manager.
+   */
   init(db: Database): void;
 
+  /**
+   * Begins a new service session for the given service ID.
+   *
+   * @param serviceId The ID of the service for which to begin a session.
+   * @return An object representing the active service session, including a run listener for handling session events.
+   */
   beginServiceSession(serviceId: string): Promise<ActiveServiceSession>;
 
+  /**
+   * Lists service sessions.
+   *
+   * @param args The arguments for listing sessions
+   * @return A list of service sessions matching the given criteria, or undefined if no sessions were found.
+   */
   listSessions(
     args: ListSessionsArgs,
   ): Promise<ServiceSessionModel[] | undefined>;
+
+  /**
+   * Lists log records for a service session.
+   *
+   * @param args The arguments for listing log records
+   * @return A list of log records matching the given criteria, or undefined if no records were found.
+   */
   listSessionLogs(
     args: ListRecordsArgs,
   ): Promise<ServiceLogRecordModel[] | undefined>;

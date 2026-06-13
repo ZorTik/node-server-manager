@@ -130,10 +130,15 @@ type ServiceStateChangeEvent = ServiceEvent & {
   state: State;
 }
 
+type ServiceEngineErrorEvent = ServiceEvent & {
+  error: Error;
+}
+
 type ServiceManagerEvents = {
   resume: ServiceEvent;
   stop: ServiceEvent;
   statechange: ServiceStateChangeEvent;
+  engine_err: ServiceEngineErrorEvent;
 };
 
 /**
@@ -350,8 +355,9 @@ export let engine: ServiceEngineI = undefined;
 export let nodeId: string;
 
 let db: Database;
+let logger: winston.Logger;
 
-// Save errors somewhere else?
+// TODO: Save errors somewhere else?
 // Could it be a memory leak if there are tons of them??
 const errors = {};
 // Service IDs that are currently running
@@ -365,7 +371,7 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 
     // Emit services change within those methods
     if (isDebug()) {
-      currentContext.logger.debug("Service registry changed");
+      logger.debug("Service registry changed");
     }
 
     return result;
@@ -375,13 +381,13 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
 export const init: ServiceManager["init"] = async (
   db_,
   appConfig_,
-  logger,
+  logger_,
 ) => {
-  const nodeId_ = appConfig_.getNodeId();
-
-  logger.info(`Initializing service manager for node ${nodeId_}...`);
-
   db = db_;
+  logger = logger_;
+
+  const nodeId_ = appConfig_.getNodeId();
+  logger.info(`Initializing service manager for node ${nodeId_}...`);
   if (!engine) {
     // Init only if it has not already been force-initialized
     await initEngineForcibly();
@@ -394,11 +400,13 @@ export const init: ServiceManager["init"] = async (
     templateDirWatcher,
     db_,
     appConfig_,
-    currentContext.logger,
+    logger,
   );
   initSessionEngine(db_);
-  watchTemplateDirChanges(currentContext.logger);
+  watchTemplateDirChanges(logger);
 
+  gatherEngineErrors();
+  registerLoggingEventHandlers();
   await deleteGarbage(logger);
   await reattachStaleContainers(logger);
 
@@ -465,6 +473,32 @@ const reattachStaleContainers = async (logger: winston.Logger) => {
   await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
 }
 
+const gatherEngineErrors = () => {
+  on("engine_err", (event) => {
+    errors[event.id] = event.error;
+  });
+}
+
+/**
+ * Registers event handlers for logging in debug mode.
+ */
+const registerLoggingEventHandlers = () => {
+  const notifyIfSuccess = <E extends keyof ServiceManagerEvents>(
+    messageProvider: (serviceId: string) => string
+  ): EventHandler<E> => {
+    return ({ id, error }) => {
+      if (error) {
+        return;
+      }
+
+      logger.debug(messageProvider(id));
+    }
+  }
+
+  on("resume", notifyIfSuccess((id) => `Service ${id} resumed`));
+  on("stop", notifyIfSuccess((id) => `Service ${id} stopped`));
+}
+
 export const expandEngine: ServiceManager["expandEngine"] = async <T extends EngineExpansion>(
   exp?: T,
 ): Promise<ServiceEngineI & T> => {
@@ -523,23 +557,12 @@ export const createService: ServiceManager["createService"] = async (template, o
     env: env ?? {},
     network,
   };
-  let err: any;
   // Save permanent info
   if (!(await db.permaRepository.savePerma(perma))) {
-    err = new InternalError("Failed to save perma info to database");
+    throw new InternalError("Failed to save perma info to database");
   }
 
-  if (err) {
-    // Save to be later retrieved
-    errors[serviceId] = err;
-    currentContext.logger.error(err.message);
-  }
-
-  if (err) {
-    throw err;
-  } else {
-    return serviceId;
-  }
+  return serviceId;
 }
 
 export const resumeService: ServiceManager["resumeService"] = async (id) => {
@@ -588,42 +611,33 @@ export const resumeService: ServiceManager["resumeService"] = async (id) => {
   const { SERVICE_ID, SERVICE_PORT, SERVICE_PORTS, ...buildEnv } =
     runOptions.env;
 
+  const updateImageIfChanged = async (image: string) => {
+    // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
+    if (image != perma.imageId) {
+
+      // Update image in database if it was changed by processing
+      perma.imageId = image;
+      await db.permaRepository.savePerma(perma);
+    }
+
+    return image;
+  }
+
   return new AsyncTask(
-    // TODO: tato funkce má poslední parametr messageListener, vymyslet jak sem propagovat message listener z session
+    // TODO: logovat někam message z image processingu pomocí posledního parametru
     processImage(perma.imageId, template, buildEnv)
+      .then(updateImageIfChanged)
       .then(async (image) => {
-        // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
-        if (image != perma.imageId) {
-
-          // Update image in database if it was changed by processing
-          perma.imageId = image;
-          await db.permaRepository.savePerma(perma);
-        }
-
-        return image;
-      })
-      .then(async (image) => {
-        let session: ActiveServiceSession | undefined;
-        let containerId: string | undefined;
+        const session = await beginServiceSession(id);
+        // Run the container with the built image and save the container id for later use.
         try {
-          // Run the container with the built image and save the container id for later use.
-          if (image) {
-            session = await beginServiceSession(id);
-            containerId = await engine.run(
-              image,
-              id,
-              runOptions,
-              meta,
-              buildRunListener(session),
-            );
-          }
-        } catch (e) {
-          currentContext.logger.error("Failed to run container for service " + id);
-          currentContext.logger.error(e);
-        }
-
-        let success: boolean = false;
-        if (containerId) {
+          const containerId = await engine.run(
+            image,
+            id,
+            runOptions,
+            meta,
+            buildRunListener(session),
+          );
           const runningService: RunningService = {
             id,
             session,
@@ -632,16 +646,11 @@ export const resumeService: ServiceManager["resumeService"] = async (id) => {
             },
           };
           started.push(runningService);
-          success = true;
-        }
 
-        if (success == true) {
-          currentContext.logger.debug("Service " + id + " resumed");
           callManagerEvent("resume", { id });
-        } else {
-          errors[id] = new Error("Failed to resume service");
-          clearRunningServiceIfExists(id);
-          callManagerEvent("resume", { id, error: errors[id] });
+        } catch (e) {
+          callManagerEvent("resume", { id, error: e });
+          callServiceEngineError(id, e);
         }
       })
       .finally(() => unlock())
@@ -657,7 +666,7 @@ export const stopService: ServiceManager["stopService"] = async (id, force) => {
     try {
       await task();
     } catch (e) {
-      currentContext.logger.error(e);
+      logger.error(e);
       callManagerEvent("stop", { id, error: e });
     }
   }
@@ -713,10 +722,10 @@ export const stopService: ServiceManager["stopService"] = async (id, force) => {
 }
 
 export const sendStopSignal: ServiceManager["sendStopSignal"] = async (id) => {
-  const perma = await reqExists(id);
+  const { meta } = await reqExists(id);
   const { internalSession } = reqRunning(id);
 
-  const stopCmd = perma.meta?.stopCmd;
+  const stopCmd = meta?.stopCmd;
   if (!stopCmd) {
     throw new InvalidMetaError("Service does not have stop command set.");
   }
@@ -762,7 +771,7 @@ export const deleteService: ServiceManager["deleteService"] = async (id) => {
         ),
       )
       .then(() => {
-        currentContext.logger.debug(`Service ${id} deleted`);
+        logger.debug(`Service ${id} deleted`);
       });
   };
 
@@ -865,7 +874,7 @@ export const stopRunning: ServiceManager["stopRunning"] = async () => {
       new Promise((resolve) => {
         whenUnlocked(id, () => {
           stopService(id)
-            .catch((e) => currentContext.logger.error(e))
+            .catch((e) => logger.error(e))
             .then(() => {
               whenUnlocked(id, () => resolve(null));
             });
@@ -879,7 +888,7 @@ export const stopRunning: ServiceManager["stopRunning"] = async () => {
 export const killRunning: ServiceManager["killRunning"] = async () => {
   await Promise.all(
     started.map(
-      async ({ id }) => stopService(id, true).catch((e) => currentContext.logger.error(e))
+      async ({ id }) => stopService(id, true).catch((e) => logger.error(e))
     )
   )
 }
@@ -986,6 +995,16 @@ const callManagerEvent = <T extends keyof ServiceManagerEvents>(
 }
 
 /**
+ * Notifies about an error that happened during internal engine calling.
+ *
+ * @param id The service ID for which the error happened
+ * @param error The error that happened
+ */
+const callServiceEngineError = (id: string, error: Error) => {
+  callManagerEvent("engine_err", { id, error });
+}
+
+/**
  * Collects all relevant run listeners and builds a composite one
  * to be used directly when running/attaching service container.
  *
@@ -1012,8 +1031,6 @@ const buildRunListener = (session: ActiveServiceSession): RunListener => {
       }
 
       callManagerEvent("stop", { id: serviceId });
-
-      currentContext.logger.debug("Service " + serviceId + " stopped");
     },
   };
   // Combine collected listeners
