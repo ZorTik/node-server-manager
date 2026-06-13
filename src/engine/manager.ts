@@ -43,7 +43,6 @@ import {
   ServiceSession,
   init as initSessionEngine,
 } from "@nsm/engine/session";
-import { AppConfig } from "@nsm/config";
 import {
   InternalError,
   InvalidMetaError,
@@ -373,11 +372,11 @@ const evtHandlers: Map<string, EventHandler<any>[]> = new Map();
   };
 });
 
-export async function init(
-  db_: Database,
-  appConfig_: AppConfig,
-  logger: winston.Logger,
-) {
+export const init: ServiceManager["init"] = async (
+  db_,
+  appConfig_,
+  logger,
+) => {
   const nodeId_ = appConfig_.getNodeId();
 
   logger.info(`Initializing service manager for node ${nodeId_}...`);
@@ -406,7 +405,7 @@ export async function init(
   logger.info(`Using engine: ${engine.name}`);
 }
 
-async function deleteGarbage(logger: winston.Logger) {
+const deleteGarbage = async (logger: winston.Logger) => {
   // TODO: delete containers that are not running and remained from last session
 }
 
@@ -416,7 +415,7 @@ async function deleteGarbage(logger: winston.Logger) {
  *
  * @param logger The logger to use
  */
-async function reattachStaleContainers(logger: winston.Logger) {
+const reattachStaleContainers = async (logger: winston.Logger) => {
   const running = await engine
     .listRunning(Filters.node(nodeId))
     .then((containerIds) =>
@@ -466,9 +465,9 @@ async function reattachStaleContainers(logger: winston.Logger) {
   await new Promise((resolve) => whenUnlockedAll(() => resolve(null)));
 }
 
-export async function expandEngine<T extends EngineExpansion>(
+export const expandEngine: ServiceManager["expandEngine"] = async <T extends EngineExpansion>(
   exp?: T,
-): Promise<ServiceEngineI & T> {
+): Promise<ServiceEngineI & T> => {
   if (exp) {
     if (!engine && (!currentContext || !currentContext.appConfig)) {
       throw new Error("Engine is not yet loaded and can't be loaded forcibly!");
@@ -492,7 +491,7 @@ export async function expandEngine<T extends EngineExpansion>(
   return engine as any;
 }
 
-export async function createService(template: string, options: Options) {
+export const createService: ServiceManager["createService"] = async (template, options) => {
   const { ram, cpu, disk, ports, env, network } = options;
   const serviceSettings = reqTemplate(template).settings;
 
@@ -543,7 +542,7 @@ export async function createService(template: string, options: Options) {
   }
 }
 
-export async function resumeService(id: string) {
+export const resumeService: ServiceManager["resumeService"] = async (id) => {
   reqNotRunning(id);
   let { template, options, env, network, port } = await reqExists(id);
 
@@ -649,7 +648,7 @@ export async function resumeService(id: string) {
   );
 }
 
-export async function stopService(id: string, force?: boolean) {
+export const stopService: ServiceManager["stopService"] = async (id, force) => {
   await reqExists(id);
 
   const { internalSession } = reqRunning(id);
@@ -713,7 +712,7 @@ export async function stopService(id: string, force?: boolean) {
   return new AsyncTask(awaitingPromise);
 }
 
-export async function sendStopSignal(id: string) {
+export const sendStopSignal: ServiceManager["sendStopSignal"] = async (id) => {
   const perma = await reqExists(id);
   const { internalSession } = reqRunning(id);
 
@@ -726,7 +725,7 @@ export async function sendStopSignal(id: string) {
   return true;
 }
 
-export async function deleteService(id: string) {
+export const deleteService: ServiceManager["deleteService"] = async (id) => {
   try {
     await stopService(id, true);
   } catch (e) {
@@ -770,7 +769,7 @@ export async function deleteService(id: string) {
   whenUnlocked(id, unlockHandler);
 }
 
-export async function updateOptions(id: string, options: Options) {
+export const updateOptions: ServiceManager["updateOptions"] = async (id, options) => {
   reqNotPending(id);
   const perma = await db.permaRepository.getPerma(id);
   const data: PermaModel = {
@@ -788,14 +787,14 @@ export async function updateOptions(id: string, options: Options) {
   return db.permaRepository.savePerma(data);
 }
 
-export function getTemplate(id: string) {
+export const getTemplate: ServiceManager["getTemplate"] = (id) => {
   return loadTemplate(id);
 }
 
-export async function getService(
-  from: string,
-  options?: { includeSession?: boolean; otherNodes?: boolean },
-): ReturnType<ServiceManager["getService"]> {
+export const getService: ServiceManager["getService"] = async (
+  from,
+  options,
+): ReturnType<ServiceManager["getService"]> => {
   const data =
     typeof from === "string" ? await db.permaRepository.getPerma(from) : from;
   if (data && (data.nodeId == nodeId || options?.otherNodes === true)) {
@@ -823,11 +822,11 @@ export async function getService(
   }
 }
 
-export function getLastPowerError(id: string) {
+export const getLastPowerError: ServiceManager["getLastPowerError"] = (id) => {
   return errors[id];
 }
 
-export async function getLastSession(id: string) {
+export const getLastSession: ServiceManager["getLastSession"] = async (id) => {
   await reqExists(id);
 
   const runningService = getRunningService(id);
@@ -849,18 +848,18 @@ export async function getLastSession(id: string) {
   throw new ServiceWasNeverActiveError();
 }
 
-export async function listServices(options: ListServicesOptions) {
+export const listServices: ServiceManager["listServices"] = async (options) => {
   const meta = options.filter?.meta;
   return db.permaRepository
     .listPerma(nodeId, options.page, options.pageSize, meta)
     .then((list) => list.map((d) => d.serviceId));
 }
 
-export async function listTemplates(): Promise<string[]> {
+export const listTemplates: ServiceManager["listTemplates"] = async () => {
   return getAllTemplates().map((template) => template.id);
 }
 
-export async function stopRunning() {
+export const stopRunning: ServiceManager["stopRunning"] = async () => {
   const tasks = started.map(
     ({ id }) =>
       new Promise((resolve) => {
@@ -877,7 +876,7 @@ export async function stopRunning() {
   await Promise.all(tasks);
 }
 
-export async function killRunning() {
+export const killRunning: ServiceManager["killRunning"] = async () => {
   await Promise.all(
     started.map(
       async ({ id }) => stopService(id, true).catch((e) => currentContext.logger.error(e))
@@ -885,13 +884,13 @@ export async function killRunning() {
   )
 }
 
-export async function waitForBusyAction(id: string) {
+export const waitForBusyAction: ServiceManager["waitForBusyAction"] = async (id: string) => {
   return new Promise<void>((resolve, reject) => {
     whenUnlocked(id, (_, __, err) => (err ? reject(err) : resolve(null)));
   });
 }
 
-export async function waitForStopped(id: string) {
+export const waitForStopped: ServiceManager["waitForStopped"] = async (id: string) => {
   if (!isRunning(id)) {
     // service not running, so we continue immediately
     return;
@@ -913,15 +912,15 @@ export async function waitForStopped(id: string) {
   });
 }
 
-export function isRunning(id: string) {
+export const isRunning: ServiceManager["isRunning"] = (id: string) => {
   return getRunningService(id) != undefined;
 }
 
-export function getRunningService(id: string) {
+export const getRunningService: ServiceManager["getRunningService"] = (id: string) => {
   return started.find((service) => service.id === id);
 }
 
-function metaStorageForService(id: string): MetaStorage {
+const metaStorageForService = (id: string): MetaStorage => {
   // service id
   return {
     set: async (key, value) => {
@@ -935,7 +934,7 @@ function metaStorageForService(id: string): MetaStorage {
   };
 }
 
-export async function initEngineForcibly() {
+export const initEngineForcibly = async () => {
   if (engine) {
     throw new Error("Engine is already loaded.");
   }
@@ -948,21 +947,21 @@ export async function initEngineForcibly() {
   engine.cast = () => engine as any;
 }
 
-export function getRunningServices() {
+export const getRunningServices: ServiceManager["getRunningServices"] = () => {
   return [...started];
 }
 
-export function on<T extends keyof ServiceManagerEvents>(
+export const on: ServiceManager["on"] = <T extends keyof ServiceManagerEvents>(
   evt: T,
   h: EventHandler<T>,
-) {
+) => {
   if (!evtHandlers.has(evt)) {
     evtHandlers.set(evt, []);
   }
   evtHandlers.get(evt).push(h);
 }
 
-function clearRunningServiceIfExists(id: string) {
+const clearRunningServiceIfExists = (id: string) => {
   const service = getRunningService(id);
 
   if (service) {
@@ -970,10 +969,10 @@ function clearRunningServiceIfExists(id: string) {
   }
 }
 
-function callManagerEvent<T extends keyof ServiceManagerEvents>(
+const callManagerEvent = <T extends keyof ServiceManagerEvents>(
   e: T,
   event: ServiceManagerEvents[T],
-) {
+) => {
   if (!evtHandlers.has(e)) {
     return;
   }
@@ -992,7 +991,7 @@ function callManagerEvent<T extends keyof ServiceManagerEvents>(
  *
  * @param session The session for whom to create the session.
  */
-function buildRunListener(session: ActiveServiceSession): RunListener {
+const buildRunListener = (session: ActiveServiceSession): RunListener => {
   const { serviceId } = session;
 
   // The internal run listener of this manager
@@ -1025,7 +1024,7 @@ function buildRunListener(session: ActiveServiceSession): RunListener {
   ]);
 }
 
-function setServiceState(id: string, state: State) {
+const setServiceState = (id: string, state: State) => {
   startedStates.set(id, state);
 
   callManagerEvent("statechange", {
@@ -1040,7 +1039,7 @@ function setServiceState(id: string, state: State) {
  * @param id The id of the service.
  * @returns The state of the service
  */
-function getServiceState(id: string) {
+const getServiceState = (id: string) => {
   if (getActionType(id) === "stop") {
     // service has stop locked, so is stopping
     return "STOPPING";
@@ -1051,7 +1050,7 @@ function getServiceState(id: string) {
 
 // ---------------------------------------------------------------------------------------
 
-async function reqExists(id: string) {
+const reqExists = async (id: string) => {
   const perma_ = await db.permaRepository.getPerma(id);
   if (!perma_) {
     // service does not exist
@@ -1061,7 +1060,7 @@ async function reqExists(id: string) {
   return perma_;
 }
 
-function reqRunning(id: string) {
+const reqRunning = (id: string) => {
   const session = getRunningService(id);
   if (!session) {
     throw new ServiceNotRunningError(id);
@@ -1070,13 +1069,13 @@ function reqRunning(id: string) {
   return session;
 }
 
-function reqNotRunning(id: string) {
+const reqNotRunning = (id: string) => {
   if (isRunning(id)) {
     throw new ServiceAlreadyRunningError(id);
   }
 }
 
-function reqTemplate(id: string) {
+const reqTemplate = (id: string) => {
   const template = getTemplate(id);
   if (!template) {
     throw new TemplateNotFoundError(id);
