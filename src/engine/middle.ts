@@ -4,12 +4,8 @@ import {AsyncTask} from "@nsm/util/promises";
 import {ServiceRunner} from "@nsm/engine/runner";
 
 export type ServiceActionType =
-  | "create"
   | "resume"
-  | "stop"
-  | "forceStop"
-  | "sendStopSignal"
-  | "delete";
+  | "stop";
 
 /**
  * Represents an error that occurred during a service action.
