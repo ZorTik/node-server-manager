@@ -220,15 +220,6 @@ export type ServiceManager = ServiceManagerEventBus & {
   stopService(id: string, force?: boolean): Promise<AsyncTask<void>>;
 
   /**
-   * Send pre-configured stop signal to the service.
-   *
-   * @param id The service ID
-   * @returns Whether the signal has been sent
-   * @throws InvalidMetaError if the service does not have the required meta for stop signal (e.g. stop command)
-   */
-  sendStopSignal(id: string): Promise<boolean>;
-
-  /**
    * Delete a service.
    *
    * @param id The service ID
@@ -719,19 +710,6 @@ export const stopService: ServiceManager["stopService"] = async (id, force) => {
   awaitingPromise = awaitingPromise.then(() => waitForStopped(id));
 
   return new AsyncTask(awaitingPromise);
-}
-
-export const sendStopSignal: ServiceManager["sendStopSignal"] = async (id) => {
-  const { meta } = await reqExists(id);
-  const { internalSession } = reqRunning(id);
-
-  const stopCmd = meta?.stopCmd;
-  if (!stopCmd) {
-    throw new InvalidMetaError("Service does not have stop command set.");
-  }
-
-  await engine.cmd(internalSession.containerId, stopCmd);
-  return true;
 }
 
 export const deleteService: ServiceManager["deleteService"] = async (id) => {
