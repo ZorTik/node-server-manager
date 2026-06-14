@@ -1,22 +1,21 @@
-import {afterEach, beforeEach, expect, it} from "@jest/globals";
-import {StartedMariaDbContainer} from "@testcontainers/mariadb";
-import getDb, {Database} from "@nsm/database";
-import {PrismaClient} from "@prisma/client";
-import {initDbContainerForTest} from "../testUtils";
+import { afterEach, beforeEach, expect, it } from "@jest/globals";
+import { StartedMariaDbContainer } from "@testcontainers/mariadb";
+import getDb, { Database } from "@nsm/database";
+import { PrismaClient } from "@prisma/client";
+import { initDbContainerForTest } from "../testUtils";
 
 let container: StartedMariaDbContainer;
 let db: Database;
 
 beforeEach(async () => {
-  const [
-    container_,
-    dbUrl_,
-  ] = await initDbContainerForTest();
+  const [container_, dbUrl_] = await initDbContainerForTest();
 
   container = container_;
-  db = getDb(new PrismaClient({
-    datasourceUrl: dbUrl_,
-  }));
+  db = getDb(
+    new PrismaClient({
+      datasourceUrl: dbUrl_,
+    }),
+  );
 }, 20000);
 
 afterEach(async () => {
@@ -59,24 +58,33 @@ it("finds image by options", async () => {
     },
   });
 
-  let imagesByOptions = await db.imageRepository.listImagesByOptions("test-template", {
-    option1: "value1",
-    option2: "value2",
-  });
+  let imagesByOptions = await db.imageRepository.listImagesByOptions(
+    "test-template",
+    {
+      option1: "value1",
+      option2: "value2",
+    },
+  );
   expect(imagesByOptions).toHaveLength(1);
   expect(imagesByOptions[0]?.id).toBe("test-image");
 
-  imagesByOptions = await db.imageRepository.listImagesByOptions("test-template", {
-    option2: "value2",
-    option1: "value1",
-  });
+  imagesByOptions = await db.imageRepository.listImagesByOptions(
+    "test-template",
+    {
+      option2: "value2",
+      option1: "value1",
+    },
+  );
   expect(imagesByOptions).toHaveLength(1);
   expect(imagesByOptions[0]?.id).toBe("test-image");
 
-  imagesByOptions = await db.imageRepository.listImagesByOptions("test-template", {
-    option1: "value1",
-    option2: "value2",
-    option3: "value3",
-  });
+  imagesByOptions = await db.imageRepository.listImagesByOptions(
+    "test-template",
+    {
+      option1: "value1",
+      option2: "value2",
+      option3: "value3",
+    },
+  );
   expect(imagesByOptions).toHaveLength(0);
 });

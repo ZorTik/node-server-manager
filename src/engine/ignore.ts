@@ -3,59 +3,62 @@ import ignore from "ignore";
 import path from "path";
 
 export const getRootFilesFiltered = (dir: string) => {
-    let filtered = fs.readdirSync(dir);
-    if (fs.existsSync(path.join(dir, '.nsmignore'))) {
-        const ig = buildIgnore(dir);
-
-        filtered = ig.filter(filtered);
-    }
-
-    return filtered;
-}
-
-export const getFilteredPaths = (dir: string) => {
+  let filtered = fs.readdirSync(dir);
+  if (fs.existsSync(path.join(dir, ".nsmignore"))) {
     const ig = buildIgnore(dir);
 
-    let filtered = {
-        files: [] as string[],
-        dirs: [] as string[]
-    };
-    const walk = (currentDir: string) => {
-        const files = fs.readdirSync(currentDir);
-        for (const file of files) {
-            const relativePath = currentDir === dir ? file : currentDir.substring(dir.length + 1) + path.sep + file;
-            const fullPath = currentDir + path.sep + file;
+    filtered = ig.filter(filtered);
+  }
 
-            if (ig.ignores(relativePath)) {
-                const isDir = fs.statSync(fullPath).isDirectory();
-                if (isDir) {
-                    filtered.dirs.push(relativePath);
-                } else {
-                    filtered.files.push(relativePath);
-                }
+  return filtered;
+};
 
-                if (isDir) {
-                    // If it's a directory, we need to ignore all its contents as well, so we skip walking into it
-                    continue;
-                }
-            }
+export const getFilteredPaths = (dir: string) => {
+  const ig = buildIgnore(dir);
 
-            if (fs.statSync(fullPath).isDirectory()) {
-                walk(fullPath);
-            }
+  let filtered = {
+    files: [] as string[],
+    dirs: [] as string[],
+  };
+  const walk = (currentDir: string) => {
+    const files = fs.readdirSync(currentDir);
+    for (const file of files) {
+      const relativePath =
+        currentDir === dir
+          ? file
+          : currentDir.substring(dir.length + 1) + path.sep + file;
+      const fullPath = currentDir + path.sep + file;
+
+      if (ig.ignores(relativePath)) {
+        const isDir = fs.statSync(fullPath).isDirectory();
+        if (isDir) {
+          filtered.dirs.push(relativePath);
+        } else {
+          filtered.files.push(relativePath);
         }
-    }
-    walk(dir);
 
-    return filtered;
-}
+        if (isDir) {
+          // If it's a directory, we need to ignore all its contents as well, so we skip walking into it
+          continue;
+        }
+      }
+
+      if (fs.statSync(fullPath).isDirectory()) {
+        walk(fullPath);
+      }
+    }
+  };
+  walk(dir);
+
+  return filtered;
+};
 
 const buildIgnore = (dir: string) => {
-    const ig = ignore();
-    const ignorePath = path.join(dir, '.nsmignore');
-    if (fs.existsSync(ignorePath)) {
-        ig.add(fs.readFileSync(ignorePath, 'utf8'));
-    }
+  const ig = ignore();
+  const ignorePath = path.join(dir, ".nsmignore");
+  if (fs.existsSync(ignorePath)) {
+    ig.add(fs.readFileSync(ignorePath, "utf8"));
+  }
 
-    return ig;
-}
+  return ig;
+};

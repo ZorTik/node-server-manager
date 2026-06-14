@@ -2,13 +2,13 @@
 # with CONFIG_<key> format.
 
 # ID of this node. Should be unique.
-node_id: 'main'
+node_id: "main"
 # Listen port.
 port: 3000
 # Security
 # Supported types: 'none', 'auth_token'
-auth: 'none'
-docker_host: 'unix:///var/run/docker.sock'
+auth: "none"
+docker_host: "unix:///var/run/docker.sock"
 # Override resources path if needed.
 # By default, an explicit system-specific data path is used.
 # resources_path: '/srv/resources'

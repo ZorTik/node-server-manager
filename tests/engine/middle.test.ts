@@ -1,40 +1,11 @@
-import {expect, it} from "@jest/globals";
-import {middleLayer, registerErrorPublisher, ServiceActionError} from "@nsm/engine/middle";
-import * as manager from "@nsm/engine/manager";
-import {Options, ServiceManager} from "@nsm/engine/manager";
-
-it("test receives action error", async () => {
-  let receivedError: ServiceActionError | null = null;
-  registerErrorPublisher({
-    publishError(action: ServiceActionError): Promise<void> {
-      receivedError = action;
-
-      return Promise.resolve();
-    }
-  });
-
-  let customManager: ServiceManager = {
-    ...manager,
-    async createService(_: string, __: Options) {
-      throw new Error("Failed to create service");
-    }
-  };
-  customManager = middleLayer(customManager);
-
-  let threw = false;
-  try {
-    await customManager.createService("test-template", {});
-  } catch (e) {
-    // Expected to throw an error
-    threw = true;
-  }
-
-  expect(threw).toBe(true);
-  expect(receivedError).not.toBeNull();
-  expect(receivedError?.serviceId).toBeUndefined();
-  expect(receivedError?.type).toEqual("create");
-  expect(receivedError?.message).toEqual("Failed to create service");
-});
+import { expect, it } from "@jest/globals";
+import {
+  middleLayer,
+  registerErrorPublisher,
+  ServiceActionError,
+} from "@nsm/engine/middle";
+import * as runner from "@nsm/engine/runner";
+import {ServiceRunner} from "@nsm/engine/runner";
 
 it("test sets service id in action error", async () => {
   let receivedError: ServiceActionError | null = null;
@@ -43,20 +14,20 @@ it("test sets service id in action error", async () => {
       receivedError = action;
 
       return Promise.resolve();
-    }
+    },
   });
 
-  let customManager: ServiceManager = {
-    ...manager,
+  let customRunner: ServiceRunner = {
+    ...runner,
     async resumeService(_: string) {
       throw new Error("Failed to resume service");
-    }
+    },
   };
-  customManager = middleLayer(customManager);
+  customRunner = middleLayer(customRunner);
 
   let threw = false;
   try {
-    await customManager.resumeService("test-service-id");
+    await customRunner.resumeService("test-service-id");
   } catch (e) {
     // Expected to throw an error
     threw = true;

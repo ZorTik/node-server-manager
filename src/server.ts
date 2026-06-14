@@ -6,8 +6,8 @@ import temp from "temp";
 // Pre
 // toJSON() for BigInt to avoid JSON.stringify() errors
 (BigInt.prototype as any).toJSON = function () {
-    return this.toString();
-}
+  return this.toString();
+};
 
 const server = ws(express()).app;
 
@@ -21,7 +21,7 @@ server.use(cors());
 temp.track();
 
 export function setStatus(status_: string) {
-    status = status_;
+  status = status_;
 }
 
 export default server;

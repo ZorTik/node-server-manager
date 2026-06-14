@@ -1,14 +1,13 @@
-import {templateBuildDir, debounce} from "@nsm/engine/monitoring/util";
-import {hashElement} from "folder-hash";
-import {getFilteredPaths} from "@nsm/engine/ignore";
-import {getAllTemplates} from "@nsm/engine/template";
+import { debounce } from "@nsm/engine/monitoring/util";
+import { hashElement } from "folder-hash";
+import { getFilteredPaths } from "@nsm/engine/ignore";
+import { getAllTemplates } from "@nsm/engine/template";
 import winston from "winston";
-import chokidar, {FSWatcher} from "chokidar";
+import chokidar, { FSWatcher } from "chokidar";
 import path from "path";
-import {getTemplatesPath} from "@nsm/filestructure";
+import {getTemplateBuildDir, getTemplatesPath} from "@nsm/filestructure";
 
 export type TemplateDirWatcher = {
-
   /**
    * Starts watching the template directories for changes.
    * When a change is detected, the template hash is updated and cached.
@@ -33,12 +32,12 @@ export const watchTemplateDirChanges = (logger: winston.Logger) => {
   const templates = getAllTemplates();
 
   // Populate on startup
-  templates.forEach(template => watchTemplateDir(template.id));
+  templates.forEach((template) => watchTemplateDir(template.id));
   // Watch the base directory for new templates
   watchBaseDir(logger);
 
   logger.info("Watching template directories for changes...");
-}
+};
 
 /**
  * Watches the base templates directory for new template directories being added or removed.
@@ -56,7 +55,9 @@ const watchBaseDir = (logger: winston.Logger) => {
   watcher.on("addDir", async (path_) => {
     const template = path.basename(path_);
     if (template && !watchers.has(template)) {
-      logger.debug(`New template directory detected: ${template}. Starting to watch for changes...`);
+      logger.debug(
+        `New template directory detected: ${template}. Starting to watch for changes...`,
+      );
 
       await watchTemplateDir(template);
     }
@@ -67,7 +68,8 @@ const watchBaseDir = (logger: winston.Logger) => {
       const tWatcher = watchers.get(template);
       if (tWatcher) {
         logger.debug(
-          `Template directory removed: ${template}. Stopping watch and removing hash from cache...`);
+          `Template directory removed: ${template}. Stopping watch and removing hash from cache...`,
+        );
 
         await tWatcher.close();
       }
@@ -75,8 +77,8 @@ const watchBaseDir = (logger: winston.Logger) => {
       watchers.delete(template);
       hashCache.delete(template);
     }
-  })
-}
+  });
+};
 
 /**
  * Watches a specific template directory for changes and updates the hash cache when a change is detected.
@@ -90,7 +92,7 @@ const watchTemplateDir = async (template: string) => {
 
   await recalculateTemplateHash(template);
 
-  const dir = templateBuildDir(template);
+  const dir = getTemplateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   const recalc = debounce(() => recalculateTemplateHash(template), 2000);
@@ -103,13 +105,13 @@ const watchTemplateDir = async (template: string) => {
     // and unnecessary rehashing.
     awaitWriteFinish: {
       stabilityThreshold: 500,
-      pollInterval: 100
-    }
+      pollInterval: 100,
+    },
   });
   watcher.on("all", recalc);
 
   watchers.set(template, watcher);
-}
+};
 
 /**
  * Recalculates the hash of a template directory and updates the cache.
@@ -117,7 +119,7 @@ const watchTemplateDir = async (template: string) => {
  * @param template The name of the template to recalculate the hash for.
  */
 const recalculateTemplateHash = async (template: string) => {
-  const dir = templateBuildDir(template);
+  const dir = getTemplateBuildDir(template);
   const excluded = getFilteredPaths(dir);
 
   if (hashingInProgress.has(template)) {
@@ -128,19 +130,19 @@ const recalculateTemplateHash = async (template: string) => {
 
   try {
     const hash = await hashElement(dir, {
-      encoding: 'hex',
+      encoding: "hex",
       folders: {
-        exclude: excluded.dirs
+        exclude: excluded.dirs,
       },
       files: {
-        exclude: excluded.files
-      }
+        exclude: excluded.files,
+      },
     });
     hashCache.set(template, hash.hash);
   } finally {
     hashingInProgress.delete(template);
   }
-}
+};
 
 export const getTemplateHash = (template: string): string => {
   const hash = hashCache.get(template);
@@ -149,4 +151,4 @@ export const getTemplateHash = (template: string): string => {
   }
 
   return hash;
-}
+};
