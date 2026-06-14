@@ -2,10 +2,6 @@ FROM node:22
 
 WORKDIR /data
 
-# Copy addons before install to install dependencies for addons as well
-COPY addons ./addons
-
-COPY installTempDeps.js ./
 COPY package*.json ./
 RUN npm install
 

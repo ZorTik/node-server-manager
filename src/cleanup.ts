@@ -1,12 +1,11 @@
-import { AppBootContext } from "@nsm/app";
+import {AppContext} from "@nsm/app";
 import { setStatus } from "@nsm/server";
-import { resolveSequentially } from "@nsm/util/promises";
 import { setStopping } from "@nsm/engine/asyncp";
 
 let active = false;
 
-const cleanup = (ctx: AppBootContext, exit?: boolean) => {
-  const { manager, logger, steps } = ctx;
+const cleanup = (ctx: AppContext, exit?: boolean) => {
+  const { runner, logger } = ctx;
 
   if (active == true) {
     return;
@@ -19,22 +18,14 @@ const cleanup = (ctx: AppBootContext, exit?: boolean) => {
     setStopping();
   }
 
-  resolveSequentially(
-    ...(exit == true
-      ? [
-          // Those steps that should only be called on exit
-          () => steps("EXIT", ctx),
-        ]
-      : []),
-    () => manager.stopRunning(),
-  ).then(() => {
+  runner.stopRunning().then(() => {
     if (exit == true) {
       process.exit(0);
     }
   });
 };
 
-export const postInit = (ctx: AppBootContext) => {
+export const postInit = (ctx: AppContext) => {
   // Cleanup on start
   cleanup(ctx);
 

@@ -1,7 +1,7 @@
-import {ServiceManager} from "@nsm/engine/manager";
 import {currentContext} from "@nsm/app";
 import {KnownError} from "@nsm/engine/error";
 import {AsyncTask} from "@nsm/util/promises";
+import {ServiceRunner} from "@nsm/engine/runner";
 
 export type ServiceActionType =
   | "create"
@@ -146,40 +146,26 @@ const argServiceIdExtractor = (
 };
 
 /**
- * Wraps a {@link ServiceManager} instance with additional capabilities.
+ * Wraps a {@link ServiceRunner} instance with additional capabilities.
  * Asynchronous service lifecycle methods are decorated to allow
  * additional behavior.
  *
- * @param manager The original ServiceManager instance to wrap.
- * @returns A new ServiceManager instance with decorated methods.
+ * @param runner The original ServiceRunner instance to wrap.
+ * @returns A new ServiceRunner instance with decorated methods.
  */
-export const middleLayer = (manager: ServiceManager): ServiceManager => {
+export const middleLayer = (runner: ServiceRunner): ServiceRunner => {
   return {
-    ...manager,
-
-    createService: decorateFunc(manager.createService, "create"),
+    ...runner,
 
     resumeService: decorateFunc(
-      manager.resumeService,
+      runner.resumeService,
       "resume",
       argServiceIdExtractor(0),
     ),
 
     stopService: decorateFunc(
-      manager.stopService,
+      runner.stopService,
       "stop",
-      argServiceIdExtractor(0),
-    ),
-
-    sendStopSignal: decorateFunc(
-      manager.sendStopSignal,
-      "sendStopSignal",
-      argServiceIdExtractor(0),
-    ),
-
-    deleteService: decorateFunc(
-      manager.deleteService,
-      "delete",
       argServiceIdExtractor(0),
     ),
   };

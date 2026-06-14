@@ -3,6 +3,7 @@ import { RouterHandler } from "../../index";
 
 export default async function ({
   manager,
+  runner
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/resume",
@@ -19,7 +20,7 @@ export default async function ({
           return;
         }
 
-        await manager.resumeService(id);
+        await runner.resumeService(id);
 
         res.status(200).json({
           status: 200,

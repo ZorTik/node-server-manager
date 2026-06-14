@@ -1,8 +1,7 @@
 import DockerClient from "dockerode";
 import buildDockerEngine from "./docker";
-import { getSingleton } from "../depend";
-import { MetaStorage } from "./manager";
-import { AppConfig } from "@nsm/config";
+import {getSingleton} from "../depend";
+import {AppConfig} from "@nsm/config";
 
 /**
  * The options for running a service.
@@ -91,6 +90,16 @@ export type RunListener = MessageListener & {
    * Called when the container is closed, either by stop or kill, or by itself.
    */
   onClose?: () => Promise<void> | void;
+};
+
+/**
+ * Per-service storage.
+ * Data set here are being persisted to the relational database and being kept
+ * as long term data. Every key set here is per-service.
+ */
+export type MetaStorage = {
+  set: (key: string, value: any) => Promise<boolean>;
+  get: <T>(key: string, def?: T) => Promise<T | undefined>;
 };
 
 export type DockerServiceEngine = ServiceEngineI & {

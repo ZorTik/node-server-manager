@@ -2,7 +2,7 @@ import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 
 export default async function ({
-  manager,
+  runner
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/stop",
@@ -20,7 +20,7 @@ export default async function ({
           return;
         }
 
-        await manager.stopService(id, isForce);
+        await runner.stopService(id, isForce);
 
         res.status(200).json({
           status: 200,

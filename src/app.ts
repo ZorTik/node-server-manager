@@ -16,12 +16,17 @@ initFileStructure(appConfig);
 import { Router } from "express";
 import { Database } from "@nsm/database";
 import { ServiceManager } from "@nsm/engine";
-import loadAddons from "./addon";
 import loadAppRoutes from "@nsm/router";
 import createDbManager from "@nsm/database";
 import loadSecurity from "@nsm/security";
+import createEngine from "@nsm/engine/engine";
+import { init as initImageEngine } from "@nsm/engine/image";
+import * as facade from "@nsm/engine/facade";
 import * as manager from "@nsm/engine/manager";
+import * as runner from "@nsm/engine/runner";
 import * as sessionManager from "@nsm/engine/session";
+import * as templateManager from "@nsm/engine/template";
+import * as templateDirWatcher from "@nsm/engine/monitoring/templateDirWatcher";
 import * as logging from "./logger";
 import winston from "winston";
 import { Application } from "express-ws";
@@ -31,14 +36,18 @@ import { SessionManager } from "@nsm/engine/session";
 import { mkdirResource, saveResource } from "@nsm/resources";
 import path from "path";
 import { AppConfig } from "@nsm/config";
-
-export type AppBootContext = AppContext & { steps: any };
+import { ServiceRunner } from "@nsm/engine/runner";
+import {TemplateManager} from "@nsm/engine/template";
+import {Facade} from "@nsm/engine/facade";
 
 // Passed context to the routes
 export type AppContext = {
   router: Router;
+  facade: Facade,
   manager: ServiceManager;
   sessionManager: SessionManager;
+  templateManager: TemplateManager;
+  runner: ServiceRunner;
   database: Database;
   appConfig: AppConfig;
   logger: winston.Logger;
@@ -57,36 +66,6 @@ function initGlobalLogger() {
   return logging.createLogger();
 }
 
-// Decorate all manager functions except those excluded to disallow using them
-// before manager.engine is initialized. This is necessary as the manager is being
-// used (mainly for expandEngine()) even before manager.init() is called.
-function managerForUnsafeUse() {
-  const excludeKeys: (keyof ServiceManager)[] = [
-    "expandEngine",
-    "initEngineForcibly",
-    "engine",
-  ];
-  //
-  const managerRef = { ...manager };
-  const handler: ProxyHandler<any> = {
-    get(target, prop, receiver) {
-      // If it's key of base manager, not expanded object and is not excluded, deny access
-      if (
-        (Object.keys(managerRef) as any[]).includes(prop) &&
-        !(excludeKeys as any[]).includes(prop)
-      ) {
-        throw new Error(
-          "ServiceManager is not initialized yet! " +
-            "You can only access those members now: " +
-            excludeKeys.join(", "),
-        );
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  };
-  return new Proxy(manager, handler);
-}
-
 /**
  * App orchestration code.
  *
@@ -96,7 +75,7 @@ function managerForUnsafeUse() {
 export const init = async (
   router: Application,
   options?: AppBootOptions,
-): Promise<AppBootContext> => {
+): Promise<AppContext> => {
   // Prepare logging
   const logger = initGlobalLogger();
   logging.setCurrentGlobalLogger(logger);
@@ -109,53 +88,45 @@ export const init = async (
     prepareTestResources(); // Copy resources for test
   }
 
-  // Load addon steps
-  const steps = await loadAddons(logger);
-
-  steps("BEFORE_CONFIG", { logger });
-
-  // Database connection layer
-  steps("BEFORE_DB", { logger, appConfig });
   const database = createDbManager();
 
   // Temporarily lock manager until it's initialized
-  const ctx = (currentContext = {
+  const ctx: AppContext = (currentContext = {
     router,
-    manager: managerForUnsafeUse(),
+    facade,
+    manager,
+    runner,
     sessionManager,
+    templateManager,
     database,
     appConfig,
     logger,
     debug: process.env.DEBUG === "true",
   });
 
-  // Service (virtualization) layer
-  steps("BEFORE_ENGINE", ctx);
-  await manager.init(database, appConfig, logger);
+  const engine = createEngine(appConfig);
+  logger.info(`Using engine: ${engine.name}`);
 
-  // Bring back original manager
-  ctx.manager = currentContext.manager = middleLayer(manager);
+  initImageEngine(engine, templateManager, templateDirWatcher, database, appConfig, logger);
+  sessionManager.init(database);
 
-  // Load security
-  steps("BEFORE_SECURITY", ctx);
+  await ctx.manager.init(appConfig, database, engine, logger);
+  templateDirWatcher.watchTemplateDirChanges(logger);
+
+  await runner.init(engine, appConfig, templateManager, manager, database, logger);
+  ctx.runner = currentContext.runner = middleLayer(runner);
+
   await loadSecurity(ctx);
-
-  // Load HTTP routes
-  steps("BEFORE_ROUTES", ctx);
   await loadAppRoutes(ctx);
 
-  // Start the server
-  steps("BEFORE_SERVER", ctx);
-
-  let srv = undefined;
   if (options?.test == undefined || options.test == false) {
     logger.info(`Starting server`);
-    srv = router.listen(appConfig.getPort(), () => {
+
+    router.listen(appConfig.getPort(), () => {
       logger.info(`Server started on port ${appConfig.getPort()}`);
     });
   }
-  steps("BOOT", ctx, srv);
-  return { ...ctx, steps };
+  return ctx;
 };
 
 const prepareTestResources = () => {

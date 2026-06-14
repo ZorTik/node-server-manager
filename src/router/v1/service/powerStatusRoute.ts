@@ -1,10 +1,8 @@
-import { AppContext } from "../../../app";
+import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 import { isServicePending } from "@nsm/engine/asyncp";
 
-export default async function ({
-  manager,
-}: AppContext): Promise<RouterHandler> {
+export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/powerstatus",
     routes: {
@@ -24,7 +22,7 @@ export default async function ({
         if (isServicePending(id)) {
           status = "PENDING";
         } else {
-          const err = manager.getLastPowerError(id);
+          const err = ctx.runner.getLastPowerError(id);
           if (err) {
             status = "ERROR";
             error = err;

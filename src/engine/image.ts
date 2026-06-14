@@ -1,9 +1,9 @@
 import { Database, ImageModel } from "@nsm/database";
 import winston from "winston";
-import {MessageListener, ServiceEngine} from "@nsm/engine/engine";
+import { MessageListener, ServiceEngine } from "@nsm/engine/engine";
 import { TemplateManager } from "@nsm/engine/template";
 import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
-import {AppConfig} from "@nsm/config";
+import { AppConfig } from "@nsm/config";
 
 type BuildOptionsMap = {
   [key: string]: string;

@@ -7,6 +7,7 @@ import {
   ServiceLogRecordModel,
   ServiceSessionModel,
 } from "@nsm/database";
+import {ServiceWasNeverActiveError} from "@nsm/engine/error";
 
 export interface SessionManager {
   /**
@@ -24,6 +25,15 @@ export interface SessionManager {
    * @return An object representing the active service session, including a run listener for handling session events.
    */
   beginServiceSession(serviceId: string): Promise<ActiveServiceSession>;
+
+  /**
+   * Retrieves the last session for a given service ID.
+   *
+   * @param serviceId The ID of the service for which to retrieve the last session.
+   * @return An object representing the last service session, or undefined if no sessions were found.
+   * @throws ServiceWasNeverActiveError if the service has never had an active session.
+   */
+  getLastSession(serviceId: string): Promise<ServiceSession>;
 
   /**
    * Lists service sessions.
@@ -192,7 +202,21 @@ const debounceBulkPush = () => {
   };
 };
 
-// TODO: get service session
+export const getLastSession: SessionManager["getLastSession"] = async (
+  serviceId
+) => {
+  // Service not running, so we need to retrieve last session ID
+  const lastSession = await listSessions({
+    filter: { serviceId },
+    sort: { by: "startedAt", direction: "desc" },
+    page: { index: 0, size: 1 },
+  });
+  if (lastSession && lastSession.length > 0) {
+    return lastSession[0];
+  }
+
+  throw new ServiceWasNeverActiveError();
+}
 
 export const listSessions: SessionManager["listSessions"] = async (
   args: ListSessionsArgs,

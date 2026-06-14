@@ -7,6 +7,8 @@ import {TemplateNotFoundError} from "@nsm/engine/error";
 
 export default async function ({
   manager,
+  templateManager,
+  runner,
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/create",
@@ -20,7 +22,7 @@ export default async function ({
             .end();
           return;
         }
-        const template = manager.getTemplate(req.body.template);
+        const template = templateManager.getTemplate(req.body.template);
         if (!template) {
           throw new TemplateNotFoundError(req.body.template);
         }
@@ -39,7 +41,7 @@ export default async function ({
 
         const serviceId = await manager.createService(template.id, options);
 
-        await manager.resumeService(serviceId);
+        await runner.resumeService(serviceId);
 
         res
           .status(200)

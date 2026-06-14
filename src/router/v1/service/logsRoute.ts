@@ -30,7 +30,7 @@ export default async function (ctx: AppContext): Promise<RouterHandler> {
 
         let logs: ServiceLogRecordModel[];
         try {
-          const session = await ctx.manager.getLastSession(id);
+          const session = await ctx.sessionManager.getLastSession(id);
           logs = await ctx.sessionManager.listSessionLogs({
             filter: {
               sessionId: session.id,

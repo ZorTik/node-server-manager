@@ -2,7 +2,8 @@ import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 
 export default async function ({
-  manager,
+  runner,
+  facade
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id",
@@ -10,7 +11,7 @@ export default async function ({
       get: async (req, res) => {
         const id = req.params.id;
 
-        const service = await manager.getService(id, { includeSession: true });
+        const service = await facade.getServiceInfo(id, { includeSession: true });
         if (!service) {
           res
             .status(404)
@@ -21,8 +22,8 @@ export default async function ({
 
         const session = service.internalSession;
         let stats: any;
-        if (session && req.query.stats === "true") {
-          stats = await manager.engine.stat(session.containerId);
+        if (session && session.containerId && req.query.stats === "true") {
+          stats = await runner.engine.stat(session.containerId);
         } else {
           stats = null;
         }

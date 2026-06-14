@@ -1,12 +1,17 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 import * as os from "os";
-import { Filters, ServiceManager } from "@nsm/engine";
+import {Filters, ServiceEngine, ServiceManager} from "@nsm/engine";
 import { Database } from "@nsm/database";
 
-async function checkNsmResources(engine: ServiceManager, db: Database) {
-  const stats = await engine.engine.statAll(Filters.node(engine.nodeId));
-  const servicesGlobal = await db.permaRepository.listPerma(engine.nodeId);
+async function checkNsmResources(
+  nodeId: string,
+  manager: ServiceManager,
+  engine: ServiceEngine,
+  db: Database
+) {
+  const stats = await engine.statAll(Filters.node(nodeId));
+  const servicesGlobal = await db.permaRepository.listPerma(nodeId);
   const res = stats.reduce(
     (acc, s) => {
       acc.memory.used += s.memory.used;
@@ -35,7 +40,7 @@ async function checkNsmResources(engine: ServiceManager, db: Database) {
     },
   );
   for (const s of servicesGlobal) {
-    const service = await engine.getService(s);
+    const service = await manager.getService(s);
     res.services.memTotal += BigInt(service.optionsRam);
     res.services.cpuTotal += BigInt(service.optionsCpu);
     res.services.diskTotal += BigInt(service.optionsDisk);
@@ -57,6 +62,7 @@ async function checkNsmResources(engine: ServiceManager, db: Database) {
  */
 export default async function ({
   manager,
+  runner,
   appConfig,
   database,
 }: AppContext): Promise<RouterHandler> {
@@ -66,7 +72,7 @@ export default async function ({
       get: async (req, res) => {
         const nodeId = appConfig.getNodeId();
         const all = await database.permaRepository.listPerma(nodeId);
-        const [free, size] = await manager.engine.calcHostUsage();
+        const [free, size] = await runner.engine.calcHostUsage();
         const system = {
           totalmem: os.totalmem(),
           freemem: os.freemem(),
@@ -76,12 +82,15 @@ export default async function ({
         res
           .json({
             nodeId,
-            running: manager.getRunningServices().map((s) => s.id),
+            running: runner.getRunningServices().map((s) => s.id),
             all: all.length,
             system,
             ...(req.query.stats === "true"
-              ? { stats: await checkNsmResources(manager, database) }
-              : {}),
+              ? {
+              stats: await checkNsmResources(appConfig.getNodeId(), manager, runner.engine, database)
+            }
+              : {
+            }),
           })
           .end();
       },

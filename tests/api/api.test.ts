@@ -1,5 +1,5 @@
 import server from "@nsm/server";
-import { init as boot, AppBootContext, AppBootOptions } from "@nsm/app";
+import {init as boot, AppBootOptions, AppContext} from "@nsm/app";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, test } from "@jest/globals";
 import { isServicePending } from "@nsm/engine/asyncp";
@@ -15,9 +15,9 @@ function expectProps(obj: any, model: any[]) {
   }
 }
 
-async function miniService(ctx: AppBootContext) {
+async function miniService(ctx: AppContext) {
   const id = await ctx.manager.createService("test", {});
-  await ctx.manager.resumeService(id);
+  await ctx.runner.resumeService(id);
 
   do {
     await new Promise((resolve) => {
@@ -25,20 +25,20 @@ async function miniService(ctx: AppBootContext) {
     });
   } while (isServicePending(id));
   // Status check
-  if (ctx.manager.getLastPowerError(id)) {
+  if (ctx.runner.getLastPowerError(id)) {
     return undefined;
   } else {
     return id;
   }
 }
 
-async function killMini(ctx: AppBootContext, id: string) {
-  await ctx.manager.stopService(id, true);
-  await ctx.manager.waitForStopped(id);
+async function killMini(ctx: AppContext, id: string) {
+  await ctx.runner.stopService(id, true);
+  await ctx.runner.waitForStopped(id);
 }
 
 describe("Test v1 API models", () => {
-  let ctx: AppBootContext | undefined = undefined;
+  let ctx: AppContext | undefined = undefined;
 
   beforeAll((done) => {
     const options: AppBootOptions = {
@@ -192,7 +192,7 @@ describe("Test v1 API models", () => {
     expectProps(res.body, ["status", 200, "message", undefined]);
     // Wait for it to be started
     await new Promise((resolve, reject) => {
-      ctx.manager.on("resume", (event) => {
+      ctx.runner.on("resume", (event) => {
         if (event.id == id) {
           if (event.error) {
             reject(event.error);
@@ -218,7 +218,7 @@ describe("Test v1 API models", () => {
       return;
     }
 
-    return ctx.manager.killRunning();
+    return ctx.runner.killRunning();
   }, 60000);
 
   // TODO: /v1/service/<id>/options

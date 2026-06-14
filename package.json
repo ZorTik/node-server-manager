@@ -4,9 +4,9 @@
   "description": "A new service control engine, built on docker.",
   "main": "index.js",
   "scripts": {
-    "build": "node installTempDeps.js && tsc && tscp",
+    "build": "tsc && tscp",
     "migrate": "prisma migrate deploy",
-    "start": "npm run migrate && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register dist/index.js",
+    "start": "npm run migrate && cross-env TS_NODE_BASEURL=./dist node -r tsconfig-paths/register --enable-source-maps dist/index.js",
     "test": "npm run migrate && jest"
   },
   "keywords": [],

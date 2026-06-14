@@ -2,7 +2,7 @@ import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 
 export default async function ({
-  manager,
+  facade,
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/delete",
@@ -19,7 +19,7 @@ export default async function ({
           return;
         }
 
-        await manager.deleteService(id);
+        await facade.deleteService(id);
 
         res.status(200).json({ status: 200, message: "Service deleted." });
       },

@@ -3,7 +3,7 @@ import { RouterHandler } from "../../index";
 import {KnownError, ServiceNotRunningError} from "@nsm/engine/error";
 
 export default async function ({
-  manager,
+  runner,
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/service/:id/reboot",
@@ -23,7 +23,7 @@ export default async function ({
 
         let promise: Promise<void>;
         try {
-          const task = await manager.stopService(id, isForce);
+          const task = await runner.stopService(id, isForce);
           promise = task.promise;
         } catch (e) {
           if (e instanceof ServiceNotRunningError) {
@@ -35,7 +35,7 @@ export default async function ({
         }
         promise.then(async () => {
           try {
-            const task = await manager.resumeService(id);
+            const task = await runner.resumeService(id);
 
             await task.promise;
           } catch (e) {

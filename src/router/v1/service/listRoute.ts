@@ -6,6 +6,7 @@ import z from "zod";
 export default async function ({
   manager,
   database,
+  appConfig
 }: AppContext): Promise<RouterHandler> {
   return {
     url: "/servicelist",
@@ -73,7 +74,7 @@ export default async function ({
           meta: {
             ...listOptions,
             // Total num of services on this node
-            total: await database.permaRepository.countPerma(manager.nodeId),
+            total: await database.permaRepository.countPerma(appConfig.getNodeId()),
           },
         };
         res.status(200).json(data).end();
