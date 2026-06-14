@@ -7,8 +7,6 @@ export type ServiceActionType =
   | "create"
   | "resume"
   | "stop"
-  | "forceStop"
-  | "sendStopSignal"
   | "delete";
 
 /**
