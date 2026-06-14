@@ -58,6 +58,14 @@ export class ServicePendingActionError extends KnownError {
   }
 }
 
+export class ServiceEngineError extends InternalError {
+  constructor(
+    public readonly cause: Error
+  ) {
+    super("An error occurred in the service engine. Cause: " + cause.message);
+  }
+}
+
 export class TemplateNotFoundError extends KnownError {
   constructor(
     public readonly templateId: string

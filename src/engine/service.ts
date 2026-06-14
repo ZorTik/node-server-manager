@@ -4,18 +4,16 @@ import {
 import * as templateManager from "./template";
 import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
-import { Database, PermaModel } from "../database";
+import {Database, ImageModel, PermaModel} from "../database";
 import {
   reqNotPending,
 } from "./asyncp";
 import winston from "winston";
-import {resolveSequentially} from "@nsm/util/promises";
 import {
   deleteImageIfUnused,
 } from "@nsm/engine/image";
 import {
   InternalError,
-  InvalidMetaError,
   ServiceNotFoundError,
   TemplateNotFoundError
 } from "@nsm/engine/error";
@@ -43,6 +41,9 @@ export type Options = {
    * (optional)
    */
   ports?: number[]; // Optional ports to expose
+  /**
+   * The optional meta attributes to set for the service.
+   */
   meta?: { [key: string]: any };
   /**
    * The optional environment variables (template options) to set.
@@ -168,11 +169,7 @@ export interface ServiceManager {
   listServices(options: ListServicesOptions): Promise<string[]>;
 }
 
-export type Service = PermaModel & {
-  optionsRam: number; // From options.ram
-  optionsCpu: number; // From options.cpu
-  optionsDisk: number; // From options.disk
-};
+export type Service = PermaModel;
 
 let nodeId: string;
 let db: Database;
@@ -201,13 +198,14 @@ export const createService: ServiceManager["createService"] = async (template, o
   const serviceSettings = foundTemplate.settings;
 
   // Join meta supplied by user and template meta
-  const meta = {
-    ...(options.meta ?? {}),
-    ...(serviceSettings.meta ?? {}),
-  };
-  if (!meta || !meta.stopCmd) {
-    throw new InvalidMetaError("Invalid template meta for " + template);
+  let meta = {};
+  if (options.meta) {
+    meta = { ...meta, ...options.meta };
   }
+  if (serviceSettings.meta) {
+    meta = { ...meta, ...serviceSettings.meta };
+  }
+  // validate meta? and throw InvalidMetaError
 
   const serviceId = crypto.randomUUID(); // Create new unique service id
   // Pick random main port from the range specified in settings.yml
@@ -243,23 +241,19 @@ export const createService: ServiceManager["createService"] = async (template, o
 }
 
 export const deleteService: ServiceManager["deleteService"] = async (id) => {
-  const image = await db.permaRepository
-    .getPerma(id)
-    .then((perma) =>
-      perma.imageId
-        ? db.imageRepository.getImage(perma.imageId)
-        : undefined,
-    );
-  await resolveSequentially(
-    async () => engine.deleteVolume(id),
-    async () => db.permaRepository.deletePerma(id),
-    async () => {
-      if (image) {
-        // If the image becomes unused after service deletion, delete it
-        await deleteImageIfUnused(image);
-      }
-    },
-  );
+  let image: ImageModel | undefined;
+
+  const perma = await db.permaRepository.getPerma(id);
+  if (perma.imageId) {
+    image = await db.imageRepository.getImage(perma.imageId);
+  }
+
+  await engine.deleteVolume(id);
+  await db.permaRepository.deletePerma(id);
+  if (image) {
+    // If the image becomes unused after service deletion, delete it
+    await deleteImageIfUnused(image);
+  }
 
   logger.debug(`Service ${id} deleted`);
 }
@@ -300,17 +294,7 @@ export const updateOptions: ServiceManager["updateOptions"] = async (id, options
 }
 
 export const getService: ServiceManager["getService"] = async (from) => {
-  const data = typeof from === "string" ? await db.permaRepository.getPerma(from) : from;
-  if (!data) {
-    return undefined;
-  }
-
-  return {
-    ...data,
-    optionsRam: data.env.SERVICE_RAM ? Number(data.env.SERVICE_RAM) : 0,
-    optionsCpu: data.env.SERVICE_CPU ? Number(data.env.SERVICE_CPU) : 0,
-    optionsDisk: data.env.SERVICE_DISK ? Number(data.env.SERVICE_DISK) : 0,
-  };
+  return typeof from === "string" ? await db.permaRepository.getPerma(from) : from;
 }
 
 export const listServices: ServiceManager["listServices"] = async (options) => {

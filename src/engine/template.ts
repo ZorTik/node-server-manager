@@ -19,8 +19,29 @@ export type Template = {
   /**
    * The settings (definitions) object.
    */
-  settings: any;
+  settings: TemplateSettings;
 };
+
+export type TemplateSettings = {
+  port_range: {
+    min: number;
+    max: number;
+  };
+  defaults: {
+    ram: number;
+    cpu: number;
+    disk: number;
+    env?: {
+      [key: string]: string;
+    }
+  };
+  meta: {
+    [key: string]: string;
+  };
+  env: {
+    [key: string]: string;
+  }
+}
 
 export type TemplateManager = {
   /**

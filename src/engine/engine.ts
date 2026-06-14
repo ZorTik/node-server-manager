@@ -187,7 +187,6 @@ export type ServiceEngine = {
 
   /**
    * Deletes a volume by ID.
-   * This is NEVER called if ServiceEngine#useVolumes is false.
    *
    * @param id The volume ID.
    */

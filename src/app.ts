@@ -22,7 +22,7 @@ import loadSecurity from "@nsm/security";
 import createEngine from "@nsm/engine/engine";
 import { init as initImageEngine } from "@nsm/engine/image";
 import * as facade from "@nsm/engine/facade";
-import * as manager from "@nsm/engine/manager";
+import * as manager from "@nsm/engine/service";
 import * as runner from "@nsm/engine/runner";
 import * as sessionManager from "@nsm/engine/session";
 import * as templateManager from "@nsm/engine/template";
@@ -31,7 +31,7 @@ import * as logging from "./logger";
 import winston from "winston";
 import { Application } from "express-ws";
 import fs from "fs";
-import { middleLayer } from "@nsm/engine/middle";
+import {middleLayer, registerErrorPublishersFromConfig} from "@nsm/engine/middle";
 import { SessionManager } from "@nsm/engine/session";
 import { mkdirResource, saveResource } from "@nsm/resources";
 import path from "path";
@@ -103,6 +103,8 @@ export const init = async (
     logger,
     debug: process.env.DEBUG === "true",
   });
+
+  await registerErrorPublishersFromConfig(appConfig);
 
   const engine = createEngine(appConfig);
   logger.info(`Using engine: ${engine.name}`);

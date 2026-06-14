@@ -1,9 +1,9 @@
-import {Service} from "@nsm/engine/manager";
+import {Service} from "@nsm/engine/service";
 import {ServiceSession} from "@nsm/engine/session";
 import {InternalSession} from "@nsm/engine/runner";
 import {PermaModel} from "@nsm/database";
 
-import * as manager from "@nsm/engine/manager";
+import * as manager from "@nsm/engine/service";
 import * as runner from "@nsm/engine/runner";
 import {getActionType} from "@nsm/engine/asyncp";
 

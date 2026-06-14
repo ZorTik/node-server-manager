@@ -1,7 +1,8 @@
 import {currentContext} from "@nsm/app";
-import {KnownError} from "@nsm/engine/error";
+import {InternalError, KnownError} from "@nsm/engine/error";
 import {AsyncTask} from "@nsm/util/promises";
 import {ServiceRunner} from "@nsm/engine/runner";
+import {AppConfig} from "@nsm/config";
 
 export type ServiceActionType =
   | "resume"
@@ -14,6 +15,7 @@ export interface ServiceActionError {
   serviceId?: string;
   type: ServiceActionType;
   message: string;
+  internal: boolean;
 }
 
 export interface ErrorPublisher {
@@ -39,6 +41,15 @@ const publishers: ErrorPublisher[] = [
 export const registerErrorPublisher = (publisher: ErrorPublisher) => {
   publishers.push(publisher);
 };
+
+/**
+ * Registers error publishers based on the app configuration.
+ *
+ * @param config The application configuration used to determine which error publishers to register.
+ */
+export const registerErrorPublishersFromConfig = async (config: AppConfig) => {
+  // TODO: publishers
+}
 
 const publishError = async (action: ServiceActionError) => {
   try {
@@ -92,6 +103,7 @@ const handleExecutionError = async <T, F extends (...args: Parameters<F>) => Pro
     serviceId: serviceIdExtractor?.(args),
     type: actionType,
     message: e instanceof Error ? e.message : String(e),
+    internal: !(e instanceof KnownError),
   };
   await publishError(action);
 

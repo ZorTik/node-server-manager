@@ -21,11 +21,11 @@ import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
 import {processImage} from "@nsm/engine/image";
 import {
   InternalError,
-  ServiceAlreadyRunningError,
+  ServiceAlreadyRunningError, ServiceEngineError,
   ServiceNotFoundError, ServiceNotRunningError, ServicePendingActionError,
   TemplateNotFoundError
 } from "@nsm/engine/error";
-import {ServiceManager} from "@nsm/engine/manager";
+import {ServiceManager} from "@nsm/engine/service";
 import {TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/database";
 import {isDebug} from "@nsm/helpers";
@@ -356,37 +356,38 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     return image;
   }
 
-  return new AsyncTask(
-    // TODO: logovat někam message z image processingu pomocí posledního parametru
-    processImage(service.imageId, template.id, buildEnv)
-      .then(updateImageIfChanged)
-      .then(async (image) => {
-        const session = await beginServiceSession(id);
-        // Run the container with the built image and save the container id for later use.
-        try {
-          const containerId = await engine.run(
-            image,
-            id,
-            runOptions,
-            meta,
-            buildRunListener(session),
-          );
-          started.push({
-            id,
-            session,
-            internalSession: {
-              containerId,
-            },
-          });
+  const task = processImage(service.imageId, template.id, buildEnv) // TODO: logovat někam message z image processingu pomocí posledního parametru
+    .then(updateImageIfChanged)
+    .then(async (image) => {
+      const session = await beginServiceSession(id);
+      // Run the container with the built image and save the container id for later use.
+      try {
+        const containerId = await engine.run(
+          image,
+          id,
+          runOptions,
+          meta,
+          buildRunListener(session),
+        );
+        started.push({
+          id,
+          session,
+          internalSession: {
+            containerId,
+          },
+        });
 
-          callManagerEvent("resume", { id });
-        } catch (e) {
-          callManagerEvent("resume", { id, error: e });
-          callServiceEngineError(id, e);
-        }
-      })
-      .finally(() => unlock())
-  );
+        callManagerEvent("resume", { id });
+      } catch (e) {
+        callManagerEvent("resume", { id, error: e });
+        callServiceEngineError(id, e);
+
+        throw new ServiceEngineError(e);
+      }
+    })
+    .finally(() => unlock());
+
+  return new AsyncTask(task);
 }
 
 export const stopService: ServiceRunner["stopService"] = async (id, force) => {
@@ -406,6 +407,8 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
     } catch (e) {
       logger.error(e);
       callManagerEvent("stop", { id, error: e });
+
+      throw new ServiceEngineError(e);
     }
   }
 

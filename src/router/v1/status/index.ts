@@ -3,6 +3,7 @@ import { RouterHandler } from "../../index";
 import * as os from "os";
 import {Filters, ServiceEngine, ServiceManager} from "@nsm/engine";
 import { Database } from "@nsm/database";
+import {parseResourceOptionsSet} from "@nsm/util/services";
 
 async function checkNsmResources(
   nodeId: string,
@@ -41,9 +42,11 @@ async function checkNsmResources(
   );
   for (const s of servicesGlobal) {
     const service = await manager.getService(s);
-    res.services.memTotal += BigInt(service.optionsRam);
-    res.services.cpuTotal += BigInt(service.optionsCpu);
-    res.services.diskTotal += BigInt(service.optionsDisk);
+    const resourceOptions = parseResourceOptionsSet(service);
+
+    res.services.memTotal += BigInt(resourceOptions.ram);
+    res.services.cpuTotal += BigInt(resourceOptions.cpu);
+    res.services.diskTotal += BigInt(resourceOptions.disk);
   }
   if (res.memory.total > 0) {
     res.memory.percent = res.memory.used / res.memory.total;
