@@ -1,11 +1,11 @@
-import {PrismaClient} from "@prisma/client";
-import {PermaModel, PermaRepository} from "@nsm/database/models";
+import { PrismaClient } from "@prisma/client";
+import { PermaModel, PermaRepository } from "@nsm/database/models";
 
 let client: PrismaClient;
 
 export const init = (client_: PrismaClient) => {
   client = client_;
-}
+};
 
 export const savePerma: PermaRepository["savePerma"] = async (data) => {
   const { serviceId } = data;
@@ -13,32 +13,30 @@ export const savePerma: PermaRepository["savePerma"] = async (data) => {
     await client.service.upsert({
       where: { serviceId },
       update: data,
-      create: data
+      create: data,
     });
     return true;
   } catch (e) {
     console.log(e);
     return false;
   }
-}
+};
 
 export const deletePerma: PermaRepository["deletePerma"] = async (
-  serviceId
+  serviceId,
 ) => {
   try {
     await client.service.delete({ where: { serviceId } });
     return true;
   } catch (e) {
-    if (e.code !== 'P2025') {
+    if (e.code !== "P2025") {
       console.log(e);
     }
     return false;
   }
-}
+};
 
-export const getPerma: PermaRepository["getPerma"] = async (
-  serviceId
-) => {
+export const getPerma: PermaRepository["getPerma"] = async (serviceId) => {
   try {
     const service = await client.service.findUnique({ where: { serviceId } });
     if (!service) {
@@ -49,13 +47,13 @@ export const getPerma: PermaRepository["getPerma"] = async (
     console.log(e);
     return undefined;
   }
-}
+};
 
 export const listPerma: PermaRepository["listPerma"] = async (
   nodeId,
   page,
   pageSize,
-  meta
+  meta,
 ) => {
   try {
     // SELECT * FROM Service WHERE JSON_EXTRACT(Meta, "$.tag1") IS NOT NULL;
@@ -86,24 +84,27 @@ export const listPerma: PermaRepository["listPerma"] = async (
       }
     }
     return client
-      .$queryRawUnsafe<PermaModel[]>(`SELECT * FROM Service${where}${pg};`, ...values)
-      .then(result => result as PermaModel[]);
+      .$queryRawUnsafe<
+        PermaModel[]
+      >(`SELECT * FROM Service${where}${pg};`, ...values)
+      .then((result) => result as PermaModel[]);
   } catch (e) {
     console.log(e);
     return [];
   }
-}
+};
 
-export const listPermaUsingImage: PermaRepository["listPermaUsingImage"] = async (
-  imageId
-) => {
-  try {
-    return await client.service.findMany({ where: { imageId } }) as PermaModel[];
-  } catch (e) {
-    console.log(e);
-    return [];
-  }
-}
+export const listPermaUsingImage: PermaRepository["listPermaUsingImage"] =
+  async (imageId) => {
+    try {
+      return (await client.service.findMany({
+        where: { imageId },
+      })) as PermaModel[];
+    } catch (e) {
+      console.log(e);
+      return [];
+    }
+  };
 
 export const countPerma: PermaRepository["countPerma"] = async (nodeId) => {
   try {
@@ -112,4 +113,4 @@ export const countPerma: PermaRepository["countPerma"] = async (nodeId) => {
     console.log(e);
     return -1;
   }
-}
+};

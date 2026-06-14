@@ -1,15 +1,17 @@
-import {Prisma, PrismaClient} from "@prisma/client";
-import {SessionRepository} from "@nsm/database/models";
+import { Prisma, PrismaClient } from "@prisma/client";
+import { SessionRepository } from "@nsm/database/models";
 
 let client: PrismaClient;
 
 export const init = (client_: PrismaClient) => {
   client = client_;
-}
+};
 
-export const createSession: SessionRepository["createSession"] = async (serviceId) => {
+export const createSession: SessionRepository["createSession"] = async (
+  serviceId,
+) => {
   const data: Prisma.ServiceSessionUncheckedCreateInput = {
-    serviceId
+    serviceId,
   };
 
   try {
@@ -19,21 +21,17 @@ export const createSession: SessionRepository["createSession"] = async (serviceI
 
     return undefined;
   }
-}
+};
 
 export const listSessions: SessionRepository["listSessions"] = async (args) => {
-  const {
-    filter,
-    sort,
-    page
-  } = args;
+  const { filter, sort, page } = args;
 
   const query: Prisma.ServiceSessionFindManyArgs = {};
   if (filter?.serviceId) {
     query.where = filter;
   }
   query.orderBy = {
-    [sort?.by ?? "startedAt"]: sort?.direction ?? "desc"
+    [sort?.by ?? "startedAt"]: sort?.direction ?? "desc",
   };
   if (page) {
     query.skip = page.index * page.size;
@@ -47,4 +45,4 @@ export const listSessions: SessionRepository["listSessions"] = async (args) => {
 
     return undefined;
   }
-}
+};

@@ -1,6 +1,9 @@
 import path from "path";
 import fs from "fs";
-import {getResourcesTargetPath, resourcesPath} from "@nsm/filestructure";
+import { getResourcesPath} from "@nsm/filestructure";
+
+// The local resources dir (not the source of truth)
+const resourcesPath = path.join(process.cwd(), "resources");
 
 /**
  * Reads resource from target dir.
@@ -8,10 +11,10 @@ import {getResourcesTargetPath, resourcesPath} from "@nsm/filestructure";
  * @param name The name of the resource in the target dir.
  */
 export const readResource = (name: string) => {
-  const p = path.join(getResourcesTargetPath(), name);
+  const p = path.join(getResourcesPath(), name);
 
-  return fs.readFileSync(p, 'utf8');
-}
+  return fs.readFileSync(p, "utf8");
+};
 
 /**
  * Creates a directory in the target dir. Creates parent dirs if missing.
@@ -19,10 +22,10 @@ export const readResource = (name: string) => {
  * @param name The name of the dir in the target dir.
  */
 export const mkdirResource = (name: string) => {
-  const p = path.join(getResourcesTargetPath(), name);
+  const p = path.join(getResourcesPath(), name);
 
   fs.mkdirSync(p, { recursive: true });
-}
+};
 
 /**
  * Saves resource to target dir. Creates parent dirs if missing.
@@ -36,7 +39,7 @@ export const saveResource = (
   name: string,
   targetName: string,
   skipIfExists: boolean = false,
-  targetDirPath: string = getResourcesTargetPath()
+  targetDirPath: string = getResourcesPath(),
 ) => {
   const targetPath = path.join(targetDirPath, targetName);
   // Create parent dirs if missing
@@ -46,7 +49,7 @@ export const saveResource = (
     return;
   }
   fs.writeFileSync(targetPath, readCwdResource(name));
-}
+};
 
 /**
  * Reads resource from resources dir.
@@ -56,5 +59,5 @@ export const saveResource = (
 export const readCwdResource = (name: string) => {
   const p = path.join(resourcesPath, name);
 
-  return fs.readFileSync(p, 'utf8');
-}
+  return fs.readFileSync(p, "utf8");
+};

@@ -7,7 +7,7 @@ export default function calcHostUsage(client: DockerClient) {
     let free_ = 0;
     let size_ = 0;
     for (const vol of Volumes) {
-      if (!vol.Labels || !('nsm' in vol.Labels)) {
+      if (!vol.Labels || !("nsm" in vol.Labels)) {
         // Not a NSM volume.
         continue;
       }
@@ -16,5 +16,5 @@ export default function calcHostUsage(client: DockerClient) {
       size_ += size;
     }
     return [free_, size_];
-  }
+  };
 }

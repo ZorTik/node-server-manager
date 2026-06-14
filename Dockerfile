@@ -23,4 +23,4 @@ COPY index.ts ./
 
 RUN npm run build
 
-CMD npx prisma migrate deploy && npm run start
+CMD npm start

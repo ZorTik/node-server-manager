@@ -1,45 +1,58 @@
-import {AppContext} from "@nsm/app";
-import {RouterHandler} from "../../index";
-import {checkServiceExists, checkServicePending} from "@nsm/router/util/preconditions";
-import {consumeEnginePowerAction} from "@nsm/helpers";
+import { AppContext } from "@nsm/app";
+import { RouterHandler } from "../../index";
+import {KnownError, ServiceNotRunningError} from "@nsm/engine/error";
 
-export default async function ({manager, logger}: AppContext): Promise<RouterHandler> {
-    return {
-        url: '/service/:id/reboot',
-        routes: {
-            post: async (req, res) => {
-                const id = req.params.id;
-                if (!id) {
-                    res.status(400).json({status: 400, message: 'Required \'id\' field not present in the body.'});
-                    return;
-                }
-                if (!await checkServiceExists(id, manager, res)) {
-                    return;
-                }
-                if (!checkServicePending(id, res)) {
-                    return;
-                }
+export default async function ({
+  manager,
+}: AppContext): Promise<RouterHandler> {
+  return {
+    url: "/service/:id/reboot",
+    routes: {
+      post: async (req, res) => {
+        const id = req.params.id;
+        const isForce = req.query.force === "true";
+        if (!id) {
+          res
+            .status(400)
+            .json({
+              status: 400,
+              message: "Required 'id' field not present in the body.",
+            });
+          return;
+        }
 
-                consumeEnginePowerAction(() => (
-                  manager.stopService(id)
-                    .then(() => {
-                        // Service stopped successfully, now wait for it to be unlocked before resuming.
+        let promise: Promise<void>;
+        try {
+          const task = await manager.stopService(id, isForce);
+          promise = task.promise;
+        } catch (e) {
+          if (e instanceof ServiceNotRunningError) {
+            // not running, just start it
+            promise = Promise.resolve();
+          } else {
+            throw e;
+          }
+        }
+        promise.then(async () => {
+          try {
+            const task = await manager.resumeService(id);
 
-                        manager.whenUnlocked(id, (_, __, err) => {
-                            if (err) {
-                                logger.error(err);
-                            } else {
-                                manager.resumeService(id);
-                            }
-                        });
-                    })
-                ));
-
-                res.status(200).json({
-                    status: 200,
-                    message: 'Service reboot action successfully registered to be completed in a moment.'
-                });
+            await task.promise;
+          } catch (e) {
+            // just log
+            if (e instanceof KnownError) {
+              console.error("Error while resuming service after reboot ", e.message);
+            } else {
+              console.error("Error while resuming service after reboot", e);
             }
-        },
-    }
+          }
+        });
+
+        res.status(200).json({
+          status: 200,
+          message: "Service reboot action scheduled.",
+        });
+      },
+    },
+  };
 }

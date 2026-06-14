@@ -1,57 +1,58 @@
-import {AppContext} from "../app";
-import {json, RequestHandler, Router} from "express";
+import { AppContext } from "../app";
+import { json, RequestHandler, Router } from "express";
 import v1Routes from "./v1";
-import {measureEventLoop} from "@nsm/profiler";
+import {eventLoopProfiler} from "@nsm/router/middlewares/eventLoopProfiler";
+import {debugRequestLogger} from "@nsm/router/middlewares/debugRequestLogger";
+import {catchKnownErrors} from "@nsm/router/middlewares/catchKnownErrors";
 
 export type RouterHandler = {
-    url: string;
-    routes: {[method: string]: RequestHandler};
+  url: string;
+  routes: { [method: string]: RequestHandler|RequestHandler[] };
 };
 
 type RouterInit = (context: AppContext) => Promise<RouterHandler>;
 
 // Load API by version
 async function api(ver: string, context: AppContext, routes: RouterInit[]) {
-    const router = Router();
-    router.use(json());
-    if (context.debug) {
-        router.use((req, res, next) => {
-            if (req.body) {
-                context.logger.debug(`Body: ${JSON.stringify(req.body)}`);
-            } else {
-                context.logger.debug('No body');
-            }
-            next();
-        });
-        // Measure event loop process time if in debug mode
-        router.use((_, __, next) => {
-            measureEventLoop();
-            next();
-        });
-    }
-    for (let init of routes) {
-        // Create handler with changed router to the sub-router that will be
-        // used specifically for this API version
-        const handler = await init({ ...context, router });
-        let reg = false;
+  const router = Router();
+  router.use(json());
+  if (context.debug) {
+    router.use(debugRequestLogger({context}));
+    // Measure event loop process time if in debug mode
+    router.use(eventLoopProfiler());
+  }
 
-        for (const method of ['get', 'post', 'put', 'delete']) {
-            if (handler.routes[method]) {
-                // Register handler to express
-                router[method](handler.url, (req, res, next) => {
-                    context.logger.debug(`${method.toUpperCase()} ${req.url}`);
-                    next();
-                }, handler.routes[method]);
-                reg = true;
-            }
+  for (let init of routes) {
+    // Create handler with changed router to the sub-router that will be
+    // used specifically for this API version
+    const handler = await init({ ...context, router });
+
+    let reg = false;
+    for (const method of ["get", "post", "put", "delete"]) {
+      const userDefinedRoutes = handler.routes[method];
+      if (userDefinedRoutes) {
+        const handlers: RequestHandler[] = [];
+        if (Array.isArray(userDefinedRoutes)) {
+          handlers.push(...userDefinedRoutes);
+        } else {
+          handlers.push(userDefinedRoutes);
         }
-        if (reg) {
-            context.logger.debug(`Registered route ${handler.url}`);
-        }
+
+        // Register handler to express
+        router[method](handler.url, ...handlers);
+        reg = true;
+      }
     }
-    context.router.use(`/${ver}`, router);
+
+    if (reg) {
+      context.logger.debug(`Registered route ${handler.url}`);
+    }
+  }
+  router.use(catchKnownErrors());
+
+  context.router.use(`/${ver}`, router);
 }
 
 export default async function (context: AppContext) {
-    await api('v1', context, v1Routes); // v1
+  await api("v1", context, v1Routes); // v1
 }

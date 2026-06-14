@@ -131,7 +131,6 @@ dist
 .pnp.*
 
 # Other
-templates
 volumes
 
 # Exclude all addons except the example one

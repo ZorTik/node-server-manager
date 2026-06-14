@@ -1,5 +1,5 @@
-name: 'Test'
-description: 'A Test template'
+name: "Test"
+description: "A Test template"
 port_range:
   min: 22222
   max: 33333
@@ -9,6 +9,6 @@ defaults:
   disk: 2000000000 # bytes
 meta:
   # Stop command to be sent in stop signal endpoint
-  stopCmd: 'stop'
+  stopCmd: "stop"
 # Optional ENV vars, and their default values
 env: {}

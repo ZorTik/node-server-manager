@@ -12,6 +12,7 @@ NSM is a robust service manager built on Docker Engine. Its primary purpose is t
 - **Resources usage management**: NSM provides ability to limit or extend resources limits and view current usage.
 
 ## API Specification
+
 <a href="https://zortik.github.io/nsm-spec/" target="_blank">Specification is hosted on external repository here</a>
 
 ## Prerequisites
@@ -27,16 +28,20 @@ Ensure you have the following installed before proceeding with the installation:
 Follow these steps to install and set up NSM:
 
 1. **Clone the Repository**
+
    ```sh
    git clone https://github.com/ZorTik/node-server-manager
    ```
+
    Alternatively, download the latest release from the [NSM repository](https://github.com/ZorTik/node-server-manager) and extract it.
 
 2. **Configure Environment Variables**
    Copy the example environment file and fill in the required values:
+
    ```sh
    cp .env.example .env
    ```
+
    Open the `.env` file and provide the necessary configuration values.
 
 3. **Edit Configuration**
@@ -44,18 +49,21 @@ Follow these steps to install and set up NSM:
 
 4. **Install Dependencies**
    Install the required Node.js packages:
+
    ```sh
    npm install
    ```
 
 5. **Generate Prisma Client**
    Generate the Prisma client for database interaction:
+
    ```sh
    npx prisma generate
    ```
 
 6. **Sync Database Schema**
    Apply the database schema migrations:
+
    ```sh
    npx prisma migrate deploy
    ```

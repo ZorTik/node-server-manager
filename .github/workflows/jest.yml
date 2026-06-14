@@ -13,9 +13,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: 'mysql://test:test@localhost:3306/test'
-      CONFIG_DOCKER_HOST: '///var/run/docker.sock'
-      DEBUG: 'true'
+      DATABASE_URL: "mysql://test:test@localhost:3306/test"
+      CONFIG_DOCKER_HOST: "///var/run/docker.sock"
+      CONFIG_RESOURCES_PATH: "./resources"
+      DEBUG: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -26,14 +27,20 @@ jobs:
             echo "This PR is from the dev branch. Exiting..."
             exit 0
           fi
+      - name: Prepare resources folder for tests
+        run: |
+          # Create test template folder
+          mkdir -p ./resources/templates/test
+          # Copy test template files to the resources folder
+          cp -r ./dev/templates/test/* ./resources/templates/test/
       - name: Shutdown default MySQL
         run: sudo service mysql stop
       - name: Setup MySQL
         uses: mirromutth/mysql-action@v1.1
         with:
-          mysql database: 'test'
-          mysql user: 'test'
-          mysql password: 'test'
+          mysql database: "test"
+          mysql user: "test"
+          mysql password: "test"
       - name: Install Node.js
         uses: actions/setup-node@v6
         with:
