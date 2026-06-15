@@ -17,6 +17,7 @@ import statAll from "./action/statall";
 import calcHostUsage from "./action/calcHostUsage";
 import listRunning from "./action/listRunning";
 import { AppConfig } from "@nsm/config";
+import {DockerTemplateRepositoryRegistry} from "@nsm/engine/docker/template";
 
 export default function buildDockerEngine(appConfig: AppConfig) {
   // Default engine implementation
@@ -25,6 +26,7 @@ export default function buildDockerEngine(appConfig: AppConfig) {
   engine.name = "Docker";
   engine.dockerClient = client;
   engine.rws = {};
+  engine.templateRepositoryRegistry = new DockerTemplateRepositoryRegistry(engine);
   // engine.cast - Being replaced in manager.
   engine.build = build(client);
   engine.run = run(engine, client);

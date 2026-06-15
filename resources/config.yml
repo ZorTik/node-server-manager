@@ -12,3 +12,6 @@ docker_host: "unix:///var/run/docker.sock"
 # Override resources path if needed.
 # By default, an explicit system-specific data path is used.
 # resources_path: '/srv/resources'
+repositories:
+  - id: local
+    type: filesystem

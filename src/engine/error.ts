@@ -73,3 +73,14 @@ export class TemplateNotFoundError extends KnownError {
     super(404, `Template with ID ${templateId} not found.`);
   }
 }
+
+export class TemplateRepositoryConfigurationError extends InternalError {
+  constructor(
+    public readonly repository: string,
+    public readonly cause?: Error | string,
+  ) {
+    super(`Failed to configure template repository '${repository}'.` + (cause ? ` Cause: ${
+      cause instanceof Error ? cause.message : String(cause)
+    }` : ""));
+  }
+}

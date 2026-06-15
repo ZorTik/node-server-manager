@@ -19,13 +19,11 @@ import {initEngine, ServiceManager} from "@nsm/engine";
 import loadAppRoutes from "@nsm/router";
 import createDbManager from "@nsm/persistence";
 import loadSecurity from "@nsm/security";
-import { init as initImageEngine } from "@nsm/engine/image";
 import * as facade from "@nsm/engine/facade";
 import * as manager from "@nsm/engine/service";
 import * as runner from "@nsm/engine/runner";
 import * as sessionManager from "@nsm/engine/session";
 import * as templateManager from "@nsm/engine/template";
-import * as templateDirWatcher from "@nsm/engine/monitoring/templateDirWatcher";
 import * as logging from "./logger";
 import winston from "winston";
 import { Application } from "express-ws";
@@ -36,8 +34,8 @@ import { mkdirResource, saveResource } from "@nsm/resources";
 import path from "path";
 import { AppConfig } from "@nsm/config";
 import { ServiceRunner } from "@nsm/engine/runner";
-import {TemplateManager} from "@nsm/engine/template";
 import {Facade} from "@nsm/engine/facade";
+import {TemplateManager} from "@nsm/engine/template";
 
 // Passed context to the routes
 export type AppContext = {
@@ -105,14 +103,13 @@ export const init = async (
 
   await registerErrorPublishersFromConfig(appConfig);
 
-  const engine = initEngine(appConfig);
+  const engine = await initEngine(ctx);
   logger.info(`Using engine: ${engine.name}`);
 
-  initImageEngine(engine, templateManager, templateDirWatcher, database, appConfig, logger);
+  templateManager.init(engine);
   sessionManager.init(database);
 
   await ctx.manager.init(appConfig, database, engine, logger);
-  templateDirWatcher.watchTemplateDirChanges(logger);
 
   await runner.init(engine, appConfig, templateManager, manager, database, logger);
   ctx.runner = currentContext.runner = middleLayer(runner);

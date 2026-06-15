@@ -3,6 +3,7 @@ import path from "path";
 import { saveResource } from "@nsm/resources";
 import z from "zod";
 import envPaths, {Paths} from "env-paths";
+import {TemplateRepositoryConfig} from "@nsm/engine";
 
 export const currentPaths: Paths = envPaths("nsm");
 
@@ -22,6 +23,8 @@ export interface AppConfig {
   getTemplateBuildDir(template: string): string;
 
   getTempPath(): string;
+
+  getTemplateRepositoryConfigs(): TemplateRepositoryConfig[];
 }
 
 /**
@@ -38,6 +41,12 @@ export class YamlAppConfig implements AppConfig {
       auth: z.string(),
       docker_host: z.string(),
       resources_path: z.string().optional(),
+      repositories: z.array(
+        z.object({
+          id: z.string(),
+          type: z.string(),
+        }).passthrough()
+      )
     })
     .strict();
 
@@ -81,6 +90,18 @@ export class YamlAppConfig implements AppConfig {
 
   getTempPath(): string {
     return currentPaths.temp;
+  }
+
+  getTemplateRepositoryConfigs(): TemplateRepositoryConfig[] {
+    const repositories: any[] = this.data["repositories"];
+
+    return repositories.map((repo) => {
+      return {
+        id: repo.id,
+        type: repo.type,
+        config: repo,
+      };
+    });
   }
 
   private validate = () => {

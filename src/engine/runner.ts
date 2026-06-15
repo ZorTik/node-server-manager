@@ -18,7 +18,7 @@ import {
   StandardLabel
 } from "@nsm/engine/engine";
 import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
-import {processImage} from "@nsm/engine/image";
+import {processImage} from "@nsm/engine/docker/repository/filesystem/image";
 import {
   InternalError,
   ServiceAlreadyRunningError, ServiceEngineError,
@@ -26,7 +26,7 @@ import {
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {Service, ServiceManager} from "@nsm/engine/service";
-import {TemplateManager} from "@nsm/engine/template";
+import {prepareEnvForTemplate, TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/persistence";
 import {isDebug} from "@nsm/helpers";
 import winston from "winston";
@@ -390,7 +390,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     ...rest
   } = service;
 
-  const template = templateManager.getTemplate(rest.template);
+  const template = await templateManager.getTemplate(rest.template);
   if (!template) {
     throw new TemplateNotFoundError(rest.template);
   }
@@ -448,7 +448,9 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     return image;
   }
 
-  const task = processImage(service.imageId, template.id, buildEnv) // TODO: logovat někam message z image processingu pomocí posledního parametru
+  const buildOptions = prepareEnvForTemplate(template, { ...buildEnv });
+
+  const task = processImage(service.imageId, template, buildOptions) // TODO: logovat někam message z image processingu pomocí posledního parametru
     .then(updateImageIfChanged)
     .then(async (image) => {
       const session = await beginServiceSession(id);

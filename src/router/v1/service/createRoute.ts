@@ -22,7 +22,7 @@ export default async function ({
             .end();
           return;
         }
-        const template = templateManager.getTemplate(req.body.template);
+        const template = await templateManager.getTemplate(req.body.template);
         if (!template) {
           throw new TemplateNotFoundError(req.body.template);
         }

@@ -1,8 +1,8 @@
 import { Database, ImageModel } from "@nsm/persistence";
 import winston from "winston";
 import { MessageListener, ServiceEngine } from "@nsm/engine/engine";
-import { prepareEnvForTemplate, TemplateManager } from "@nsm/engine/template";
-import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
+import { Template } from "@nsm/engine/template";
+import { TemplateDirWatcher } from "@nsm/engine/docker/repository/filesystem/monitoring/templateDirWatcher";
 import { AppConfig } from "@nsm/config";
 
 type BuildOptionsMap = {
@@ -10,7 +10,6 @@ type BuildOptionsMap = {
 };
 
 let engine: ServiceEngine;
-let templateManager: TemplateManager;
 let templateDirWatcher: TemplateDirWatcher;
 let appConfig: AppConfig;
 let db: Database;
@@ -18,14 +17,12 @@ let logger: winston.Logger;
 
 export const init = (
   engine_: ServiceEngine,
-  templateManager_: TemplateManager,
   templateDirWatcher_: TemplateDirWatcher,
   db_: Database,
   appConfig_: AppConfig,
   logger_: winston.Logger,
 ) => {
   engine = engine_;
-  templateManager = templateManager_;
   templateDirWatcher = templateDirWatcher_;
   db = db_;
   appConfig = appConfig_;
@@ -46,23 +43,19 @@ export const init = (
  */
 export const processImage = async (
   id: string | undefined | null,
-  templateId: string,
+  template: Template,
   buildOptions: BuildOptionsMap,
   messageListener?: MessageListener,
 ) => {
-  const template = templateManager.getTemplate(templateId);
-  // Checks if the provided options are still compatible with the template
-  buildOptions = prepareEnvForTemplate(template, buildOptions);
-
   if (!id) {
     // No image specified, need to build or pick a new one
-    id = await pickImageOrBuild(templateId, buildOptions);
+    id = await pickImageOrBuild(template.id, buildOptions);
   }
 
   const imageModel = await getImage(id);
-  if (imageModel.templateId != templateId) {
+  if (imageModel.templateId != template.id) {
     throw new Error(
-      `Image ${id} is based on template ${imageModel.templateId}, but template ${templateId} was expected`,
+      `Image ${id} is based on template ${imageModel.templateId}, but template ${template.id} was expected`,
     );
   }
 
@@ -76,7 +69,7 @@ export const processImage = async (
       logger.info(
         `The target options differ, finding or building a new compatible image...`,
       );
-      id = await pickImageOrBuild(templateId, buildOptions);
+      id = await pickImageOrBuild(template.id, buildOptions);
 
       // If the image becomes unused after the switch, delete it
       await deleteImageIfUnused(imageModel);

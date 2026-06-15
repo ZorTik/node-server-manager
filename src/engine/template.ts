@@ -1,7 +1,4 @@
-import { loadYamlFile } from "@nsm/util/yaml";
-import * as fs from "fs";
-import path from "path";
-import { getTemplatesPath } from "@nsm/filestructure";
+import {ServiceEngine} from "@nsm/engine/engine";
 
 export type Template = {
   /**
@@ -43,52 +40,55 @@ export type TemplateSettings = {
   }
 }
 
-export type TemplateManager = {
+export interface TemplateManager {
   /**
    * Returns a template by ID.
    *
    * @param id The ID of the template
    * @return The template, or null if not exists
    */
-  getTemplate(id: string): Template | null;
+  getTemplate(id: string): Promise<Template | null>;
 
-  getAllTemplates(): Template[];
-};
+  getAllTemplates(): Promise<Template[]>;
+}
 
-const templateCache = {};
+let engine: ServiceEngine;
 
-export const getTemplate = (id: string): Template | null => {
-  if (templateCache[id]) {
-    return templateCache[id];
-  }
-  const settingsPath = path.join(getTemplatesPath(), id, "settings.yml");
-  if (!fs.existsSync(settingsPath)) {
-    return null;
-  }
-  const settings = loadYamlFile(settingsPath);
-  const template = {
-    id,
-    name: settings.name,
-    description: settings.description,
-    settings,
-  };
-  templateCache[id] = template;
-  return template;
-};
+export const init = (
+  engine_: ServiceEngine,
+) => {
+  engine = engine_;
+}
 
-export const getAllTemplates = () => {
-  if (!fs.existsSync(getTemplatesPath())) {
-    return [];
+export const getTemplate: TemplateManager["getTemplate"] = async (id) => {
+  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
+    const template = await templateRepository.getTemplate(id);
+
+    if (template) {
+      return template;
+    }
   }
 
-  return fs
-    .readdirSync(getTemplatesPath())
-    .filter((file) =>
-      fs.statSync(path.join(getTemplatesPath(), file)).isDirectory(),
-    )
-    .map((id) => getTemplate(id))
-    .filter((template) => template !== null);
-};
+  return null;
+}
+
+export const getAllTemplates: TemplateManager["getAllTemplates"] = async () => {
+  const result: Template[] = [];
+
+  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
+    const templates = await templateRepository.getAllTemplates();
+
+    for (let template of templates) {
+      if (result.find((t) => t.id === template.id)) {
+        // duplicate id, we count with the first only
+        continue;
+      }
+
+      result.push(template);
+    }
+  }
+  return result;
+}
 
 /**
  * Prepares the environment variables for a template by validating the provided env object against
@@ -101,13 +101,10 @@ export const getAllTemplates = () => {
  * @throws Error if a required option is missing or if an option has an invalid type
  */
 export const prepareEnvForTemplate = (
-  template: Template | string,
+  template: Template,
   env: any,
 ) => {
   env = { ...env }; // Shallow copy to avoid mutating the original object
-  if (typeof template === "string") {
-    template = getTemplate(template); // Load the template if ID provided
-  }
 
   for (const key of Object.keys(template.settings["env"])) {
     if (env[key] && typeof env[key] == typeof template.settings["env"][key]) {

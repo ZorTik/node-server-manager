@@ -1,7 +1,6 @@
 import {
   ServiceEngine,
 } from "./engine";
-import * as templateManager from "./template";
 import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
 import {Database, ImageModel, PermaModel} from "../persistence";
@@ -11,13 +10,14 @@ import {
 import winston from "winston";
 import {
   deleteImageIfUnused,
-} from "@nsm/engine/image";
+} from "@nsm/engine/docker/repository/filesystem/image";
 import {
   InternalError,
   ServiceNotFoundError,
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {AppConfig} from "@nsm/config";
+import {Template} from "./template";
 
 export type Options = {
   /**
@@ -191,7 +191,16 @@ export const init: ServiceManager["init"] = async (
 export const createService: ServiceManager["createService"] = async (template, options) => {
   const { ram, cpu, disk, ports, env, network } = options;
 
-  const foundTemplate = templateManager.getTemplate(template);
+  // try to find template across repositories
+  let foundTemplate: Template;
+  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
+    foundTemplate = await templateRepository.getTemplate(template);
+
+    if (foundTemplate) {
+      break;
+    }
+  }
+
   if (!foundTemplate) {
     throw new TemplateNotFoundError(template);
   }

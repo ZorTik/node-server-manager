@@ -1,11 +1,11 @@
-import { debounce } from "@nsm/engine/monitoring/util";
+import { debounce } from "@nsm/engine/docker/repository/filesystem/monitoring/util";
 import { hashElement } from "folder-hash";
 import { getFilteredPaths } from "@nsm/engine/ignore";
-import { getAllTemplates } from "@nsm/engine/template";
 import winston from "winston";
 import chokidar, { FSWatcher } from "chokidar";
 import path from "path";
 import {getTemplateBuildDir, getTemplatesPath} from "@nsm/filestructure";
+import {getAllTemplates} from "@nsm/engine/docker/repository/filesystem/template";
 
 export type TemplateDirWatcher = {
   /**

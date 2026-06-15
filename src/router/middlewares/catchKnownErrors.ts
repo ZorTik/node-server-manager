@@ -15,6 +15,8 @@ export const catchKnownErrors = (): express.ErrorRequestHandler => {
     if (err instanceof KnownError) {
       status = err.code;
       message = err.message;
+    } else {
+      console.error(err.stack);
     }
 
     res.status(status).json({ status, message }).end();

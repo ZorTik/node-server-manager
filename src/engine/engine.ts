@@ -1,7 +1,9 @@
 import DockerClient from "dockerode";
 import buildDockerEngine from "./docker";
 import {getSingleton} from "../depend";
-import {AppConfig} from "@nsm/config";
+import {Template} from "@nsm/engine/template";
+import {AppContext} from "@nsm/app";
+import {TemplateRepositoryConfigurationError} from "@nsm/engine/error";
 
 /**
  * The options for running a service.
@@ -102,6 +104,63 @@ export type MetaStorage = {
   get: <T>(key: string, def?: T) => Promise<T | undefined>;
 };
 
+export type BuildOptionsMap = {
+  [key: string]: string;
+};
+
+export interface TemplateRepository {
+  init(ctx: AppContext): Promise<void>;
+
+  buildImage(
+    templateId: string,
+    options: BuildOptionsMap,
+    imageId?: string,
+    messageListener?: MessageListener
+  ): Promise<string>;
+
+  /**
+   * Gets the template by ID.
+   *
+   * @param id The template ID
+   * @return The template, or undefined if not exists
+   */
+  getTemplate(id: string): Promise<Template | undefined>;
+
+  getAllTemplates(): Promise<Template[]>;
+}
+
+export interface TemplateRepositoryRegistry {
+
+  /**
+   * Set up and save the template repository based on the configuration.
+   *
+   * @param config The template repository configuration
+   * @throws TemplateRepositoryConfigurationError if the configuration is invalid or the repository cannot be set up
+   */
+  saveRepository(config: TemplateRepositoryConfig): Promise<void>;
+
+  /**
+   * Get the template repository by ID.
+   *
+   * @param id The template repository ID
+   * @returns The template repository, or undefined if not exists
+   */
+  getRepository(id: string): TemplateRepository | undefined;
+
+  /**
+   * Get all template repositories.
+   *
+   * @return An array of all template repositories.
+   */
+  getAllRepositories(): TemplateRepository[];
+}
+
+export interface TemplateRepositoryConfig {
+  id: string;
+  type: string;
+  config: { [key: string]: any };
+}
+
 export type DockerServiceEngine = ServiceEngineI & {
   dockerClient: DockerClient;
   /**
@@ -125,6 +184,7 @@ export type ServiceEngineI = ServiceEngine & {
 export type ServiceEngine = {
   // Just for display purposes
   name: string;
+  templateRepositoryRegistry: TemplateRepositoryRegistry;
 
   /**
    * Builds an image from build dir.
@@ -322,22 +382,37 @@ export const combineRunListeners = (listeners: RunListener[]): RunListener => {
 /**
  * Initializes the service engine based on the configuration.
  *
- * @param appConfig The application configuration to use for initializing the engine.
+ * @param ctx The application context.
  * @returns The initialized service engine instance.
  * @throws Error if the engine ID specified in the configuration is invalid.
  */
-export const initEngine = (appConfig: AppConfig): ServiceEngineI => {
+export const initEngine = async (ctx: AppContext): Promise<ServiceEngineI> => {
   let engine = getSingleton<ServiceEngine>("engine");
   if (!engine) {
     const engineId = process.env.NSM_ENGINE ?? "docker";
     switch (engineId) {
       case "docker":
-        engine = buildDockerEngine(appConfig);
+        engine = buildDockerEngine(ctx.appConfig);
         break;
       default:
         throw new Error("Invalid engine ID: " + engineId);
     }
   }
+
+  const repositoryRegistry = engine.templateRepositoryRegistry;
+  for (let config of ctx.appConfig.getTemplateRepositoryConfigs()) {
+    await repositoryRegistry.saveRepository(config);
+
+    const repository = repositoryRegistry.getRepository(config.id);
+    if (!repository) {
+      // it just didn't register
+      throw new TemplateRepositoryConfigurationError(config.id);
+    }
+
+    // init repository
+    await repository.init(ctx);
+  }
+
   return {
     cast: undefined, // Being set in manager
     ...engine,

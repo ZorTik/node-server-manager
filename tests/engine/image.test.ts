@@ -1,9 +1,9 @@
 import {expect, it} from "@jest/globals";
 import {ServiceEngine} from "@nsm/engine";
-import {init as initImageEngine} from "@nsm/engine/image";
-import {processImage } from "@nsm/engine/image";
-import {Template, TemplateManager} from "@nsm/engine/template";
-import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
+import {init as initImageEngine} from "@nsm/engine/docker/repository/filesystem/image";
+import {processImage } from "@nsm/engine/docker/repository/filesystem/image";
+import {Template} from "@nsm/engine/template";
+import {TemplateDirWatcher} from "@nsm/engine/docker/repository/filesystem/monitoring/templateDirWatcher";
 import {DeepMockProxy, mock, mockDeep} from "jest-mock-extended";
 import {Database, ImageModel} from "@nsm/persistence";
 import {createTestLogger} from "../testUtils";
@@ -38,11 +38,6 @@ it("reuses image with same options", async () => {
     .mockImplementation(async (imageId) =>
       imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0));
 
-  const templateManagerMock = mock<TemplateManager>();
-  templateManagerMock
-    .getTemplate
-    .mockImplementation((id) => id === "test-template" ? template : null)
-
   const templateDirWatcherMock = mock<TemplateDirWatcher>();
   templateDirWatcherMock.getTemplateHash.mockImplementation((template) => {
     if (template == "test-template") {
@@ -58,7 +53,6 @@ it("reuses image with same options", async () => {
 
   initImageEngine(
     engineMock,
-    templateManagerMock,
     templateDirWatcherMock,
     dbMock,
     appConfigMock,
@@ -69,10 +63,10 @@ it("reuses image with same options", async () => {
     option1: "value1",
     option2: "value2",
   };
-  const imageId = await processImage(undefined, "test-template", buildOptions);
+  const imageId = await processImage(undefined, template, buildOptions);
   expect(imageId).not.toBeNull();
 
-  const imageId2 = await processImage(undefined, "test-template", buildOptions);
+  const imageId2 = await processImage(undefined, template, buildOptions);
   expect(imageId2).not.toBeNull();
   expect(imageId2).toEqual(imageId);
 

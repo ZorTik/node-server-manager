@@ -1,5 +1,5 @@
 import { ImageRepository } from "@nsm/persistence/models";
-import { optionsDiffer } from "@nsm/engine/image";
+import { optionsDiffer } from "@nsm/engine/docker/repository/filesystem/image";
 import { PrismaClient } from "@prisma/client";
 
 let client: PrismaClient;
