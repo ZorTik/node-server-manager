@@ -253,6 +253,10 @@ export const deleteService: ServiceManager["deleteService"] = async (id) => {
   let image: ImageModel | undefined;
 
   const perma = await db.permaRepository.getPerma(id);
+  if (!perma) {
+    throw new ServiceNotFoundError(id);
+  }
+
   if (perma.imageId) {
     image = await db.imageRepository.getImage(perma.imageId);
   }
