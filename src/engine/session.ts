@@ -6,7 +6,7 @@ import {
   ListSessionsArgs,
   ServiceLogRecordModel,
   ServiceSessionModel,
-} from "@nsm/database";
+} from "@nsm/persistence";
 import {ServiceWasNeverActiveError} from "@nsm/engine/error";
 
 export interface SessionManager {

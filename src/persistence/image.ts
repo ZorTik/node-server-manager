@@ -1,4 +1,4 @@
-import { ImageRepository } from "@nsm/database/models";
+import { ImageRepository } from "@nsm/persistence/models";
 import { optionsDiffer } from "@nsm/engine/image";
 import { PrismaClient } from "@prisma/client";
 

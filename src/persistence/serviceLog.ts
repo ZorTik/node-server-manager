@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
-import { ServiceLogRepository } from "@nsm/database/models";
+import { ServiceLogRepository } from "@nsm/persistence/models";
 
 let client: PrismaClient;
 

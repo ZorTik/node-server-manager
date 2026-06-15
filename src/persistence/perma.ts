@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { PermaModel, PermaRepository } from "@nsm/database/models";
+import { PermaModel, PermaRepository } from "@nsm/persistence/models";
 
 let client: PrismaClient;
 

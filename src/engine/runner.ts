@@ -27,7 +27,7 @@ import {
 } from "@nsm/engine/error";
 import {Service, ServiceManager} from "@nsm/engine/service";
 import {TemplateManager} from "@nsm/engine/template";
-import {Database} from "@nsm/database";
+import {Database} from "@nsm/persistence";
 import {isDebug} from "@nsm/helpers";
 import winston from "winston";
 import {AppConfig} from "@nsm/config";
@@ -186,6 +186,10 @@ export interface ServiceRunner extends ServiceRunnerEventBus {
   killRunning(): Promise<void>;
 
   isRunning(id: string): boolean;
+
+  isStarting(id: string): boolean;
+
+  isStopping(id: string): boolean;
 
   waitForBusyAction(id: string): Promise<void>;
 
@@ -537,6 +541,14 @@ export const getServiceStage: ServiceRunner["getServiceStage"] = (id) => {
 
 export const isRunning: ServiceRunner["isRunning"] = (id: string) => {
   return getRunningService(id) != undefined;
+}
+
+export const isStarting: ServiceRunner["isStarting"] = (id: string) => {
+  return getActionType(id) === "resume";
+}
+
+export const isStopping: ServiceRunner["isStopping"] = (id: string) => {
+  return getActionType(id) === "stop";
 }
 
 /**

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it } from "@jest/globals";
 import { StartedMariaDbContainer } from "@testcontainers/mariadb";
-import getDb, { Database } from "@nsm/database";
+import getDb, { Database } from "@nsm/persistence";
 import { PrismaClient } from "@prisma/client";
 import { initDbContainerForTest } from "../testUtils";
 

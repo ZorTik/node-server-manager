@@ -1,11 +1,10 @@
 import {Service} from "@nsm/engine/service";
 import {ServiceSession} from "@nsm/engine/session";
 import {InternalSession} from "@nsm/engine/runner";
-import {PermaModel} from "@nsm/database";
+import {PermaModel} from "@nsm/persistence";
 
 import * as manager from "@nsm/engine/service";
 import * as runner from "@nsm/engine/runner";
-import {getActionType} from "@nsm/engine/asyncp";
 
 export type ServiceInfo = Service & {
   state: State;
@@ -72,13 +71,15 @@ export const getServiceInfo: Facade["getServiceInfo"] = async (from, options) =>
 }
 
 export const getServiceState: Facade["getServiceState"] = async (id) => {
-  if (getActionType(id) === "stop") {
+  if (runner.isStopping(id)) {
     return "STOPPING";
   }
 
   const stage = runner.getServiceStage(id);
   if (stage) {
     return stage.state.ready ? "RUNNING" : "BUILDING";
+  } else if (runner.isStarting(id)) {
+    return "BUILDING";
   } else {
     return "STOPPED";
   }

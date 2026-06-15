@@ -5,7 +5,7 @@ import {processImage } from "@nsm/engine/image";
 import {prepareEnvForTemplate, Template, TemplateManager} from "@nsm/engine/template";
 import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
 import {DeepMockProxy, mock, mockDeep} from "jest-mock-extended";
-import {Database, ImageModel} from "@nsm/database";
+import {Database, ImageModel} from "@nsm/persistence";
 import {createTestLogger} from "../testUtils";
 import {AppConfig} from "@nsm/config";
 

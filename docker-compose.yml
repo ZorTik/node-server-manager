@@ -2,7 +2,7 @@ services:
   nsm:
     build: .
     volumes:
-      - "./dev/templates/test:/data/resources/templates/test:ro"
+      - "./dev/templates:/data/resources/templates:ro"
       - "./tests:/data/tests:ro"
     ports:
       - "3000:3000"

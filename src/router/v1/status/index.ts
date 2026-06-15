@@ -2,7 +2,7 @@ import { AppContext } from "@nsm/app";
 import { RouterHandler } from "../../index";
 import * as os from "os";
 import {Filters, ServiceEngine, ServiceManager} from "@nsm/engine";
-import { Database } from "@nsm/database";
+import { Database } from "@nsm/persistence";
 import {parseResourceOptionsSet} from "@nsm/util/services";
 
 async function checkNsmResources(

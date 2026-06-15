@@ -1,4 +1,4 @@
-import { Database, ImageModel } from "@nsm/database";
+import { Database, ImageModel } from "@nsm/persistence";
 import winston from "winston";
 import { MessageListener, ServiceEngine } from "@nsm/engine/engine";
 import { TemplateManager } from "@nsm/engine/template";

@@ -4,7 +4,7 @@ import {
 import * as templateManager from "./template";
 import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
-import {Database, ImageModel, PermaModel} from "../database";
+import {Database, ImageModel, PermaModel} from "../persistence";
 import {
   reqNotPending,
 } from "./asyncp";

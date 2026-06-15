@@ -1,7 +1,7 @@
 import { AppContext } from "@nsm/app";
 import { RouterHandler } from "@nsm/router";
 import {ServiceWasNeverActiveError} from "@nsm/engine/error";
-import {ServiceLogRecordModel} from "@nsm/database";
+import {ServiceLogRecordModel} from "@nsm/persistence";
 
 export default async function (ctx: AppContext): Promise<RouterHandler> {
   return {

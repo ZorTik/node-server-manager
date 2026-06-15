@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from "@prisma/client";
-import { SessionRepository } from "@nsm/database/models";
+import { SessionRepository } from "@nsm/persistence/models";
 
 let client: PrismaClient;
 

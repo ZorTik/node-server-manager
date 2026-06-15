@@ -14,10 +14,10 @@ const appConfig = loadAppConfig();
 initFileStructure(appConfig);
 
 import { Router } from "express";
-import { Database } from "@nsm/database";
+import { Database } from "@nsm/persistence";
 import { ServiceManager } from "@nsm/engine";
 import loadAppRoutes from "@nsm/router";
-import createDbManager from "@nsm/database";
+import createDbManager from "@nsm/persistence";
 import loadSecurity from "@nsm/security";
 import createEngine from "@nsm/engine/engine";
 import { init as initImageEngine } from "@nsm/engine/image";
