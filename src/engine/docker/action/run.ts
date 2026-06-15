@@ -5,7 +5,7 @@ import {
   ServiceEngine,
   ServiceState,
 } from "@nsm/engine";
-import { accessNetwork, createNetwork } from "@nsm/networking/manager";
+import { accessNetwork, createNetwork } from "@nsm/engine/docker/networking/manager";
 import { constructObjectLabels } from "@nsm/util/services";
 import { currentContext as ctx } from "@nsm/app";
 import { propagateOptionsToEnv } from "@nsm/engine/docker/util/env";

@@ -9,7 +9,7 @@ import { currentContext } from "@nsm/app";
 import {
   deleteNetwork as doDeleteNetwork,
   isInNetwork,
-} from "@nsm/networking/manager";
+} from "@nsm/engine/docker/networking/manager";
 import winston from "winston";
 
 async function deleteContainer(
