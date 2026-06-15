@@ -9,7 +9,7 @@ import { accessNetwork, createNetwork } from "@nsm/engine/docker/networking/mana
 import { constructObjectLabels } from "@nsm/util/services";
 import { currentContext as ctx } from "@nsm/app";
 import { propagateOptionsToEnv } from "@nsm/engine/docker/util/env";
-import { infoRecord as info } from "@nsm/engine/docker/util/logging";
+import { infoRecord as info, demuxBuffer } from "@nsm/engine/docker/util/logging";
 
 async function prepareVolume(client: DockerClient, volumeId: string) {
   try {
@@ -89,6 +89,7 @@ async function prepareContainer(
     ExposedPorts: { [fullPortDef(port)]: {} },
     AttachStdin: true,
     OpenStdin: true,
+    Tty: true,
   });
   if (net != null) {
     await net.connect({ Container: container.id }); // Implement EndpointConfig?? TODO: Test
@@ -154,7 +155,9 @@ export default function run(
           timestamps: false,
           tail: 100,
         });
-        const msg = logs.toString("utf8");
+        const msg = inspectInfo.Config.Tty
+          ? logs.toString("utf8")
+          : demuxBuffer(logs);
 
         await listener.onStateChange?.(
           createErrorState("Container failed to start"),

@@ -1,4 +1,5 @@
 import DockerClient from "dockerode";
+import { PassThrough } from "stream";
 import {
   DockerServiceEngine,
   ServiceEngine,
@@ -83,19 +84,30 @@ export default function reattach(
       hijack: true,
     };
     const rws = await container.attach(attachOptions);
-    rws.on("data", (data) => {
+
+    const handleData = (data: Buffer, level: "info" | "error" = "info") => {
       try {
-        data = Buffer.from(data).toString("ascii");
+        const message = data.toString("utf8");
         const record: ServiceLogRecord = {
-          level: "info",
-          message: data,
+          level,
+          message,
         };
 
         listener.onMessage?.(record);
       } catch (e) {
         logger.error("Error producing container output: " + e);
       }
-    }); // no-op, keepalive
+    };
+
+    if (info.Config.Tty) {
+      rws.on("data", handleData);
+    } else {
+      const stdout = new PassThrough();
+      const stderr = new PassThrough();
+      container.modem.demuxStream(rws, stdout, stderr);
+      stdout.on("data", (data) => handleData(data, "info"));
+      stderr.on("data", (data) => handleData(data, "error"));
+    }
     rws.on("end", async () => {
       if (getActionType(container.id) != "stop") {
         // Stopped from the inside
