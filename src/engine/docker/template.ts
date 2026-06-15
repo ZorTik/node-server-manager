@@ -72,7 +72,7 @@ class FilesystemTemplateRepository implements TemplateRepository {
     if (this.templateCache.has(id)
       && this.templateHashCache.has(id)
       // template didn't change, so we can be sure that settings.yml didn't as well
-      && this.templateHashCache.get(id) === templateDirWatcher.getTemplateHash(id)) {
+      && this.templateHashCache.get(id) === await templateDirWatcher.getTemplateHash(id)) {
       return this.templateCache.get(id);
     }
 
@@ -89,7 +89,7 @@ class FilesystemTemplateRepository implements TemplateRepository {
     };
     this.templateCache.set(id, template);
 
-    this.updateCachedHash(id);
+    await this.updateCachedHash(id);
     return template;
   }
 
@@ -112,10 +112,10 @@ class FilesystemTemplateRepository implements TemplateRepository {
     }
   }
 
-  private updateCachedHash(templateId: string) {
+  private async updateCachedHash(templateId: string) {
     let hash: string;
     try {
-      hash = templateDirWatcher.getTemplateHash(templateId);
+      hash = await templateDirWatcher.getTemplateHash(templateId);
     } catch (e) {
       this.logger.warn(`Failed to get hash for template ${templateId}: ${e.message}`);
       this.templateHashCache.delete(templateId);

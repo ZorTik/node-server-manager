@@ -39,7 +39,7 @@ it("reuses image with same options", async () => {
       imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0));
 
   const templateDirWatcherMock = mock<TemplateDirWatcher>();
-  templateDirWatcherMock.getTemplateHash.mockImplementation((template) => {
+  templateDirWatcherMock.getTemplateHash.mockImplementation(async (template) => {
     if (template == "test-template") {
       return "test-hash";
     }

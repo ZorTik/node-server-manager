@@ -21,7 +21,7 @@ export type TemplateDirWatcher = {
    * @returns The cached hash of the template directory.
    * @throws If the template does not exist or if there is an error reading the directory.
    */
-  getTemplateHash(template: string): string;
+  getTemplateHash(template: string): Promise<string>;
 };
 
 const hashCache: Map<string, string> = new Map();
@@ -144,10 +144,15 @@ const recalculateTemplateHash = async (template: string) => {
   }
 };
 
-export const getTemplateHash = (template: string): string => {
+export const getTemplateHash = async (template: string, fail?: boolean): Promise<string> => {
   const hash = hashCache.get(template);
   if (!hash) {
-    throw new Error(`No hash calculated for template ${template}.`);
+    if (fail) {
+      throw new Error(`No hash calculated for template ${template}.`);
+    }
+
+    await recalculateTemplateHash(template);
+    return getTemplateHash(template, true);
   }
 
   return hash;

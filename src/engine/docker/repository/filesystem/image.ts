@@ -61,7 +61,7 @@ export const processImage = async (
 
   const imageOutdated =
     imageModel.hash !=
-    templateDirWatcher.getTemplateHash(imageModel.templateId);
+    await templateDirWatcher.getTemplateHash(imageModel.templateId);
   const optionsChanged = optionsDiffer(buildOptions, imageModel.buildOptions);
 
   if (imageOutdated || optionsChanged) {
@@ -165,7 +165,7 @@ const buildImage = async (
   imageId?: string,
   messageListener?: MessageListener,
 ): Promise<string> => {
-  const hash = templateDirWatcher.getTemplateHash(templateId);
+  const hash = await templateDirWatcher.getTemplateHash(templateId);
   imageId = await engine.build(
     imageId,
     appConfig.getTemplateBuildDir(templateId),
