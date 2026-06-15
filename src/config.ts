@@ -95,10 +95,41 @@ export class YamlAppConfig implements AppConfig {
     saveResource("config.yml", "config.yml", true, currentPaths.config);
 
     const config = loadYamlFile(path.join(currentPaths.config, "config.yml"));
-    for (let key in YamlAppConfig.schema.shape) {
+
+    return YamlAppConfig.fillDataFromEnv(YamlAppConfig.schema.shape, config);
+  };
+
+
+  /**
+   * Recursively fills config data from environment variables.
+   *
+   * @param shape The shape of the config schema, used to determine which keys to look for in env variables.
+   * @param config The config object to fill with env variables.
+   * @param envPrefix The prefix to use for env variables, default is "CONFIG_". For nested objects, the prefix will be extended with the parent key in uppercase followed by an underscore.
+   * @returns The config object filled with env variables where applicable.
+   */
+  private static fillDataFromEnv = (
+    shape: z.ZodObject<any>,
+    config: any,
+    envPrefix?: string,
+  ) => {
+    const prefix = envPrefix ?? "CONFIG_";
+
+    for (let key in shape) {
+      const envKey = prefix + key.toUpperCase();
+
+      // Recursively fill nested objects
+      if (shape[key] instanceof z.ZodObject) {
+        config[key] = YamlAppConfig.fillDataFromEnv(
+          shape[key].shape,
+          config[key] || {},
+          envKey + "_",
+        );
+        continue;
+      }
+
       // Overwrite with env variable if exists.
       // Sync
-      const envKey = "CONFIG_" + key.toUpperCase();
       if (process.env[envKey]) {
         config[key] = process.env[envKey];
       } else if (config[key]) {
@@ -106,7 +137,7 @@ export class YamlAppConfig implements AppConfig {
       }
     }
     return config;
-  };
+  }
 }
 
 export const loadAppConfig = (): AppConfig => {
