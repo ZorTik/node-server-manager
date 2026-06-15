@@ -2,7 +2,6 @@ import dotenv from "dotenv";
 import { loadAppConfig } from "@nsm/config";
 import {
   init as initFileStructure,
-  getResourcesPath,
   prepareFolders,
 } from "@nsm/filestructure";
 
@@ -27,11 +26,9 @@ import * as templateManager from "@nsm/engine/template";
 import * as logging from "./logger";
 import winston from "winston";
 import { Application } from "express-ws";
-import fs from "fs";
 import {middleLayer, registerErrorPublishersFromConfig} from "@nsm/engine/middle";
 import { SessionManager } from "@nsm/engine/session";
-import { mkdirResource, saveResource } from "@nsm/resources";
-import path from "path";
+import { mkdirResource } from "@nsm/resources";
 import { AppConfig } from "@nsm/config";
 import { ServiceRunner } from "@nsm/engine/runner";
 import {Facade} from "@nsm/engine/facade";
@@ -81,9 +78,6 @@ export const init = async (
 
   // Prepare templates folder
   mkdirResource("templates");
-  if (options?.test === true) {
-    prepareTestResources(); // Copy resources for test
-  }
 
   const database = createDbManager();
 
@@ -125,17 +119,4 @@ export const init = async (
     });
   }
   return ctx;
-};
-
-const prepareTestResources = () => {
-  if (fs.existsSync(path.join(getResourcesPath(), "templates", "test"))) {
-    return;
-  }
-
-  saveResource(
-    "template/test/test_settings.yml",
-    "templates/test/settings.yml",
-  );
-  saveResource("template/test/test_dockerfile", "templates/test/Dockerfile");
-  saveResource("template/test/test_nsmignore", "templates/test/.nsmignore");
 };
