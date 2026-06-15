@@ -1,0 +1,15 @@
+name: "Minecraft"
+description: "Minecraft template"
+port_range:
+  min: 22222
+  max: 33333
+defaults:
+  ram: 4096000000 # bytes
+  cpu: 2 # cores
+  disk: 2000000000 # bytes
+meta:
+  internal/stop-command: "stop"
+# Args, and their default values
+args:
+  EULA: "TRUE"
+  VERSION: "1.20.4"
