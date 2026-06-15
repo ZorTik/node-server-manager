@@ -237,7 +237,7 @@ export const createService: ServiceManager["createService"] = async (template, o
       ports
     },
     meta,
-    env: args ?? {},
+    args: args ?? {},
     network,
   };
   // Save permanent info
@@ -294,8 +294,8 @@ export const updateOptions: ServiceManager["updateOptions"] = async (id, options
       ...perma.meta,
       ...options.meta,
     },
-    env: {
-      ...perma.env,
+    args: {
+      ...perma.args,
       ...options.args,
     },
   };

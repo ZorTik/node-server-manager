@@ -101,7 +101,7 @@ export type PermaModel = {
   meta?: {
     [key: string]: string;
   };
-  env: {
+  args: {
     [key: string]: string;
   };
   network?: {

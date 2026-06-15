@@ -26,7 +26,7 @@ model Service {
   port      Int
   options   Json
   meta      Json             @default("{}")
-  env       Json
+  args      Json             @default("{}")
   network   Json?
   image     Image?           @relation(fields: [imageId], references: [id])
   sessions  ServiceSession[]

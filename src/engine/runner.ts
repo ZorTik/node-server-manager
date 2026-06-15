@@ -385,7 +385,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
 
   let {
     options,
-    env,
+    args,
     network,
     port,
     ...rest
@@ -399,8 +399,8 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
   let { defaults, args: settingsArgs } = template.settings;
   // Filter env to only those that are defined in settings.yml, because those are the only ones that
   // we can guarantee to be used and will not make problems when handling images.
-  env = {
-    ...Object.entries(env)
+  args = {
+    ...Object.entries(args)
       .filter(([key]) => settingsArgs && key in settingsArgs)
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
   };
@@ -412,7 +412,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     ram: options.ram ?? (defaults.ram as number),
     cpu: options.cpu ?? (defaults.cpu as number),
     disk: options.disk ?? (defaults.disk as number),
-    env: env ?? (defaults.env as { [key: string]: string }),
+    env: args ?? (defaults.env as { [key: string]: string }),
     port,
     ports: options.ports ?? [],
     network,

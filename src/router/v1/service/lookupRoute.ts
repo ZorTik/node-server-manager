@@ -34,7 +34,7 @@ export default async function ({
           state: service.state,
           port: service.port,
           options: service.options,
-          env: service.env,
+          env: service.args,
         };
         if (session) {
           data.session = {

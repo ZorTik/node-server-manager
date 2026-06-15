@@ -14,8 +14,8 @@ export const constructObjectLabels = ({ id }: NSMObjectLabels) => {
 
 export const parseResourceOptionsSet = (service: Service) => {
   return {
-    ram: service.env.SERVICE_RAM ? Number(service.env.SERVICE_RAM) : 0,
-    cpu: service.env.SERVICE_CPU ? Number(service.env.SERVICE_CPU) : 0,
-    disk: service.env.SERVICE_DISK ? Number(service.env.SERVICE_DISK) : 0,
+    ram: service.args.SERVICE_RAM ? Number(service.args.SERVICE_RAM) : 0,
+    cpu: service.args.SERVICE_CPU ? Number(service.args.SERVICE_CPU) : 0,
+    disk: service.args.SERVICE_DISK ? Number(service.args.SERVICE_DISK) : 0,
   };
 }
