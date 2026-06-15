@@ -71,7 +71,8 @@ interface StopStrategyProvider {
 }
 
 class MetaStopStrategyProvider implements StopStrategyProvider {
-  getStopStrategy = async (service: Service) => {
+
+  async getStopStrategy(service: Service) {
     const metaKey = "internal/stop-command";
 
     if (service.meta && service.meta[metaKey]) {
@@ -94,10 +95,9 @@ interface StopStrategy {
 class StopCommandStopStrategy implements StopStrategy {
   constructor(
     private readonly command: string,
-  ) {
-  }
+  ) {}
 
-  stop = async (service: Service) => {
+  async stop(service: Service) {
     const runningService = getRunningService(service.serviceId);
     if (!runningService) {
       throw new ServiceNotRunningError(service.serviceId);
@@ -112,7 +112,8 @@ class StopCommandStopStrategy implements StopStrategy {
 }
 
 class DefaultStopStrategy implements StopStrategy {
-  stop = async (service: Service) => {
+
+  async stop(service: Service) {
     const runningService = getRunningService(service.serviceId);
     if (!runningService) {
       throw new ServiceNotRunningError(service.serviceId);
