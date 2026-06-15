@@ -3,6 +3,7 @@ import {KnownError} from "@nsm/engine/error";
 import {AsyncTask} from "@nsm/util/promises";
 import {ServiceRunner} from "@nsm/engine/runner";
 import {AppConfig} from "@nsm/config";
+import {isDebug} from "@nsm/helpers";
 
 export type ServiceActionType =
   | "resume"
@@ -110,10 +111,15 @@ const handleExecutionError = async <T, F extends (...args: Parameters<F>) => Pro
 
   // don't log stack trace of known errors
   const errorMeta: any[] = e instanceof KnownError ? [] : [e];
-  currentContext.logger.error(
+  const loggerInput: [string, ...string[]] = [
     `${action.serviceId ? `Service ${action.serviceId} f` : "F"}ailed action ${action.type}: ${action.message}`,
     ...errorMeta,
-  );
+  ]
+  if (action.internal) {
+    currentContext.logger.error(...loggerInput);
+  } else if (isDebug()) {
+    currentContext.logger.debug(...loggerInput);
+  }
 
   throw e;
 }

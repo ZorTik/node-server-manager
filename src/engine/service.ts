@@ -5,6 +5,7 @@ import crypto from "crypto";
 import { randomPort as retrieveRandomPort } from "@nsm/util/port";
 import {Database, ImageModel, PermaModel} from "../persistence";
 import {
+  lockBusyAction,
   reqNotPending,
 } from "./asyncp";
 import winston from "winston";
@@ -257,18 +258,24 @@ export const deleteService: ServiceManager["deleteService"] = async (id) => {
     throw new ServiceNotFoundError(id);
   }
 
-  if (perma.imageId) {
-    image = await db.imageRepository.getImage(perma.imageId);
-  }
+  const unlock = lockBusyAction(id, "delete");
 
-  await engine.deleteVolume(id);
-  await db.permaRepository.deletePerma(id);
-  if (image) {
-    // If the image becomes unused after service deletion, delete it
-    await deleteImageIfUnused(image);
-  }
+  try {
+    if (perma.imageId) {
+      image = await db.imageRepository.getImage(perma.imageId);
+    }
 
-  logger.debug(`Service ${id} deleted`);
+    await engine.deleteVolume(id);
+    await db.permaRepository.deletePerma(id);
+    if (image) {
+      // If the image becomes unused after service deletion, delete it
+      await deleteImageIfUnused(image);
+    }
+
+    logger.debug(`Service ${id} deleted`);
+  } finally {
+    unlock();
+  }
 }
 
 export const updateService: ServiceManager["updateService"] = async (id, options) => {

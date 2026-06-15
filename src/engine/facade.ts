@@ -44,9 +44,10 @@ export interface Facade {
 }
 
 export const deleteService: Facade["deleteService"] = async (id) => {
-  if (runner.isRunning(id)) {
+  if (runner.isStarting(id) || runner.isRunning(id)) {
     // if running, stop the service first before deleting
-    await runner.stopService(id, true);
+    const task = await runner.stopService(id, true);
+    await task.promise;
   }
 
   await runner.clearService(id);

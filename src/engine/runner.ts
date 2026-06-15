@@ -556,9 +556,10 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
 
 export const clearService: ServiceRunner["clearService"] = async (id) => {
   try {
-    await stopService(id, true);
+    const task = await stopService(id, true);
+    await task.promise;
   } catch (e) {
-    if (e instanceof ServiceNotFoundError || e instanceof ServiceNotRunningError) {
+    if (e instanceof ServiceNotRunningError) {
       // ignore
     } else {
       throw e;
@@ -726,8 +727,8 @@ export const waitForStopped: ServiceRunner["waitForStopped"] = async (id: string
   }
 
   return new Promise<void>((resolve, reject) => {
-    on("stop", ({ id, error }) => {
-      if (id !== id) {
+    on("stop", ({ id: stoppedId, error }) => {
+      if (stoppedId !== id) {
         // This call is not for me
         return false;
       }
@@ -737,6 +738,8 @@ export const waitForStopped: ServiceRunner["waitForStopped"] = async (id: string
       } else {
         resolve();
       }
+
+      return true;
     });
   });
 }

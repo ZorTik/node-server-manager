@@ -23,7 +23,10 @@ async function deleteContainer(
     try {
       await c.remove({ force: true });
     } catch (e) {
-      currentContext.logger.error("Unable to delete container " + id);
+      const msg = e.message.toLowerCase();
+      if (!msg.includes("no such container") && !msg.includes("removal of container") && !msg.includes("already in progress")) {
+        currentContext.logger.error("Unable to delete container " + id, e);
+      }
     }
 
     // Delete network if it's associated with any.
