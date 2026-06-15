@@ -2,7 +2,7 @@ import {expect, it} from "@jest/globals";
 import {ServiceEngine} from "@nsm/engine";
 import {init as initImageEngine} from "@nsm/engine/image";
 import {processImage } from "@nsm/engine/image";
-import {prepareEnvForTemplate, Template, TemplateManager} from "@nsm/engine/template";
+import {Template, TemplateManager} from "@nsm/engine/template";
 import {TemplateDirWatcher} from "@nsm/engine/monitoring/templateDirWatcher";
 import {DeepMockProxy, mock, mockDeep} from "jest-mock-extended";
 import {Database, ImageModel} from "@nsm/persistence";
@@ -15,10 +15,20 @@ it("reuses image with same options", async () => {
     name: "idk",
     description: "idk more",
     settings: {
+      port_range: {
+        min: 1000,
+        max: 2000,
+      },
       env: {
         option1: "",
         option2: "",
       },
+      defaults: {
+        cpu: 1,
+        disk: 100000,
+        ram: 512000000,
+      },
+      meta: {}
     },
   };
 
@@ -29,9 +39,6 @@ it("reuses image with same options", async () => {
       imageId ?? "generated-image-id-" + (Math.random() * 1000000).toFixed(0));
 
   const templateManagerMock = mock<TemplateManager>();
-  templateManagerMock
-    .prepareEnvForTemplate
-    .mockImplementation((template, env) => prepareEnvForTemplate(template, env));
   templateManagerMock
     .getTemplate
     .mockImplementation((id) => id === "test-template" ? template : null)

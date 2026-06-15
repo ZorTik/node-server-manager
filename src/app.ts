@@ -15,11 +15,10 @@ initFileStructure(appConfig);
 
 import { Router } from "express";
 import { Database } from "@nsm/persistence";
-import { ServiceManager } from "@nsm/engine";
+import {initEngine, ServiceManager} from "@nsm/engine";
 import loadAppRoutes from "@nsm/router";
 import createDbManager from "@nsm/persistence";
 import loadSecurity from "@nsm/security";
-import createEngine from "@nsm/engine/engine";
 import { init as initImageEngine } from "@nsm/engine/image";
 import * as facade from "@nsm/engine/facade";
 import * as manager from "@nsm/engine/service";
@@ -106,7 +105,7 @@ export const init = async (
 
   await registerErrorPublishersFromConfig(appConfig);
 
-  const engine = createEngine(appConfig);
+  const engine = initEngine(appConfig);
   logger.info(`Using engine: ${engine.name}`);
 
   initImageEngine(engine, templateManager, templateDirWatcher, database, appConfig, logger);

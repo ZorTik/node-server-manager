@@ -319,7 +319,14 @@ export const combineRunListeners = (listeners: RunListener[]): RunListener => {
   };
 };
 
-export default function (appConfig: AppConfig): ServiceEngineI {
+/**
+ * Initializes the service engine based on the configuration.
+ *
+ * @param appConfig The application configuration to use for initializing the engine.
+ * @returns The initialized service engine instance.
+ * @throws Error if the engine ID specified in the configuration is invalid.
+ */
+export const initEngine = (appConfig: AppConfig): ServiceEngineI => {
   let engine = getSingleton<ServiceEngine>("engine");
   if (!engine) {
     const engineId = process.env.NSM_ENGINE ?? "docker";

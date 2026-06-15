@@ -1,7 +1,7 @@
 import { Database, ImageModel } from "@nsm/persistence";
 import winston from "winston";
 import { MessageListener, ServiceEngine } from "@nsm/engine/engine";
-import { TemplateManager } from "@nsm/engine/template";
+import { prepareEnvForTemplate, TemplateManager } from "@nsm/engine/template";
 import { TemplateDirWatcher } from "@nsm/engine/monitoring/templateDirWatcher";
 import { AppConfig } from "@nsm/config";
 
@@ -52,7 +52,7 @@ export const processImage = async (
 ) => {
   const template = templateManager.getTemplate(templateId);
   // Checks if the provided options are still compatible with the template
-  buildOptions = templateManager.prepareEnvForTemplate(template, buildOptions);
+  buildOptions = prepareEnvForTemplate(template, buildOptions);
 
   if (!id) {
     // No image specified, need to build or pick a new one
