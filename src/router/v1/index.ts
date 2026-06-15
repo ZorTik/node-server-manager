@@ -11,6 +11,7 @@ import optionsRoute from "@nsm/router/v1/service/optionsRoute";
 import sessionsRoute from "@nsm/router/v1/service/sessionsRoute";
 import sessionLogsRoute from "@nsm/router/v1/session/sessionLogsRoute";
 import logsRoute from "@nsm/router/v1/service/logsRoute";
+import templateListRoute from "@nsm/router/v1/template/listRoute";
 
 export default [
   // v1 routes
@@ -27,4 +28,5 @@ export default [
   sessionsRoute,
   logsRoute,
   sessionLogsRoute,
+  templateListRoute,
 ];

@@ -11,7 +11,7 @@ export default function (client: DockerClient): ServiceEngine["kill"] {
 
       return true;
     } catch (e) {
-      if (!e.message.includes("container is not running")) {
+      if (!e.message.includes("is not running")) {
         console.log(e);
       }
       return false;

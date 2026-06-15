@@ -11,7 +11,9 @@ export default function (
       await client.getVolume(id).remove();
       return true;
     } catch (e) {
-      currentContext.logger.error(e);
+      if (!e.message.includes("no such volume")) {
+        currentContext.logger.error(e);
+      }
       return false;
     }
   };

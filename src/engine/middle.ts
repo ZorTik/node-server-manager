@@ -6,7 +6,8 @@ import {AppConfig} from "@nsm/config";
 
 export type ServiceActionType =
   | "resume"
-  | "stop";
+  | "stop"
+  | "clear";
 
 /**
  * Represents an error that occurred during a service action.
@@ -176,5 +177,11 @@ export const middleLayer = (runner: ServiceRunner): ServiceRunner => {
       "stop",
       argServiceIdExtractor(0),
     ),
+
+    clearService: decorateFunc(
+      runner.clearService,
+      "clear",
+      argServiceIdExtractor(0),
+    )
   };
 };

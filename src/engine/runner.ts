@@ -150,6 +150,13 @@ export interface ServiceRunner extends ServiceRunnerEventBus {
   stopService(id: string, force?: boolean): Promise<AsyncTask<void>>;
 
   /**
+   * Clear a service, that is, delete all its resources.
+   *
+   * @param id The service ID
+   */
+  clearService(id: string): Promise<void>;
+
+  /**
    * Get list of running services on this node.
    */
   getRunningServices(): RunningService[];
@@ -296,16 +303,29 @@ const reattachStaleContainers = async (logger: winston.Logger) => {
       // The container was in the running list, but does not have the required labels
       // Should not happen, but just in case
       logger.warn(
-        `Found a running container with id ${containerId} that does not have a service id label, stopping.`,
+        `Found a running container with id ${containerId} that does not have a service id label, killing.`,
       );
 
-      await engine.stop(containerId);
+      await engine.kill(containerId);
+      continue;
     }
 
     const serviceId = labels[StandardLabel.ServiceId];
 
     // We must begin a new session since the previous was interrupted
-    const session = await beginServiceSession(serviceId);
+    let session: ActiveServiceSession;
+    try {
+      session = await beginServiceSession(serviceId);
+    } catch (e) {
+      if (e instanceof ServiceNotFoundError) {
+        logger.warn(
+          `Found a running container ${containerId} for service ${serviceId}, but the service was not found 
+          in database, killing the container and clearing resources.`,
+        );
+        await clearService(serviceId);
+        continue;
+      }
+    }
     // Reattach and watch the container
     await engine.reattach(containerId, buildRunListener(session));
 
@@ -499,7 +519,7 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
       throw new ServicePendingActionError(id, pendingAction);
     }
 
-    await callEngine(async () => engine.kill(runningService.internalSession.containerId, buildMetaStorage(id)));
+    await callEngine(async () => engine.kill(runningService.internalSession.containerId));
     // resolves immediately on kill
     awaitingPromise = Promise.resolve();
   } else {
@@ -529,6 +549,36 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
   awaitingPromise = awaitingPromise.then(() => waitForStopped(id));
 
   return new AsyncTask(awaitingPromise);
+}
+
+export const clearService: ServiceRunner["clearService"] = async (id) => {
+  try {
+    await stopService(id, true);
+  } catch (e) {
+    if (e instanceof ServiceNotFoundError || e instanceof ServiceNotRunningError) {
+      // ignore
+    } else {
+      throw e;
+    }
+  }
+
+  const containerIds = await engine.listContainers(Filters.service(id));
+  for (let containerId of containerIds) {
+    try {
+      await engine.kill(containerId);
+    } catch (e) {
+      throw new ServiceEngineError(e);
+    }
+  }
+
+  try {
+    const deleted = await engine.deleteVolume(id);
+    if (!deleted) {
+      logger.warn(`Failed to delete volume for service ${id}`);
+    }
+  } catch (e) {
+    throw new ServiceEngineError(e);
+  }
 }
 
 export const getRunningService: ServiceRunner["getRunningService"] = (id) => {

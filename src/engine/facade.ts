@@ -49,6 +49,7 @@ export const deleteService: Facade["deleteService"] = async (id) => {
     await runner.stopService(id, true);
   }
 
+  await runner.clearService(id);
   await manager.deleteService(id);
 }
 

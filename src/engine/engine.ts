@@ -170,10 +170,9 @@ export type ServiceEngine = {
    * Kills a container.
    *
    * @param id Container ID
-   * @param meta Meta storage for this unique context
    * @return Success state
    */
-  kill(id: string, meta: MetaStorage): Promise<boolean>;
+  kill(id: string): Promise<boolean>;
 
   /**
    * Reattaches to a container.
@@ -284,6 +283,15 @@ export const Filters = {
       },
     };
   },
+
+  service(serviceId: string) {
+    return {
+      labels: {
+        ...this.nsm().labels,
+        [StandardLabel.ServiceId]: serviceId,
+      }
+    }
+  }
 };
 
 /**

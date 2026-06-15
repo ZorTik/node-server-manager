@@ -7,7 +7,7 @@ import {
   ServiceLogRecordModel,
   ServiceSessionModel,
 } from "@nsm/persistence";
-import {ServiceWasNeverActiveError} from "@nsm/engine/error";
+import {ServiceNotFoundError, ServiceWasNeverActiveError} from "@nsm/engine/error";
 
 export interface SessionManager {
   /**
@@ -81,9 +81,15 @@ export const init = (db_: Database) => {
  *
  * @param serviceId The ID of the service for which to begin a session.
  * @return An object representing the active service session.
+ * @throws ServiceNotFoundError if the service with the given ID does not exist.
  */
 export const beginServiceSession: SessionManager["beginServiceSession"] =
   async (serviceId: string): Promise<ActiveServiceSession> => {
+    const perma = await db.permaRepository.getPerma(serviceId);
+    if (!perma) {
+      throw new ServiceNotFoundError(serviceId);
+    }
+
     let session = await db.sessionRepository.createSession(serviceId);
 
     // Debounce the push in bulk to prevent database overhead
