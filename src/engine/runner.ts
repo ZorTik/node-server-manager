@@ -25,7 +25,7 @@ import {
   ServiceNotFoundError, ServiceNotRunningError, ServicePendingActionError,
   TemplateNotFoundError
 } from "@nsm/engine/error";
-import {ServiceManager} from "@nsm/engine/service";
+import {Service, ServiceManager} from "@nsm/engine/service";
 import {TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/database";
 import {isDebug} from "@nsm/helpers";
@@ -59,6 +59,72 @@ type ServiceRunnerEvents = {
 type EventHandler<T extends keyof ServiceRunnerEvents> = (
   event: ServiceRunnerEvents[T],
 ) => boolean | void;
+
+interface StopStrategyProvider {
+  /**
+   * Get the stop strategy for a service.
+   *
+   * @param service The service for which to get the stop strategy
+   * @returns The stop strategy for the service
+   */
+  getStopStrategy(service: Service): Promise<StopStrategy>;
+}
+
+class MetaStopStrategyProvider implements StopStrategyProvider {
+  getStopStrategy = async (service: Service) => {
+    const metaKey = "internal/stop-command";
+
+    if (service.meta && service.meta[metaKey]) {
+      return new StopCommandStopStrategy(service.meta[metaKey]);
+    } else {
+      return new DefaultStopStrategy();
+    }
+  }
+}
+
+interface StopStrategy {
+  /**
+   * Stop a service.
+   *
+   * @param service The service to stop
+   */
+  stop(service: Service): Promise<void>;
+}
+
+class StopCommandStopStrategy implements StopStrategy {
+  constructor(
+    private readonly command: string,
+  ) {
+  }
+
+  stop = async (service: Service) => {
+    const runningService = getRunningService(service.serviceId);
+    if (!runningService) {
+      throw new ServiceNotRunningError(service.serviceId);
+    }
+
+    const callEngine = createEngineCaller(
+      "stop",
+      (e) => ({ id: service.serviceId, error: e })
+    );
+    await callEngine(() => engine.cmd(runningService.internalSession.containerId, this.command));
+  }
+}
+
+class DefaultStopStrategy implements StopStrategy {
+  stop = async (service: Service) => {
+    const runningService = getRunningService(service.serviceId);
+    if (!runningService) {
+      throw new ServiceNotRunningError(service.serviceId);
+    }
+
+    const callEngine = createEngineCaller(
+      "stop",
+      (e) => ({ id: service.serviceId, error: e })
+    );
+    await callEngine(() => engine.stop(runningService.internalSession.containerId));
+  }
+}
 
 interface ServiceRunnerEventBus {
   on<T extends keyof ServiceRunnerEvents>(evt: T, h: EventHandler<T>): void;
@@ -147,6 +213,7 @@ export let engine: ServiceEngine;
 let nodeId: string;
 let templateManager: TemplateManager;
 let serviceManager: ServiceManager;
+let stopStrategyProvider: StopStrategyProvider;
 let db: Database;
 let logger: winston.Logger;
 
@@ -183,6 +250,7 @@ export const init = async (
   nodeId = appConfig.getNodeId();
   templateManager = templateManager_;
   serviceManager = serviceManager_;
+  stopStrategyProvider = new MetaStopStrategyProvider();
   db = db_;
   logger = logger_;
 
@@ -390,6 +458,22 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
   return new AsyncTask(task);
 }
 
+const createEngineCaller = <T extends keyof ServiceRunnerEvents>(
+  action: T,
+  onErrorEventFactory: (e: Error) => ServiceRunnerEvents[T]
+) => {
+  return async (task: () => Promise<any>) => {
+    try {
+      await task();
+    } catch (e) {
+      logger.error(e);
+      callManagerEvent(action, onErrorEventFactory(e));
+
+      throw new ServiceEngineError(e);
+    }
+  }
+}
+
 export const stopService: ServiceRunner["stopService"] = async (id, force) => {
   const service = await serviceManager.getService(id);
   if (!service) {
@@ -401,18 +485,7 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
     throw new ServiceNotRunningError(id);
   }
 
-  const callEngine = async (task: () => Promise<any>) => {
-    try {
-      await task();
-    } catch (e) {
-      logger.error(e);
-      callManagerEvent("stop", { id, error: e });
-
-      throw new ServiceEngineError(e);
-    }
-  }
-
-  const internalSession = runningService.internalSession;
+  const callEngine = createEngineCaller("stop", (e) => ({ id, error: e }));
 
   let awaitingPromise: Promise<void>;
   if (force) {
@@ -422,7 +495,7 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
       throw new ServicePendingActionError(id, pendingAction);
     }
 
-    await callEngine(async () => engine.kill(internalSession.containerId, buildMetaStorage(id)));
+    await callEngine(async () => engine.kill(runningService.internalSession.containerId, buildMetaStorage(id)));
     // resolves immediately on kill
     awaitingPromise = Promise.resolve();
   } else {
@@ -446,17 +519,8 @@ export const stopService: ServiceRunner["stopService"] = async (id, force) => {
       });
     });
 
-    // TODO: stop strategy
-    const stopCmd = service.meta?.stopCmd;
-    await callEngine(async () => {
-      if (stopCmd) {
-        // send stop cmd if set
-        await engine.cmd(internalSession.containerId, stopCmd);
-      } else {
-        // send stop signal
-        await engine.stop(internalSession.containerId);
-      }
-    });
+    const stopStrategy = await stopStrategyProvider.getStopStrategy(service);
+    await stopStrategy.stop(service);
   }
   awaitingPromise = awaitingPromise.then(() => waitForStopped(id));
 

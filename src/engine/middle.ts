@@ -1,5 +1,5 @@
 import {currentContext} from "@nsm/app";
-import {InternalError, KnownError} from "@nsm/engine/error";
+import {KnownError} from "@nsm/engine/error";
 import {AsyncTask} from "@nsm/util/promises";
 import {ServiceRunner} from "@nsm/engine/runner";
 import {AppConfig} from "@nsm/config";

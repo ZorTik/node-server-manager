@@ -99,7 +99,7 @@ export type PermaModel = {
     [key: string]: any;
   };
   meta?: {
-    stopCmd?: string;
+    [key: string]: string;
   };
   env: {
     [key: string]: string;

@@ -9,6 +9,6 @@ defaults:
   disk: 2000000000 # bytes
 meta:
   # Stop command to be sent in stop signal endpoint
-  stopCmd: "stop"
+  internal/stop-command: "stop"
 # Optional ENV vars, and their default values
 env: {}
