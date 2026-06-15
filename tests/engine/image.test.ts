@@ -19,7 +19,7 @@ it("reuses image with same options", async () => {
         min: 1000,
         max: 2000,
       },
-      env: {
+      args: {
         option1: "",
         option2: "",
       },

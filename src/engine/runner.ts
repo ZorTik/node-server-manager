@@ -26,7 +26,7 @@ import {
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {Service, ServiceManager} from "@nsm/engine/service";
-import {prepareEnvForTemplate, TemplateManager} from "@nsm/engine/template";
+import {prepareArgsForTemplate, TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/persistence";
 import {isDebug} from "@nsm/helpers";
 import winston from "winston";
@@ -396,12 +396,12 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     throw new TemplateNotFoundError(rest.template);
   }
 
-  let { defaults, env: settingsEnv } = template.settings;
+  let { defaults, args: settingsArgs } = template.settings;
   // Filter env to only those that are defined in settings.yml, because those are the only ones that
   // we can guarantee to be used and will not make problems when handling images.
   env = {
     ...Object.entries(env)
-      .filter(([key]) => settingsEnv && key in settingsEnv)
+      .filter(([key]) => settingsArgs && key in settingsArgs)
       .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
   };
 
@@ -449,7 +449,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     return image;
   }
 
-  const buildOptions = prepareEnvForTemplate(template, { ...buildEnv });
+  const buildOptions = prepareArgsForTemplate(template, { ...buildEnv });
 
   const task = processImage(service.imageId, template, buildOptions) // TODO: logovat někam message z image processingu pomocí posledního parametru
     .then(updateImageIfChanged)

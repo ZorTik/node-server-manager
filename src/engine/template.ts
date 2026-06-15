@@ -1,4 +1,5 @@
 import {ServiceEngine} from "@nsm/engine/engine";
+import z from "zod";
 
 export type Template = {
   /**
@@ -35,10 +36,25 @@ export type TemplateSettings = {
   meta: {
     [key: string]: string;
   };
-  env: {
+  args: {
     [key: string]: string;
   }
 }
+
+export const templateSettingsModel = z.object({
+  port_range: z.object({
+    min: z.number(),
+    max: z.number(),
+  }),
+  defaults: z.object({
+    ram: z.number(),
+    cpu: z.number(),
+    disk: z.number(),
+    env: z.record(z.string(), z.string()).optional(),
+  }),
+  meta: z.record(z.string(), z.string()),
+  args: z.record(z.string(), z.string()),
+});
 
 export interface TemplateManager {
   /**
@@ -91,42 +107,42 @@ export const getAllTemplates: TemplateManager["getAllTemplates"] = async () => {
 }
 
 /**
- * Prepares the environment variables for a template by validating the provided env object against
+ * Prepares the args for a template by validating the provided args object against
  * the template's settings and filling in default values where necessary. It checks for required options, validates
- * types, and returns a new env object that can be used when creating a service from the template.
+ * types, and returns a new args object that can be used when creating a service from the template.
  *
  * @param template The template or template ID for which to prepare the environment variables
- * @param env The environment variables provided by the user, which may be incomplete or have incorrect types
- * @return A new env object that has been validated and filled with default values according to the template's settings
+ * @param args The environment variables provided by the user, which may be incomplete or have incorrect types
+ * @return A new args object that has been validated and filled with default values according to the template's settings
  * @throws Error if a required option is missing or if an option has an invalid type
  */
-export const prepareEnvForTemplate = (
+export const prepareArgsForTemplate = (
   template: Template,
-  env: any,
+  args: any,
 ) => {
-  env = { ...env }; // Shallow copy to avoid mutating the original object
+  args = { ...args }; // Shallow copy to avoid mutating the original object
 
-  for (const key of Object.keys(template.settings["env"])) {
-    if (env[key] && typeof env[key] == typeof template.settings["env"][key]) {
+  for (const key of Object.keys(template.settings["args"])) {
+    if (args[key] && typeof args[key] == typeof template.settings["args"][key]) {
       // Keep the value
-    } else if (env[key]) {
+    } else if (args[key]) {
       throw new Error(
         "Invalid option type for " +
           key +
           ". Got " +
-          typeof env[key] +
+          typeof args[key] +
           " but expected " +
-          typeof template.settings["env"][key] +
+          typeof template.settings["args"][key] +
           ".",
       );
-    } else if (isRequiredOption(template.settings["env"][key])) {
+    } else if (isRequiredOption(template.settings["args"][key])) {
       throw new Error("Missing required option " + key);
     } else {
       // Set default
-      env[key] = template.settings["env"][key];
+      args[key] = template.settings["args"][key];
     }
   }
-  return env;
+  return args;
 };
 
 // Defines if the value represents required option.

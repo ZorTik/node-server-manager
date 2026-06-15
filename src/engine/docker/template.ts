@@ -12,13 +12,19 @@ import * as templateDirWatcher from "@nsm/engine/docker/repository/filesystem/mo
 import path from "path";
 import fs from "fs";
 import {loadYamlFile} from "@nsm/util/yaml";
-import {Template} from "@nsm/engine/template";
+import {Template, templateSettingsModel} from "@nsm/engine/template";
 import winston from "winston";
+import z from "zod";
 
 type RepositoryRegistration = {
   id: string;
   repository: TemplateRepository;
 }
+
+const settingsYamlModel = templateSettingsModel.extend({
+  name: z.string(),
+  description: z.string(),
+});
 
 /**
  * A template repository that loads templates from the filesystem.
@@ -70,12 +76,11 @@ class FilesystemTemplateRepository implements TemplateRepository {
       return this.templateCache.get(id);
     }
 
-    const settingsPath = path.join(this.templatesPath, id, "settings.yml");
-    if (!fs.existsSync(settingsPath)) {
+    const settings = this.loadSettingsFile(id);
+    if (!settings) {
       return undefined;
     }
 
-    const settings = loadYamlFile(settingsPath);
     const template: Template = {
       id,
       name: settings.name,
@@ -84,21 +89,44 @@ class FilesystemTemplateRepository implements TemplateRepository {
     };
     this.templateCache.set(id, template);
 
-    let hash: string;
-    try {
-      hash = templateDirWatcher.getTemplateHash(template.id);
-    } catch (e) {
-      this.logger.warn(`Failed to get hash for template ${id}: ${e.message}`);
-      this.templateHashCache.delete(id);
-    }
-    if (hash) {
-      this.templateHashCache.set(id, hash);
-    }
+    this.updateCachedHash(id);
     return template;
   }
 
+  private loadSettingsFile(templateId: string) {
+    const settingsPath = path.join(this.templatesPath, templateId, "settings.yml");
+    if (!fs.existsSync(settingsPath)) {
+      return undefined;
+    }
+
+    try {
+      return settingsYamlModel.parse(loadYamlFile(settingsPath));
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        this.logger.warn(`Invalid settings.yml for template ${templateId}: ${e.message}`);
+
+        return undefined;
+      }
+
+      throw e;
+    }
+  }
+
+  private updateCachedHash(templateId: string) {
+    let hash: string;
+    try {
+      hash = templateDirWatcher.getTemplateHash(templateId);
+    } catch (e) {
+      this.logger.warn(`Failed to get hash for template ${templateId}: ${e.message}`);
+      this.templateHashCache.delete(templateId);
+    }
+    if (hash) {
+      this.templateHashCache.set(templateId, hash);
+    }
+  }
+
   async getAllTemplates() {
-    return getAllTemplates();
+    return getAllTemplates().filter((t) => this.getTemplate(t.id));
   }
 }
 

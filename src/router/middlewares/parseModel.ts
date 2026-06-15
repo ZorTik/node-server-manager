@@ -29,7 +29,7 @@ export const parseModel = (
       res.status(400).json({
         status: 400,
         message: `Invalid ${key} format.`,
-        errors: result.error.errors,
+        errors: result.error.issues,
       });
       return;
     }

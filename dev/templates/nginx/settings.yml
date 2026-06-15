@@ -8,5 +8,5 @@ defaults:
   cpu: 2 # cores
   disk: 2000000000 # bytes
 meta: {}
-# Optional ENV vars, and their default values
-env: {}
+# Args, and their default values
+args: {}

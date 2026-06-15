@@ -142,7 +142,7 @@ export class YamlAppConfig implements AppConfig {
       // Recursively fill nested objects
       if (shape[key] instanceof z.ZodObject) {
         config[key] = YamlAppConfig.fillDataFromEnv(
-          shape[key].shape,
+          shape[key],
           config[key] || {},
           envKey + "_",
         );

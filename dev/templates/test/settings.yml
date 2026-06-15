@@ -10,5 +10,5 @@ defaults:
 meta:
   # Stop command to be sent in stop signal endpoint
   internal/stop-command: "stop"
-# Optional ENV vars, and their default values
-env: {}
+# Args, and their default values
+args: {}

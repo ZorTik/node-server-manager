@@ -2,7 +2,7 @@ import { RouterHandler } from "../../index";
 import { AppContext } from "@nsm/app";
 import { Options } from "@nsm/engine";
 import { clock } from "@nsm/util/clock";
-import { prepareEnvForTemplate } from "@nsm/engine/template";
+import { prepareArgsForTemplate } from "@nsm/engine/template";
 import {TemplateNotFoundError} from "@nsm/engine/error";
 
 export default async function ({
@@ -27,9 +27,9 @@ export default async function ({
           throw new TemplateNotFoundError(req.body.template);
         }
 
-        let env = req.body.env ?? {};
+        let args = req.body.args ?? {};
         try {
-          env = prepareEnvForTemplate(template, env);
+          args = prepareArgsForTemplate(template, args);
         } catch (e) {
           res.status(400).json({ status: 400, message: e.message }).end();
           return;
@@ -37,7 +37,7 @@ export default async function ({
 
         // Build options
         const options: Options = req.body;
-        options.env = env;
+        options.args = args;
 
         const serviceId = await manager.createService(template.id, options);
 

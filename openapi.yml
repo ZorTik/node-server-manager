@@ -155,9 +155,9 @@ components:
         options:
           type: "object"
           description: "The options values used to create the service, or defaults from settings.yml apply"
-        env:
+        args:
           type: "object"
-          description: "The custom variables mapped to values whose definitions are in settings.yml in template under 'env'"
+          description: "The custom variables mapped to values whose definitions are in settings.yml in template under 'args'"
         session:
           $ref: "#/components/schemas/SessionInfo"
     ServiceCreateOptions:
@@ -182,10 +182,10 @@ components:
           format: int32
           required: false
           description: "Disk limit, in bytes"
-        env:
+        args:
           type: object
           required: false
-          description: "A map of custom variables mapped to values whose definitions are in settings.yml in template under 'env'."
+          description: "A map of custom variables mapped to values whose definitions are in settings.yml in template under 'args'."
         meta:
           type: object
           required: false

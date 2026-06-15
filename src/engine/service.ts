@@ -46,17 +46,17 @@ export type Options = {
    */
   meta?: { [key: string]: any };
   /**
-   * The optional environment variables (template options) to set.
+   * The optional args (template options) to set.
    * These are custom variables that the specific template uses to correctly
    * build its environment.
    *
-   * Firstly, you need to specify those env variables and their defaults
+   * Firstly, you need to specify those arg variables and their defaults
    * in the settings.yml file of the template, and then they can be used
    * in the Dockerfile of template. Those variables can be listed by the
    * lookup and will be stored for later use when resuming the service.
    * (optional)
    */
-  env?: { [key: string]: string }; // Optional ENV, see example_settings.yml
+  args?: { [key: string]: string }; // Optional ARGS, see example_settings.yml
   /**
    * The (optional) network settings for the service.
    * This specifies fi the service will be bind to custom network interface
@@ -189,7 +189,7 @@ export const init: ServiceManager["init"] = async (
 }
 
 export const createService: ServiceManager["createService"] = async (template, options) => {
-  const { ram, cpu, disk, ports, env, network } = options;
+  const { ram, cpu, disk, ports, args, network } = options;
 
   // try to find template across repositories
   let foundTemplate: Template;
@@ -237,7 +237,7 @@ export const createService: ServiceManager["createService"] = async (template, o
       ports
     },
     meta,
-    env: env ?? {},
+    env: args ?? {},
     network,
   };
   // Save permanent info
@@ -296,7 +296,7 @@ export const updateOptions: ServiceManager["updateOptions"] = async (id, options
     },
     env: {
       ...perma.env,
-      ...options.env,
+      ...options.args,
     },
   };
   return db.permaRepository.savePerma(data);
