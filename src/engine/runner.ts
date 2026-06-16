@@ -395,7 +395,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     throw new TemplateNotFoundError(rest.template);
   }
 
-  let { container: { env: envTemplate, resources } } = template.settings;
+  let { container: { env: envTemplate, resources } } = template.config;
 
   args = prepareArgsForRun(args, template);
 
@@ -422,6 +422,15 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
   const updateImageIfChanged = async (image: string) => {
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
     if (image != service.imageId) {
+      const storedImage = await db.imageRepository.getImage(image);
+      if (!storedImage) {
+        // image was not stored during processing
+        await db.imageRepository.saveImage({
+          id: image,
+          templateId: template.id,
+          buildOptions: args,
+        });
+      }
 
       // Update image in database if it was changed by processing
       const updated = await serviceManager.updateService(service.serviceId, { imageId: image });
@@ -443,10 +452,11 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
 
   const unlock = lockBusyAction(id, "resume");
 
-  const task = templateRepository.prepareImage(template.id, args, service.imageId) // TODO: logovat někam message z image processingu pomocí posledního parametru
+  const session = await beginServiceSession(id);
+  const runListener = buildRunListener(session);
+  const task = templateRepository.prepareImage(template.id, args, service.imageId, runListener)
     .then(updateImageIfChanged)
     .then(async (image) => {
-      const session = await beginServiceSession(id);
       // Run the container with the built image and save the container id for later use.
       try {
         const containerId = await engine.run(
@@ -454,7 +464,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
           id,
           runOptions,
           meta,
-          buildRunListener(session),
+          runListener,
         );
         started.push({
           id,
@@ -474,13 +484,18 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
         throw new ServiceEngineError(e);
       }
     })
+    .catch(async (e) => {
+      // TODO: close session when it's implemented
+
+      throw e;
+    })
     .finally(() => unlock());
 
   return new AsyncTask(task);
 }
 
 const prepareArgsForRun = (args: { [key: string]: string }, template: Template) => {
-  const settingsArgs = template.settings.args;
+  const settingsArgs = template.config.args;
 
   // Filter env to only those that are defined in settings.yml, because those are the only ones that
   // we can guarantee to be used and will not make problems when handling images.

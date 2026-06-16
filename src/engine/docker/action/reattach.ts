@@ -63,6 +63,11 @@ export default function reattach(
     const handleClosed = async () => {
       await deleteContainer(container.id, client, { deleteNetwork: true });
 
+      await listener.onStateChange({
+        id: "closed",
+        description: "Container closed",
+        ready: false,
+      });
       await listener.onClose?.();
     };
 

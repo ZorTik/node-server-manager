@@ -193,7 +193,7 @@ export const createService: ServiceManager["createService"] = async (template, o
   if (!foundTemplate) {
     throw new TemplateNotFoundError(template);
   }
-  const serviceSettings = foundTemplate.settings;
+  const serviceSettings = foundTemplate.config;
 
   // Join meta supplied by user and template meta
   let meta = {};

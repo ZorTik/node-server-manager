@@ -14,7 +14,7 @@ it("reuses image with same options", async () => {
     id: "test-template",
     name: "idk",
     description: "idk more",
-    settings: {
+    config: {
       port_range: {
         min: 1000,
         max: 2000,

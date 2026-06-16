@@ -26,7 +26,7 @@ export default function buildDockerEngine(appConfig: AppConfig) {
   engine.name = "Docker";
   engine.dockerClient = client;
   engine.rws = {};
-  engine.templateRepositoryRegistry = new DockerTemplateRepositoryRegistry(engine);
+  engine.templateRepositoryRegistry = new DockerTemplateRepositoryRegistry(engine, client);
   // engine.cast - Being replaced in manager.
   engine.build = build(client);
   engine.run = run(engine, client);

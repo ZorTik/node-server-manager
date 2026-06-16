@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - "./dev/templates:/data/resources/templates:ro"
+      - "./dev/config.yml:/data/resources/config.yml:ro"
       - "./tests:/data/tests:ro"
     ports:
       - "3000:3000"
@@ -13,6 +14,7 @@ services:
       - "CONFIG_RESOURCES_PATH=/data/resources"
       - "DATABASE_URL=mysql://root:test@db:3306/nsm"
       - "DOCKER_HOST=tcp://docker:2375"
+      - "DEBUG=${DEBUG:-false}"
     depends_on:
       db:
         condition: service_healthy

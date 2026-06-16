@@ -1,9 +1,10 @@
 import { Database, ImageModel } from "@nsm/persistence";
 import winston from "winston";
-import { MessageListener, ServiceEngine } from "@nsm/engine/engine";
+import {MessageListener, ServiceEngine, ServiceLogRecord} from "@nsm/engine/engine";
 import { Template } from "@nsm/engine/template";
 import { TemplateDirWatcher } from "@nsm/engine/docker/repository/filesystem/monitoring/templateDirWatcher";
 import { AppConfig } from "@nsm/config";
+import {InternalError} from "@nsm/engine/error";
 
 type BuildOptionsMap = {
   [key: string]: string;
@@ -36,7 +37,7 @@ export const init = (
  * or build a new one. It may also trigger a rebuild or remove unused images.
  *
  * @param id The ID of the current image
- * @param templateId The ID of the template
+ * @param template The template for the image
  * @param buildOptions Build arguments used when building the image
  * @param messageListener A message listener to use when building the image
  * @returns The ID of the image that should be used
@@ -49,7 +50,7 @@ export const processImage = async (
 ) => {
   if (!id) {
     // No image specified, need to build or pick a new one
-    id = await pickImageOrBuild(template.id, buildOptions);
+    id = await pickImageOrBuild(template.id, buildOptions, messageListener);
   }
 
   const imageModel = await getImage(id);
@@ -57,6 +58,13 @@ export const processImage = async (
     throw new Error(
       `Image ${id} is based on template ${imageModel.templateId}, but template ${template.id} was expected`,
     );
+  }
+
+  if (!imageModel.hash) {
+    logger.warn(
+      `Image ${id} does not have a template hash. This may indicate that the image
+      was not built from filesystem! Rebuilding image to ensure it's up to date...`,
+    )
   }
 
   const imageOutdated =
@@ -69,7 +77,7 @@ export const processImage = async (
       logger.info(
         `The target options differ, finding or building a new compatible image...`,
       );
-      id = await pickImageOrBuild(template.id, buildOptions);
+      id = await pickImageOrBuild(template.id, buildOptions, messageListener);
 
       // If the image becomes unused after the switch, delete it
       await deleteImageIfUnused(imageModel);
@@ -92,18 +100,20 @@ export const processImage = async (
  *
  * @param templateId The ID of the template to find/build the image for
  * @param buildOptions Build options to use when finding/building the image
+ * @param messageListener A message listener to use for logs propagation when building a new image
  * @returns The ID of the found or built image
  */
 const pickImageOrBuild = async (
   templateId: string,
   buildOptions: BuildOptionsMap,
+  messageListener?: MessageListener,
 ) => {
   let id = await pickImage(templateId, buildOptions);
   if (id == null) {
     logger.info(`No compatible image found for request. Building new image...`);
 
     // No compatible image, need to build a new one
-    id = await buildImage(templateId, buildOptions);
+    id = await buildImage(templateId, buildOptions, undefined, messageListener);
   }
 
   return id;
@@ -165,6 +175,12 @@ const buildImage = async (
   imageId?: string,
   messageListener?: MessageListener,
 ): Promise<string> => {
+  await messageListener?.onEngineMessage?.({
+    message: `Building image...`,
+    level: "info"
+  });
+
+  let duration = Date.now();
   const hash = await templateDirWatcher.getTemplateHash(templateId);
   imageId = await engine.build(
     imageId,
@@ -172,6 +188,12 @@ const buildImage = async (
     options,
     messageListener,
   );
+  duration = Date.now() - duration;
+
+  await messageListener?.onEngineMessage?.({
+    message: `Image built in ${Math.round(duration / 1000)}s`,
+    level: "info"
+  });
 
   await db.imageRepository.saveImage({
     id: imageId,

@@ -68,7 +68,7 @@ model Meta {
 model Image {
   id           String             @id
   templateId   String
-  hash         String
+  hash         String?
   buildOptions ImageBuildOption[]
   services     Service[]
 }

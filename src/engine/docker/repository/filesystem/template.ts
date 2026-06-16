@@ -26,7 +26,7 @@ export const getTemplate = (id: string): Template | null => {
     id,
     name: settings.name,
     description: settings.description,
-    settings,
+    config: settings,
   };
 };
 

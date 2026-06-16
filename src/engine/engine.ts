@@ -78,6 +78,13 @@ export type MessageListener = {
    * @param message The message from the container
    */
   onMessage?: (message: ServiceLogRecord) => Promise<void> | void;
+
+  /**
+   * Called when there is a message from the engine itself, with the message.
+   *
+   * @param message The message from the engine
+   */
+  onEngineMessage?: (message: ServiceLogRecord) => Promise<void> | void;
 };
 
 export type RunListener = MessageListener & {
@@ -381,6 +388,11 @@ export const combineRunListeners = (listeners: RunListener[]): RunListener => {
     onMessage: async (record) => {
       for (let listener of listeners) {
         await listener.onMessage?.(record);
+      }
+    },
+    onEngineMessage: async (record) => {
+      for (let listener of listeners) {
+        await listener.onEngineMessage?.(record);
       }
     },
     onClose: () => {

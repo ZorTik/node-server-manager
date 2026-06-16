@@ -15,9 +15,9 @@ export type Template = {
    */
   description: string;
   /**
-   * The settings (definitions) object.
+   * The config (definitions) object.
    */
-  settings: TemplateSettings;
+  config: TemplateConfig;
 };
 
 export type TemplateFinding = Template & {
@@ -27,7 +27,7 @@ export type TemplateFinding = Template & {
   sourceRepositoryId: string;
 }
 
-export type TemplateSettings = {
+export type TemplateConfig = {
   port_range: {
     min: number;
     max: number;
@@ -38,10 +38,10 @@ export type TemplateSettings = {
   args: {
     [key: string]: string;
   };
-  container: TemplateContainerSettings;
+  container: TemplateContainerConfig;
 }
 
-export type TemplateContainerSettings = {
+export type TemplateContainerConfig = {
   env: {
     [key: string]: string;
   };
@@ -139,8 +139,8 @@ export const prepareArgsForTemplate = (
 ) => {
   args = { ...args }; // Shallow copy to avoid mutating the original object
 
-  for (const key of Object.keys(template.settings["args"])) {
-    if (args[key] && typeof args[key] == typeof template.settings["args"][key]) {
+  for (const key of Object.keys(template.config["args"])) {
+    if (args[key] && typeof args[key] == typeof template.config["args"][key]) {
       // Keep the value
     } else if (args[key]) {
       throw new Error(
@@ -149,14 +149,14 @@ export const prepareArgsForTemplate = (
           ". Got " +
           typeof args[key] +
           " but expected " +
-          typeof template.settings["args"][key] +
+          typeof template.config["args"][key] +
           ".",
       );
-    } else if (isRequiredOption(template.settings["args"][key])) {
+    } else if (isRequiredOption(template.config["args"][key])) {
       throw new Error("Missing required option " + key);
     } else {
       // Set default
-      args[key] = template.settings["args"][key];
+      args[key] = template.config["args"][key];
     }
   }
   return args;

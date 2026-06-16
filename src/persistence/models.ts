@@ -113,7 +113,7 @@ export type PermaModel = {
 export type ImageModel = {
   id: string;
   templateId: string;
-  hash: string;
+  hash?: string;
   buildOptions: {
     [key: string]: string;
   };

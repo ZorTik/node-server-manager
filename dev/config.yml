@@ -1,0 +1,45 @@
+# All values here can be overwritten by environment variables
+# with CONFIG_<key> format.
+
+# ID of this node. Should be unique.
+node_id: "main"
+# Listen port.
+port: 3000
+# Security
+# Supported types: 'none', 'auth_token'
+auth: "none"
+docker_host: "unix:///var/run/docker.sock"
+# Override resources path if needed.
+# By default, an explicit system-specific data path is used.
+# resources_path: '/srv/resources'
+repositories:
+  - id: local
+    type: filesystem
+  - id: dockerhub
+    type: docker-registry
+    puller:
+      registry: "https://index.docker.io/v1/"
+      # optional auth config
+      # auth:
+      #   username: "your_username"
+      #   password: "your_password"
+    templates:
+      - id: redis
+        image: "redis:latest"
+        name: "Redis"
+        description: "Redis template"
+        config:
+          port_range:
+            min: 22222
+            max: 33333
+          meta: { }
+          # Args, and their default values
+          args: { }
+          container:
+            # TODO: port mappings with variables resolving
+            env: { }
+            resources:
+              limits:
+                ram: 512000000
+                cpu: 2
+                disk: 2000000000

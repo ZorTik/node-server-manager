@@ -112,6 +112,14 @@ export const beginServiceSession: SessionManager["beginServiceSession"] =
           message: record.message,
         });
       },
+      onEngineMessage: async (record) => {
+        pushRecord({
+          sessionId: session.id,
+          source: "ENGINE",
+          logLevel: record.level.toUpperCase(),
+          message: record.message,
+        });
+      },
       onClose: async () => {
         // Push remaining logs now
         await flushRecords();
