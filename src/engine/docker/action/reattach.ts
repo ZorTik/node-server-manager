@@ -20,6 +20,10 @@ async function deleteContainer(
 ) {
   try {
     const c = client.getContainer(id);
+
+    // Find network ID before removing container
+    const networkId = await isInNetwork(client, id);
+
     try {
       await c.remove({ force: true });
     } catch (e) {
@@ -29,17 +33,9 @@ async function deleteContainer(
       }
     }
 
-    // Delete network if it's associated with any.
-    const networkId = await isInNetwork(client, id);
-    if (networkId) {
-      // Disconnect this container from the attached network.
-      await client
-        .getNetwork(networkId)
-        .disconnect({ Container: id, Force: true });
-      if (options.deleteNetwork == true) {
-        // Delete network if requested.
-        await doDeleteNetwork(client, id);
-      }
+    // Delete network if it's associated with any and requested.
+    if (options.deleteNetwork == true && networkId) {
+      await doDeleteNetwork(client, networkId);
     }
     return true;
   } catch (e) {

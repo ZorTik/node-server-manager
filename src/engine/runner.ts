@@ -754,7 +754,10 @@ const clearRunningServiceIfExists = (id: string) => {
   const service = getRunningService(id);
 
   if (service) {
-    started.splice(started.indexOf(service, 1));
+    const index = started.indexOf(service);
+    if (index !== -1) {
+      started.splice(index, 1);
+    }
   }
 
   startedStages.delete(id);

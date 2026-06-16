@@ -47,16 +47,29 @@ export async function deleteNetwork(client: DockerClient, id: string) {
   }
 }
 
-// Returns network id, or undef if not in net
+// Returns network id of the NSM-managed network the container is in, or undef if not in any NSM network
 export async function isInNetwork(
   client: DockerClient,
   containerId: string,
 ): Promise<string | undefined> {
   try {
-    await client.getNetwork(containerId).inspect();
-    return containerId;
+    const container = client.getContainer(containerId);
+    const info = await container.inspect();
+    const networks = info.NetworkSettings.Networks;
+
+    for (const networkName in networks) {
+      const networkId = networks[networkName].NetworkID;
+      const network = client.getNetwork(networkId);
+      const networkInfo = await network.inspect();
+
+      if (networkInfo.Labels && networkInfo.Labels.nsm === "true") {
+        return networkId;
+      }
+    }
+
+    return undefined;
   } catch (e) {
-    if (!e.message.includes("not found")) {
+    if (!e.message.toLowerCase().includes("no such container") && !e.message.toLowerCase().includes("not found")) {
       console.log(e);
     }
     return undefined;
