@@ -255,6 +255,13 @@ paths:
   /v1/service/create:
     post:
       description: "Create a new service"
+      parameters:
+        - name: resume
+          in: query
+          required: false
+          description: "Whether or not to immediately resume (start) the service after creation. Default: false"
+          schema:
+            type: "boolean"
       requestBody:
         required: true
         content:

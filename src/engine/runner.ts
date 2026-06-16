@@ -485,13 +485,20 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
   return new AsyncTask(task);
 }
 
+/**
+ * Creates a wrapper for calling engine methods, which handles errors and calls the appropriate events.
+ *
+ * @param action The action type for which to call the events in case of error
+ * @param onErrorEventFactory A factory function that creates the event to be called in case of error, based on the error that happened
+ * @returns A function that takes a task to be executed
+ */
 const createEngineCaller = <T extends keyof ServiceRunnerEvents>(
   action: T,
   onErrorEventFactory: (e: Error) => ServiceRunnerEvents[T]
 ) => {
-  return async (task: () => Promise<any>) => {
+  return async <R>(task: () => Promise<R>): Promise<R> => {
     try {
-      await task();
+      return await task();
     } catch (e) {
       logger.error(e);
       callManagerEvent(action, onErrorEventFactory(e));

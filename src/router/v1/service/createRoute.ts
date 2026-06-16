@@ -41,7 +41,9 @@ export default async function ({
 
         const serviceId = await manager.createService(template.id, options);
 
-        await runner.resumeService(serviceId);
+        if (req.query.resume === "true") {
+          await runner.resumeService(serviceId);
+        }
 
         res
           .status(200)
