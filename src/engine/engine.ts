@@ -104,16 +104,23 @@ export type MetaStorage = {
   get: <T>(key: string, def?: T) => Promise<T | undefined>;
 };
 
-export type BuildOptionsMap = {
-  [key: string]: string;
-};
-
 export interface TemplateRepository {
   init(ctx: AppContext): Promise<void>;
 
-  buildImage(
+  /**
+   * Prepares an image from the template with the given arguments, and returns the image ID.
+   *
+   * @param templateId The template ID used (from this repository)
+   * @param args The template args provided
+   * @param imageId The image ID to use. If this is undefined, the engine should generate a random image ID and return it.
+   * @param messageListener A message listener for logs propagation during image preparation
+   * @return The prepared image ID
+   * @throws TemplateNotFoundError if the template with the given ID is not found in this repository
+   * @throws Error if the image cannot be prepared for any reason
+   */
+  prepareImage(
     templateId: string,
-    options: BuildOptionsMap,
+    args: { [key: string]: string },
     imageId?: string,
     messageListener?: MessageListener
   ): Promise<string>;
@@ -127,6 +134,11 @@ export interface TemplateRepository {
   getTemplate(id: string): Promise<Template | undefined>;
 
   getAllTemplates(): Promise<Template[]>;
+}
+
+export interface RepositoryRegistration {
+  id: string;
+  repository: TemplateRepository;
 }
 
 export interface TemplateRepositoryRegistry {
@@ -145,14 +157,14 @@ export interface TemplateRepositoryRegistry {
    * @param id The template repository ID
    * @returns The template repository, or undefined if not exists
    */
-  getRepository(id: string): TemplateRepository | undefined;
+  getRepository(id: string): RepositoryRegistration | undefined;
 
   /**
    * Get all template repositories.
    *
    * @return An array of all template repositories.
    */
-  getAllRepositories(): TemplateRepository[];
+  getAllRepositories(): RepositoryRegistration[];
 }
 
 export interface TemplateRepositoryConfig {
@@ -403,14 +415,14 @@ export const initEngine = async (ctx: AppContext): Promise<ServiceEngineI> => {
   for (let config of ctx.appConfig.getTemplateRepositoryConfigs()) {
     await repositoryRegistry.saveRepository(config);
 
-    const repository = repositoryRegistry.getRepository(config.id);
-    if (!repository) {
+    const repositoryRegistration = repositoryRegistry.getRepository(config.id);
+    if (!repositoryRegistration) {
       // it just didn't register
       throw new TemplateRepositoryConfigurationError(config.id);
     }
 
     // init repository
-    await repository.init(ctx);
+    await repositoryRegistration.repository.init(ctx);
   }
 
   return {

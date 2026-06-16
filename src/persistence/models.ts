@@ -1,3 +1,5 @@
+import {Options} from "@nsm/engine";
+
 export interface Database {
   permaRepository: PermaRepository;
   metaRepository: MetaRepository;
@@ -95,10 +97,8 @@ export type PermaModel = {
   nodeId: string;
   imageId?: string;
   port: number;
-  options: {
-    [key: string]: any;
-  };
-  meta?: {
+  options: Pick<Options, 'ram' | 'cpu' | 'disk' | 'ports'>
+  meta: {
     [key: string]: string;
   };
   args: {

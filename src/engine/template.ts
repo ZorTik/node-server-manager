@@ -20,40 +20,57 @@ export type Template = {
   settings: TemplateSettings;
 };
 
+export type TemplateFinding = Template & {
+  /**
+   * The ID of the repository where the template was found.
+   */
+  sourceRepositoryId: string;
+}
+
 export type TemplateSettings = {
   port_range: {
     min: number;
     max: number;
-  };
-  defaults: {
-    ram: number;
-    cpu: number;
-    disk: number;
-    env?: {
-      [key: string]: string;
-    }
   };
   meta: {
     [key: string]: string;
   };
   args: {
     [key: string]: string;
-  }
+  };
+  container: TemplateContainerSettings;
+}
+
+export type TemplateContainerSettings = {
+  env: {
+    [key: string]: string;
+  };
+  resources: {
+    limits: {
+      ram: number;
+      cpu: number;
+      disk: number;
+    }
+  };
 }
 
 export const templateSettingsModel = z.object({
   port_range: z.object({
     min: z.number(),
-    max: z.number(),
-  }),
-  defaults: z.object({
-    ram: z.number(),
-    cpu: z.number(),
-    disk: z.number(),
-    env: z.record(z.string(), z.string()).optional(),
+    max: z.number()
   }),
   meta: z.record(z.string(), z.string()),
   args: z.record(z.string(), z.string()),
+  container: z.object({
+    env: z.record(z.string(), z.string()),
+    resources: z.object({
+      limits: z.object({
+        ram: z.number(),
+        cpu: z.number(),
+        disk: z.number()
+      })
+    })
+  })
 });
 
 export interface TemplateManager {
@@ -63,9 +80,9 @@ export interface TemplateManager {
    * @param id The ID of the template
    * @return The template, or null if not exists
    */
-  getTemplate(id: string): Promise<Template | null>;
+  getTemplate(id: string): Promise<TemplateFinding | null>;
 
-  getAllTemplates(): Promise<Template[]>;
+  getAllTemplates(): Promise<TemplateFinding[]>;
 }
 
 let engine: ServiceEngine;
@@ -77,11 +94,11 @@ export const init = (
 }
 
 export const getTemplate: TemplateManager["getTemplate"] = async (id) => {
-  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
-    const template = await templateRepository.getTemplate(id);
+  for (let registration of engine.templateRepositoryRegistry.getAllRepositories()) {
+    const template = await registration.repository.getTemplate(id);
 
     if (template) {
-      return template;
+      return { ...template, sourceRepositoryId: registration.id };
     }
   }
 
@@ -89,10 +106,10 @@ export const getTemplate: TemplateManager["getTemplate"] = async (id) => {
 }
 
 export const getAllTemplates: TemplateManager["getAllTemplates"] = async () => {
-  const result: Template[] = [];
+  const result: TemplateFinding[] = [];
 
-  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
-    const templates = await templateRepository.getAllTemplates();
+  for (let registration of engine.templateRepositoryRegistry.getAllRepositories()) {
+    const templates = await registration.repository.getAllTemplates();
 
     for (let template of templates) {
       if (result.find((t) => t.id === template.id)) {
@@ -100,7 +117,7 @@ export const getAllTemplates: TemplateManager["getAllTemplates"] = async () => {
         continue;
       }
 
-      result.push(template);
+      result.push({ ...template, sourceRepositoryId: registration.id });
     }
   }
   return result;

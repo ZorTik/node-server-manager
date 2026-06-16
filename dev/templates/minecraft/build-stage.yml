@@ -1,0 +1,2 @@
+# Build stage args to inject. Use ${} placeholders for args passed in settings.yml.
+buildargs: {}

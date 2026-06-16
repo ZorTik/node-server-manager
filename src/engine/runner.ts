@@ -17,8 +17,6 @@ import {
   ServiceState,
   StandardLabel
 } from "@nsm/engine/engine";
-import {propagateOptionsToEnv} from "@nsm/engine/docker/util/env";
-import {processImage} from "@nsm/engine/docker/repository/filesystem/image";
 import {
   InternalError,
   ServiceAlreadyRunningError, ServiceEngineError,
@@ -26,11 +24,12 @@ import {
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {Service, ServiceManager} from "@nsm/engine/service";
-import {prepareArgsForTemplate, TemplateManager} from "@nsm/engine/template";
+import {Template, TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/persistence";
 import {isDebug} from "@nsm/helpers";
 import winston from "winston";
 import {AppConfig} from "@nsm/config";
+import {ParamsResolver, ServiceArgs} from "@nsm/util/args";
 
 type ServiceEvent = {
   id: string;
@@ -75,7 +74,7 @@ class MetaStopStrategyProvider implements StopStrategyProvider {
   async getStopStrategy(service: Service) {
     const metaKey = "internal/stop-command";
 
-    if (service.meta && service.meta[metaKey]) {
+    if (service.meta[metaKey]) {
       return new StopCommandStopStrategy(service.meta[metaKey]);
     } else {
       return new DefaultStopStrategy();
@@ -396,23 +395,17 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     throw new TemplateNotFoundError(rest.template);
   }
 
-  let { defaults, args: settingsArgs } = template.settings;
-  // Filter env to only those that are defined in settings.yml, because those are the only ones that
-  // we can guarantee to be used and will not make problems when handling images.
-  args = {
-    ...Object.entries(args)
-      .filter(([key]) => settingsArgs && key in settingsArgs)
-      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
-  };
+  let { container: { env: envTemplate, resources } } = template.settings;
+
+  args = prepareArgsForRun(args, template);
 
   const meta = buildMetaStorage(id);
-  const unlock = lockBusyAction(id, "resume");
 
   const runOptions: RunOptions = {
-    ram: options.ram ?? (defaults.ram as number),
-    cpu: options.cpu ?? (defaults.cpu as number),
-    disk: options.disk ?? (defaults.disk as number),
-    env: args ?? (defaults.env as { [key: string]: string }),
+    ram: options.ram ?? resources.limits.ram,
+    cpu: options.cpu ?? resources.limits.cpu,
+    disk: options.disk ?? resources.limits.disk,
+    env: {},
     port,
     ports: options.ports ?? [],
     network,
@@ -424,16 +417,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
       [StandardLabel.TemplateId]: template.id,
     },
   };
-
-  // Propagate other options to env, so they can be used in image processing and building
-  propagateOptionsToEnv(runOptions, runOptions.env);
-  // Include service ID in env
-  runOptions.env.SERVICE_ID = id;
-
-  // Omit the always-changing args from build env, since they would always trigger an
-  // image rebuild
-  const { SERVICE_ID, SERVICE_PORT, SERVICE_PORTS, ...buildEnv } =
-    runOptions.env;
+  runOptions.env = prepareEnvForRun(envTemplate, service, args, runOptions);
 
   const updateImageIfChanged = async (image: string) => {
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
@@ -449,9 +433,17 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     return image;
   }
 
-  const buildOptions = prepareArgsForTemplate(template, { ...buildEnv });
+  const templateRepository = engine.templateRepositoryRegistry.getRepository(
+    template.sourceRepositoryId
+  )?.repository;
+  if (!templateRepository) {
+    throw new InternalError(`Failed to get template repository for template ${template.id} with 
+      source repository id ${template.sourceRepositoryId}`);
+  }
 
-  const task = processImage(service.imageId, template, buildOptions) // TODO: logovat někam message z image processingu pomocí posledního parametru
+  const unlock = lockBusyAction(id, "resume");
+
+  const task = templateRepository.prepareImage(template.id, args, service.imageId) // TODO: logovat někam message z image processingu pomocí posledního parametru
     .then(updateImageIfChanged)
     .then(async (image) => {
       const session = await beginServiceSession(id);
@@ -477,12 +469,59 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
         callManagerEvent("resume", { id, error: e });
         callServiceEngineError(id, e);
 
+        clearRunningServiceIfExists(id);
+
         throw new ServiceEngineError(e);
       }
     })
     .finally(() => unlock());
 
   return new AsyncTask(task);
+}
+
+const prepareArgsForRun = (args: { [key: string]: string }, template: Template) => {
+  const settingsArgs = template.settings.args;
+
+  // Filter env to only those that are defined in settings.yml, because those are the only ones that
+  // we can guarantee to be used and will not make problems when handling images.
+  args = {
+    ...Object.entries(args)
+      .filter(([key]) => settingsArgs && key in settingsArgs)
+      .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {}),
+  };
+  return args;
+}
+
+const prepareEnvForRun = (
+  envTemplate: { [key: string]: string },
+  service: Service,
+  args: { [key: string]: string },
+  runOptions: RunOptions
+) => {
+  // preprocess placeholders in the configured env template
+  const serviceArgs: ServiceArgs = {
+    id: service.serviceId,
+    port: runOptions.port.toString(),
+    ports: runOptions.ports.join(" "),
+    ram: runOptions.ram.toString(),
+    cpu: runOptions.cpu.toString(),
+    disk: runOptions.disk.toString(),
+  };
+
+  const resolver = new ParamsResolver(envTemplate);
+  resolver.setArgs(args);
+  resolver.setServiceArgs(serviceArgs);
+  envTemplate = resolver.getParams();
+
+  return {
+    ...envTemplate,
+    SERVICE_ID: serviceArgs.id,
+    SERVICE_PORT: serviceArgs.port,
+    SERVICE_PORTS: serviceArgs.ports,
+    SERVICE_RAM: serviceArgs.ram,
+    SERVICE_CPU: serviceArgs.cpu,
+    SERVICE_DISK: serviceArgs.disk,
+  }
 }
 
 /**
@@ -717,6 +756,8 @@ const clearRunningServiceIfExists = (id: string) => {
   if (service) {
     started.splice(started.indexOf(service, 1));
   }
+
+  startedStages.delete(id);
 }
 
 export const getLastPowerError: ServiceRunner["getLastPowerError"] = (id) => {

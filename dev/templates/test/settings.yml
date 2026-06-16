@@ -12,3 +12,10 @@ meta:
   internal/stop-command: "stop"
 # Args, and their default values
 args: {}
+container:
+  env: {}
+  resources:
+    limits:
+      ram: 512000000
+      cpu: 2
+      disk: 2000000000

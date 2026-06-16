@@ -1,5 +1,5 @@
 import {
-  BuildOptionsMap, MessageListener, ServiceEngine,
+  MessageListener, RepositoryRegistration, ServiceEngine,
   TemplateRepository,
   TemplateRepositoryConfig,
   TemplateRepositoryRegistry
@@ -7,7 +7,7 @@ import {
 import {AppContext} from "@nsm/app";
 import {init as initImageEngine, processImage} from "@nsm/engine/docker/repository/filesystem/image";
 import {getAllTemplates} from "@nsm/engine/docker/repository/filesystem/template";
-import {TemplateNotFoundError, TemplateRepositoryConfigurationError} from "@nsm/engine/error";
+import {InternalError, TemplateNotFoundError, TemplateRepositoryConfigurationError} from "@nsm/engine/error";
 import * as templateDirWatcher from "@nsm/engine/docker/repository/filesystem/monitoring/templateDirWatcher";
 import path from "path";
 import fs from "fs";
@@ -15,15 +15,19 @@ import {loadYamlFile} from "@nsm/util/yaml";
 import {Template, templateSettingsModel} from "@nsm/engine/template";
 import winston from "winston";
 import z from "zod";
+import {ParamsResolver} from "@nsm/util/args";
 
-type RepositoryRegistration = {
-  id: string;
-  repository: TemplateRepository;
+type BuildStageSettings = {
+  buildargs?: { [key: string]: string };
 }
 
 const settingsYamlModel = templateSettingsModel.extend({
   name: z.string(),
   description: z.string(),
+});
+
+const buildStageSettingsYamlModel = z.object({
+  buildargs: z.record(z.string(), z.string()).optional(),
 });
 
 /**
@@ -54,15 +58,27 @@ class FilesystemTemplateRepository implements TemplateRepository {
     templateDirWatcher.watchTemplateDirChanges(ctx.logger);
   }
 
-  async buildImage(
+  async prepareImage(
     templateId: string,
-    options: BuildOptionsMap,
+    args: { [key: string]: string },
     imageId?: string,
     messageListener?: MessageListener
   ) {
     const template = await this.getTemplate(templateId);
     if (template) {
-      return processImage(imageId, template, options, messageListener);
+      const buildStageSettings = this.loadBuildStageFile(templateId);
+      if (!buildStageSettings) {
+        throw new InternalError(`Failed to load build-stage.yml for template ${templateId}`);
+      }
+      const buildArgs = buildStageSettings.buildargs
+        ? (
+          new ParamsResolver(buildStageSettings.buildargs)
+            .setArgs(args)
+            .getParams()
+        )
+      : {};
+
+      return processImage(imageId, template, buildArgs, messageListener);
     } else {
       throw new TemplateNotFoundError(templateId);
     }
@@ -81,6 +97,18 @@ class FilesystemTemplateRepository implements TemplateRepository {
       return undefined;
     }
 
+    try {
+      if (!this.loadBuildStageFile(id)) {
+        // invalid build-stage file
+        return undefined;
+      }
+    } catch (e) {
+      this.logger.error(`Failed to load build-stage.yml for template ${id}: ${e.message}`);
+      this.logger.error(e);
+
+      return undefined;
+    }
+
     const template: Template = {
       id,
       name: settings.name,
@@ -91,6 +119,25 @@ class FilesystemTemplateRepository implements TemplateRepository {
 
     await this.updateCachedHash(id);
     return template;
+  }
+
+  private loadBuildStageFile(templateId: string): BuildStageSettings {
+    const buildStagePath = path.join(this.templatesPath, templateId, "build-stage.yml");
+    if (!fs.existsSync(buildStagePath)) {
+      return { buildargs: {} };
+    }
+
+    try {
+      return buildStageSettingsYamlModel.parse(loadYamlFile(buildStagePath));
+    } catch (e) {
+      if (e instanceof z.ZodError) {
+        this.logger.warn(`Invalid build-stage.yml for template ${templateId}: ${e.message}`);
+
+        return undefined;
+      }
+
+      throw e;
+    }
   }
 
   private loadSettingsFile(templateId: string) {
@@ -154,12 +201,10 @@ export class DockerTemplateRepositoryRegistry implements TemplateRepositoryRegis
   }
 
   getRepository(id: string) {
-    const registration = this.repositories.find((r) => r.id === id);
-
-    return registration ? registration.repository : undefined;
+    return this.repositories.find((r) => r.id === id);
   }
 
   getAllRepositories() {
-    return this.repositories.map((registration) => registration.repository);
+    return this.repositories;
   }
 }

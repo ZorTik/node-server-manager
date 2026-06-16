@@ -18,7 +18,7 @@ import {
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {AppConfig} from "@nsm/config";
-import {Template} from "./template";
+import {TemplateManager} from "./template";
 
 export type Options = {
   /**
@@ -107,21 +107,6 @@ export type ListServicesOptions = {
 
 export interface ServiceManager {
   /**
-   * Initialize the service manager.
-   *
-   * @param appConfig The app config
-   * @param db The database
-   * @param engine The service engine to use
-   * @param logger The global logger
-   */
-  init(
-    appConfig: AppConfig,
-    db: Database,
-    engine: ServiceEngine,
-    logger: winston.Logger
-  ): Promise<void>;
-
-  /**
    * Create a new service.
    *
    * @param template The template ID (folder name) to use
@@ -175,33 +160,36 @@ export type Service = PermaModel;
 let nodeId: string;
 let db: Database;
 let engine: ServiceEngine;
+let templateManager: TemplateManager;
 let logger: winston.Logger;
 
-export const init: ServiceManager["init"] = async (
-  appConfig_,
-  db_,
-  engine_,
-  logger_,
+/**
+ * Initialize the service manager.
+ *
+ * @param appConfig_ The app config
+ * @param db_ The database
+ * @param engine_ The service engine to use
+ * @param templateManager_ The template manager
+ * @param logger_ The global logger
+ */
+export const init = async (
+  appConfig_: AppConfig,
+  db_: Database,
+  engine_: ServiceEngine,
+  templateManager_: TemplateManager,
+  logger_: winston.Logger
 ) => {
   nodeId = appConfig_.getNodeId();
   db = db_;
   engine = engine_;
+  templateManager = templateManager_;
   logger = logger_;
 }
 
 export const createService: ServiceManager["createService"] = async (template, options) => {
   const { ram, cpu, disk, ports, args, network } = options;
 
-  // try to find template across repositories
-  let foundTemplate: Template;
-  for (let templateRepository of engine.templateRepositoryRegistry.getAllRepositories()) {
-    foundTemplate = await templateRepository.getTemplate(template);
-
-    if (foundTemplate) {
-      break;
-    }
-  }
-
+  const foundTemplate = await templateManager.getTemplate(template);
   if (!foundTemplate) {
     throw new TemplateNotFoundError(template);
   }

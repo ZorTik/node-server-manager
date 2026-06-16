@@ -80,7 +80,7 @@ const decorateFunc = <T, F extends (...args: Parameters<F>) => Promise<T>>(
       const result = await fn(...args);
       if (result instanceof AsyncTask) {
         // if the result is a scheduled task, attach error handler to catch any errors during the execution of the task
-        result.promise.catch((e) => handleExecutionError(serviceIdExtractor, args, actionType, e));
+        result.promise.catch((e) => handleExecutionError(serviceIdExtractor, args, actionType, e, false));
       }
 
       return result;
@@ -99,7 +99,8 @@ const handleExecutionError = async <T, F extends (...args: Parameters<F>) => Pro
   serviceIdExtractor: (args: Parameters<F>) => string,
   args: Parameters<F>,
   actionType: ServiceActionType,
-  e: Error
+  e: Error,
+  rethrow: boolean = true
 ) => {
   const action: ServiceActionError = {
     serviceId: serviceIdExtractor?.(args),
@@ -121,7 +122,9 @@ const handleExecutionError = async <T, F extends (...args: Parameters<F>) => Pro
     currentContext.logger.debug(...loggerInput);
   }
 
-  throw e;
+  if (rethrow) {
+    throw e;
+  }
 }
 
 /**

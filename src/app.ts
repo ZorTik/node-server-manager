@@ -103,7 +103,7 @@ export const init = async (
   templateManager.init(engine);
   sessionManager.init(database);
 
-  await ctx.manager.init(appConfig, database, engine, logger);
+  await manager.init(appConfig, database, engine, templateManager, logger);
 
   await runner.init(engine, appConfig, templateManager, manager, database, logger);
   ctx.runner = currentContext.runner = middleLayer(runner);
