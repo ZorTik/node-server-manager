@@ -73,6 +73,13 @@ export const templateSettingsModel = z.object({
   })
 });
 
+export const templateModel = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string(),
+  config: templateSettingsModel
+});
+
 export interface TemplateManager {
   /**
    * Returns a template by ID.
