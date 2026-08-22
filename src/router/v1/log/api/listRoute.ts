@@ -26,7 +26,7 @@ export default async function (): Promise<RouterHandler> {
                 const data = result.Data;
                 const response = {
                     size: data.length,
-                    results: data
+                    results: data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
                 } as LogsDto;
 
                 CACHE.set(response, 8_000);
