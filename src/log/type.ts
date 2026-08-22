@@ -1,6 +1,6 @@
 interface LogsDto {
-    size: number;
-    results: FileInfo[];
+    size: number;         // count of files
+    results: FileInfo[];  // array of file info
 }
 
 enum Result {
