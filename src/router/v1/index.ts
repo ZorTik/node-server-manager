@@ -10,6 +10,11 @@ import powerStatusRoute from "./service/powerStatusRoute";
 import stopCmdRoute from "@nsm/router/v1/service/stopCmdRoute";
 import optionsRoute from "@nsm/router/v1/service/optionsRoute";
 
+import contentServicesRoute from "@nsm/router/v1/log/service/contentRoute";
+import listServicesRoute from "@nsm/router/v1/log/service/listRoute";
+import contentApiRoute from "@nsm/router/v1/log/api/contentRoute";
+import listApiRoute from "@nsm/router/v1/log/api/listRoute";
+
 export default [
     // v1 routes
     statusRoute,
@@ -23,4 +28,10 @@ export default [
     powerStatusRoute,
     optionsRoute,
     listRoute,
+
+    contentServicesRoute,
+    listServicesRoute,
+    
+    contentApiRoute,
+    listApiRoute
 ]
