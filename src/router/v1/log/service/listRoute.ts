@@ -1,6 +1,9 @@
 import { getServiceLogs } from "@nsm/log";
-import { LogType, Result } from "@nsm/log/type";
+import { LazyCache } from "@nsm/log/cache";
+import { LogsDto, Result } from "@nsm/log/type";
 import { RouterHandler } from "@nsm/router";
+
+const CACHE = new LazyCache<LogsDto>();
 
 export default async function (): Promise<RouterHandler> {
     return {
@@ -8,6 +11,11 @@ export default async function (): Promise<RouterHandler> {
         routes: {
             get: async (req, res) => {
                 const { nodeId } = req.params;
+
+                if (CACHE.get(nodeId) != undefined) {
+                    return res.status(200).json(CACHE.get(nodeId));
+                }
+
                 const result = await getServiceLogs(nodeId)
 
                 if (result.Status == Result.Failed) {
@@ -18,10 +26,12 @@ export default async function (): Promise<RouterHandler> {
                 }
         
                 const data = result.Data;
-                return res.status(200).json({
+                const response = {
                     size: data.length,
                     results: data
-                });
+                } as LogsDto;
+                CACHE.set(nodeId, response, 8_000);
+                return res.status(200).json(response);
             }
         },
     }
