@@ -9,6 +9,30 @@ info:
 
 components:
   schemas:
+    LogResults:
+      type: "object"
+      properties:
+        size:
+          type: "integer"
+        results:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/LogDto"
+    LogDto:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        path:
+          type: "string"
+        size:
+          type: "string"
+        createdAt:
+          type: "string"
+          format: "date-time"
+        modifiedAt:
+          type: "string"
+          format: "date-time"
     Status:
       type: "object"
       properties:
@@ -193,6 +217,93 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Status"
+  /v1/logs/api:
+    get:
+      summary: "List API logs"
+      description: "Retrieves a list of available API log files."
+      responses:
+        "500":
+          description: "Internal Server Error."
+        "204":
+          description: "No Content. The log folder is empty."
+        "200":
+          description: "Success. Returns a list of API logs."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogResults"
+                
+  /v1/logs/api/{logId}:
+    get:
+      summary: "Get API log content"
+      description: "Retrieves the content of a specific API log file by its ID."
+      parameters:
+        - name: "logId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "404":
+          description: "Not Found. The specified log file does not exist."
+        "204":
+          description: "No Content. The file content is empty."
+        "200":
+          description: "Success. Returns the log file content."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogResults"
+                
+  /v1/logs/services/{nodeId}/{logId}:
+    get:
+      summary: "Get container log content"
+      description: "Retrieves the content of a specific Docker container log file for a given node."
+      parameters:
+        - name: "nodeId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+        - name: "logId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "404":
+          description: "Not Found. The specified node or log file does not exist."
+        "204":
+          description: "No Content. The file content is empty."
+        "200":
+          description: "Success. Returns the container log content."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogResults"
+                
+  /v1/logs/services/{nodeId}:
+    get:
+      summary: "List container logs by node"
+      description: "Retrieves a list of all available Docker container logs for a specific node."
+      parameters:
+        - name: "nodeId"
+          in: "path"
+          required: true
+          schema:
+            type: "string"
+      responses:
+        "500":
+          description: "Internal Server Error."
+        "204":
+          description: "No Content. No logs found for the specified node."
+        "200":
+          description: "Success. Returns a list of container logs."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogResults"
+
   /v1/servicelist:
     post:
       description: "Get list of services"
