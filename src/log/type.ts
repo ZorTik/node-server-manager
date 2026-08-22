@@ -11,7 +11,6 @@ enum Result {
 
 interface FileInfo {
   name: string;
-  path: string;
   size: string;
   createdAt: Date;
   modifiedAt: Date;

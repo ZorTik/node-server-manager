@@ -61,7 +61,6 @@ async function getDirectoryFilesInfo(directoryPath: string): Promise<FileInfo[]>
         
         return {
           name: entry.name,
-          path: entry.parentPath,
           size: formatBytes(fileStats.size),
           createdAt: fileStats.birthtime,
           modifiedAt: fileStats.mtime

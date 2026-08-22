@@ -23,8 +23,6 @@ components:
       properties:
         name:
           type: "string"
-        path:
-          type: "string"
         size:
           type: "string"
         createdAt:
