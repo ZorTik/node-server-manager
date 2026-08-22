@@ -6,7 +6,8 @@ export function initDockerClient(appConfig: { docker_host: string }) {
         appConfig.docker_host.endsWith('.sock') ||
         appConfig.docker_host.startsWith('\\\\.\\pipe')
     )) {
-        client = new DockerClient({ socketPath: appConfig.docker_host });
+        let socketPath = appConfig.docker_host.replace(/^unix:\/\//, '');
+        client = new DockerClient({ socketPath });
     } else if (appConfig.docker_host) {
         // http(s)://host:port
         let host = appConfig.docker_host;
