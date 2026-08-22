@@ -1,22 +1,19 @@
 import { readdir, readFile, stat } from 'fs/promises';
 import * as path from 'path';
 import { FileInfo, formatBytes, ProcessResult, Result } from './type';
-import { readFileSync } from 'fs';
 
-const SERVICES_LOGS_PATH: string = process.cwd() + '/service_logs/'
-const API_LOGS_PATH: string = process.cwd() + '/logs/'
+const SERVICES_LOGS_PATH: string = path.join(process.cwd(), 'service_logs');
+const API_LOGS_PATH: string = path.join(process.cwd(), 'logs');
 
-async function getApiLogContent(logId: string): Promise<ProcessResult<string>> {
+async function readLogContent(fullPath: string): Promise<ProcessResult<string>> {
   try {
-
-    const content = await readFile(API_LOGS_PATH + logId, 'utf-8');
+    const content = await readFile(fullPath, 'utf-8');
     if (content.length === 0) {
       return {
         Status: Result.Empty,
         Data: null
       };
     }
-    
     return {
       Status: Result.Success,
       Data: content
@@ -29,84 +26,51 @@ async function getApiLogContent(logId: string): Promise<ProcessResult<string>> {
   }
 }
 
-async function getNodeLogContent(nodeId: string, logId: string): Promise<ProcessResult<string>> {
-  try {
+async function getApiLogContent(logId: string): Promise<ProcessResult<string>> {
+  return readLogContent(path.join(API_LOGS_PATH, logId));
+}
 
-    const content = await readFile(SERVICES_LOGS_PATH + nodeId + '/' + logId, 'utf-8');
-    if (content.length === 0) {
+async function getNodeLogContent(nodeId: string, logId: string): Promise<ProcessResult<string>> {
+  return readLogContent(path.join(SERVICES_LOGS_PATH, nodeId, logId));
+}
+
+async function getLogsInDirectory(directoryPath: string): Promise<ProcessResult<FileInfo[]>> {
+  try {
+    const files = await getDirectoryFilesInfo(directoryPath);
+    if (files.length === 0) {
       return {
         Status: Result.Empty,
-        Data: null
+        Data: []
       };
     }
-    
     return {
       Status: Result.Success,
-      Data: content
+      Data: files
     };
   } catch (error) {
     return {
       Status: Result.Failed,
-      Data: ""
+      Data: []
     };
   }
 }
 
 async function getApiLogs(): Promise<ProcessResult<FileInfo[]>> {
-  try {
-    const files = await getDirectoryFilesInfo(API_LOGS_PATH);
-     if (files.length === 0) {
-      return {
-        Status: Result.Empty,
-        Data: []
-      }
-    }
-    
-    return {
-      Status: Result.Success,
-      Data: files
-    };
-  } catch (error) {
-    return {
-      Status: Result.Failed,
-      Data: []
-    };
-  }
-
+  return getLogsInDirectory(API_LOGS_PATH);
 }
 
 async function getServiceLogs(nodeId: string): Promise<ProcessResult<FileInfo[]>> {
-  try {
-    const files = await getDirectoryFilesInfo(SERVICES_LOGS_PATH + nodeId + '/');
-    if (files.length === 0) {
-      return {
-        Status: Result.Empty,
-        Data: []
-      }
-    }
-
-    return {
-      Status: Result.Success,
-      Data: files
-    };
-  } catch(error) {
-    return {
-      Status: Result.Failed,
-      Data: []
-    };
-  }
+  return getLogsInDirectory(path.join(SERVICES_LOGS_PATH, nodeId));
 }
 
 async function getDirectoryFilesInfo(directoryPath: string): Promise<FileInfo[]> {
   try {
     const entries = await readdir(directoryPath, { withFileTypes: true });
-    
     const fileInfoPromises = entries
       .filter(entry => entry.isFile())
       .map(async (entry) => {
         const fullPath = path.join(directoryPath, entry.name);
         const fileStats = await stat(fullPath);
-        
         return {
           name: entry.name,
           path: entry.parentPath,
@@ -123,7 +87,6 @@ async function getDirectoryFilesInfo(directoryPath: string): Promise<FileInfo[]>
   }
 }
 
-export { API_LOGS_PATH, SERVICES_LOGS_PATH }
-
-export { getApiLogs, getServiceLogs }
-export { getApiLogContent, getNodeLogContent }
+export { API_LOGS_PATH, SERVICES_LOGS_PATH };
+export { getApiLogs, getServiceLogs };
+export { getApiLogContent, getNodeLogContent };
