@@ -1,6 +1,6 @@
-enum LogType {
-    SERVICES,
-    API
+interface LogsDto {
+    size: number;
+    results: FileInfo[];
 }
 
 enum Result {
@@ -30,4 +30,4 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
-export { formatBytes, FileInfo, LogType, Result, ProcessResult }
+export { formatBytes, FileInfo, LogsDto, Result, ProcessResult }
