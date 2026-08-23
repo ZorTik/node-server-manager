@@ -183,7 +183,7 @@ export const createService: ServiceManager["createService"] = async (template, o
   const serviceId = crypto.randomUUID(); // Create new unique service id
   // Pick random main port from the range specified in settings.yml
   const portRange = serviceSettings.port_range;
-  const port = await retrieveRandomPort(
+  const port = await retrieveRandomPort( // TODO: port retrieving strategy
     engine,
     portRange.min as number,
     portRange.max as number,
