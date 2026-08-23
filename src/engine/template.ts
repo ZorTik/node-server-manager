@@ -45,6 +45,7 @@ export type TemplateContainerConfig = {
   env: {
     [key: string]: string;
   };
+  ports: string[];
   resources: {
     limits: {
       ram: number;
@@ -63,6 +64,7 @@ export const templateSettingsModel = z.object({
   args: z.record(z.string(), z.string()),
   container: z.object({
     env: z.record(z.string(), z.string()),
+    ports: z.array(z.string()),
     resources: z.object({
       limits: z.object({
         ram: z.number(),

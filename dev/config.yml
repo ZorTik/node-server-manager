@@ -15,7 +15,7 @@ docker_host: "unix:///var/run/docker.sock"
 repositories:
   - id: local
     type: filesystem
-  - id: dockerhub
+  - id: docker
     type: docker-registry
     puller:
       registry: "https://index.docker.io/v1/"
@@ -36,8 +36,8 @@ repositories:
           # Args, and their default values
           args: { }
           container:
-            # TODO: port mappings with variables resolving
             env: { }
+            ports: []
             resources:
               limits:
                 ram: 512000000

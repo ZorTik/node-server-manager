@@ -11,7 +11,7 @@ import {
 import {
   combineRunListeners,
   Filters,
-  MetaStorage,
+  MetaStorage, PortBinding,
   RunListener,
   RunOptions, ServiceEngine,
   ServiceState,
@@ -24,12 +24,13 @@ import {
   TemplateNotFoundError
 } from "@nsm/engine/error";
 import {Service, ServiceManager} from "@nsm/engine/service";
-import {Template, TemplateManager} from "@nsm/engine/template";
+import {Template, TemplateFinding, TemplateManager} from "@nsm/engine/template";
 import {Database} from "@nsm/persistence";
 import {isDebug} from "@nsm/helpers";
 import winston from "winston";
 import {AppConfig} from "@nsm/config";
 import {ParamsResolver, ServiceArgs} from "@nsm/util/args";
+import {parsePortBinding} from "@nsm/util/port";
 
 type ServiceEvent = {
   id: string;
@@ -382,42 +383,12 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
     throw new ServiceNotFoundError(id);
   }
 
-  let {
-    options,
-    args,
-    network,
-    port,
-    ...rest
-  } = service;
-
-  const template = await templateManager.getTemplate(rest.template);
+  const template = await templateManager.getTemplate(service.template);
   if (!template) {
-    throw new TemplateNotFoundError(rest.template);
+    throw new TemplateNotFoundError(service.template);
   }
 
-  let { container: { env: envTemplate, resources } } = template.config;
-
-  args = prepareArgsForRun(args, template);
-
-  const meta = buildMetaStorage(id);
-
-  const runOptions: RunOptions = {
-    ram: options.ram ?? resources.limits.ram,
-    cpu: options.cpu ?? resources.limits.cpu,
-    disk: options.disk ?? resources.limits.disk,
-    env: {},
-    port,
-    ports: options.ports ?? [],
-    network,
-    labels: {
-      [StandardLabel.Nsm]: "true",
-      [StandardLabel.ServiceId]: id,
-      [StandardLabel.NodeId]: nodeId,
-      [StandardLabel.VolumeId]: id,
-      [StandardLabel.TemplateId]: template.id,
-    },
-  };
-  runOptions.env = prepareEnvForRun(envTemplate, service, args, runOptions);
+  const args = prepareArgsForRun(service.args, template);
 
   const updateImageIfChanged = async (image: string) => {
     // If the image was changed by processing (e.g. it was built or rebuilt), update the image id in database
@@ -450,6 +421,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
       source repository id ${template.sourceRepositoryId}`);
   }
 
+  const runOptions = prepareRunOptionsForRun(template, service, args, id);
   const unlock = lockBusyAction(id, "resume");
 
   const session = await beginServiceSession(id);
@@ -463,7 +435,7 @@ export const resumeService: ServiceRunner["resumeService"] = async (id) => {
           image,
           id,
           runOptions,
-          meta,
+          buildMetaStorage(id),
           runListener,
         );
         started.push({
@@ -507,36 +479,83 @@ const prepareArgsForRun = (args: { [key: string]: string }, template: Template) 
   return args;
 }
 
-const prepareEnvForRun = (
-  envTemplate: { [key: string]: string },
-  service: Service,
-  args: { [key: string]: string },
-  runOptions: RunOptions
-) => {
-  // preprocess placeholders in the configured env template
+function prepareRunOptionsForRun(template: TemplateFinding, service: Service, args: {
+  [p: string]: string
+}, id: string) {
+  let {container: {env: envTemplate, resources}} = template.config;
+
+  const limits = {
+    ram: service.options.ram ?? resources.limits.ram,
+    cpu: service.options.cpu ?? resources.limits.cpu,
+    disk: service.options.disk ?? resources.limits.disk,
+  };
   const serviceArgs: ServiceArgs = {
     id: service.serviceId,
-    port: runOptions.port.toString(),
-    ports: runOptions.ports.join(" "),
-    ram: runOptions.ram.toString(),
-    cpu: runOptions.cpu.toString(),
-    disk: runOptions.disk.toString(),
+    ram: limits.ram.toString(),
+    cpu: limits.cpu.toString(),
+    disk: limits.disk.toString(),
+  };
+  const ports = { // TODO: port resolvers
+    port: service.port.toString(),
   };
 
+  const runOptions: RunOptions = {
+    ...limits,
+    env: prepareEnvForRun(envTemplate, serviceArgs, args, ports),
+    portBindings: preparePortBindingsForRun(
+      template.config.container.ports,
+      serviceArgs,
+      args,
+      ports
+    ),
+    labels: {
+      [StandardLabel.Nsm]: "true",
+      [StandardLabel.ServiceId]: id,
+      [StandardLabel.NodeId]: nodeId,
+      [StandardLabel.VolumeId]: id,
+      [StandardLabel.TemplateId]: template.id,
+    },
+  };
+  return runOptions;
+}
+
+const prepareEnvForRun = (
+  envTemplate: { [key: string]: string },
+  serviceArgs: ServiceArgs,
+  args: { [key: string]: string },
+  ports: { [key: string]: string }
+) => {
   const resolver = new ParamsResolver(envTemplate);
   resolver.setArgs(args);
   resolver.setServiceArgs(serviceArgs);
+  resolver.setPorts(ports);
   envTemplate = resolver.getParams();
 
   return {
     ...envTemplate,
     SERVICE_ID: serviceArgs.id,
-    SERVICE_PORT: serviceArgs.port,
-    SERVICE_PORTS: serviceArgs.ports,
     SERVICE_RAM: serviceArgs.ram,
     SERVICE_CPU: serviceArgs.cpu,
     SERVICE_DISK: serviceArgs.disk,
   }
+}
+
+const preparePortBindingsForRun = (
+  portsTemplate: string[],
+  serviceArgs: ServiceArgs,
+  args: { [key: string]: string },
+  ports: { [key: string]: string }
+): PortBinding[] => {
+  return portsTemplate.map((portTemplate: string) => {
+    const resolver = new ParamsResolver({ portTemplate });
+    resolver.setArgs(args);
+    resolver.setServiceArgs(serviceArgs);
+    resolver.setPorts(ports);
+
+    portTemplate = resolver.getParams().portTemplate;
+
+    return parsePortBinding(portTemplate);
+  });
 }
 
 /**

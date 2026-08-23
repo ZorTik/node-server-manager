@@ -5,22 +5,30 @@ import {Template} from "@nsm/engine/template";
 import {AppContext} from "@nsm/app";
 import {TemplateRepositoryConfigurationError} from "@nsm/engine/error";
 
+export type PortBinding = {
+  /**
+   * The host string to bind the port to. This can be an IP address or a hostname,
+   * including a port.
+   */
+  hostString: string;
+  /**
+   * The container port to map to the host port.
+   */
+  containerPort: {
+    port: number;
+    protocol?: string;
+  };
+}
+
 /**
  * The options for running a service.
  */
 export type RunOptions = {
-  port: number;
-  ports: number[];
+  portBindings: PortBinding[];
   ram: number; // in MB
   cpu: number; // in cores
   disk: number;
   env: { [key: string]: string };
-  network?: {
-    address: string;
-    // If only ports should be exposed to this
-    // IP address.
-    portsOnly: boolean;
-  };
   labels?: {
     [key: string]: string;
   };

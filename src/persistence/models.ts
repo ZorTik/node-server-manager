@@ -97,16 +97,12 @@ export type PermaModel = {
   nodeId: string;
   imageId?: string;
   port: number;
-  options: Pick<Options, 'ram' | 'cpu' | 'disk' | 'ports'>
+  options: Pick<Options, 'ram' | 'cpu' | 'disk'>
   meta: {
     [key: string]: string;
   };
   args: {
     [key: string]: string;
-  };
-  network?: {
-    address: string;
-    portsOnly: boolean;
   };
 };
 

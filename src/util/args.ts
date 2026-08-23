@@ -48,8 +48,6 @@ export type Args = { [key: string]: string };
 export type Params = { [key: string]: string };
 export type ServiceArgs = {
   id: string;
-  port: string;
-  ports: string;
   ram: string;
   cpu: string;
   disk: string;
@@ -63,6 +61,7 @@ export type ServiceArgs = {
 export class ParamsResolver {
   private args: Args;
   private serviceArgs: Args | undefined;
+  private ports: Args | undefined;
 
   constructor(
     private readonly params: Params,
@@ -93,6 +92,17 @@ export class ParamsResolver {
   }
 
   /**
+   * Sets the service ports.
+   *
+   * @param args The service ports to set. Maps names to ports
+   */
+  setPorts(args: Args) {
+    this.ports = args;
+
+    return this;
+  }
+
+  /**
    * Resolves final parameter variables.
    */
   getParams(): Params {
@@ -105,6 +115,12 @@ export class ParamsResolver {
       params = preprocessParamsFromServiceArgs(
         params,
         prefixParams("service.", this.serviceArgs),
+      );
+    }
+    if (this.ports) {
+      params = preprocessParamsFromServiceArgs(
+        params,
+        prefixParams("ports.", this.ports),
       );
     }
 

@@ -1,15 +1,8 @@
 import DockerClient from "dockerode";
-import {
-  RunOptions,
-  MetaStorage,
-  ServiceEngine,
-  ServiceState,
-} from "@nsm/engine";
-import { accessNetwork, createNetwork } from "@nsm/engine/docker/networking/manager";
-import { constructObjectLabels } from "@nsm/util/services";
-import { currentContext as ctx } from "@nsm/app";
-import { propagateOptionsToEnv } from "@nsm/engine/docker/util/env";
-import { infoRecord as info, demuxBuffer } from "@nsm/engine/docker/util/logging";
+import {PortBinding, RunOptions, ServiceEngine, ServiceState,} from "@nsm/engine";
+import {constructObjectLabels} from "@nsm/util/services";
+import {currentContext as ctx} from "@nsm/app";
+import {demuxBuffer, infoRecord as info} from "@nsm/engine/docker/util/logging";
 
 async function prepareVolume(client: DockerClient, volumeId: string) {
   try {
@@ -31,50 +24,33 @@ async function prepareVolume(client: DockerClient, volumeId: string) {
   return false;
 }
 
-async function prepareNetwork(
-  client: DockerClient,
-  network: RunOptions["network"],
-  meta: MetaStorage,
-  creatingContainer: boolean,
-) {
-  let net: DockerClient.Network | undefined = undefined;
-  if (network && !network.portsOnly) {
-    const metaKey = "net-id";
-    let netId = await meta.get<string>(metaKey);
-    if (creatingContainer || !netId) {
-      net = await createNetwork(client, network.address);
-      netId = net.id;
-      if (!(await meta.set(metaKey, netId))) {
-        throw new Error("Could not save network data.");
-      }
-    } else {
-      net = await accessNetwork(client, network.address, netId);
-    }
-  }
-  return net;
-}
-
 async function prepareContainer(
   client: DockerClient,
   imageTag: string,
   volumeId: string,
   options: RunOptions,
-  net: DockerClient.Network | undefined,
 ) {
-  const { ram, cpu, disk, port, network } = options;
-  const env = { ...options.env };
-  propagateOptionsToEnv(options, env);
+  const { ram, cpu, disk, portBindings } = options;
 
-  const fullPortDef = (port: number) =>
-    (network?.portsOnly ? network.address + ":" : "") + port + "";
+  const containerPortDef = (binding: PortBinding) => {
+    return binding.containerPort.port + "/" + (binding.containerPort.protocol ?? "tcp");
+  }
   // Create container
-  const container = await client.createContainer({
+  return client.createContainer({
     Image: imageTag,
     Labels: options.labels,
     HostConfig: {
       Memory: ram,
       CpuShares: cpu,
-      PortBindings: { [port + "/tcp"]: [{ HostPort: fullPortDef(port) }] },
+      //PortBindings: { [port + "/tcp"]: [{ HostPort: fullPortDef(port) }] },
+      PortBindings: portBindings.reduce(
+        (acc, binding) => {
+          acc[containerPortDef(binding)] = [{HostPort: binding.hostString}];
+
+          return acc;
+        },
+        {} as { [key: string]: { HostPort: string }[] },
+      ),
       DiskQuota: disk,
       Mounts: [
         {
@@ -85,16 +61,19 @@ async function prepareContainer(
         },
       ],
     },
-    Env: Object.entries(env).map(([k, v]) => `${k}=${v}`),
-    ExposedPorts: { [fullPortDef(port)]: {} },
+    Env: Object.entries(options.env).map(([k, v]) => `${k}=${v}`),
+    /*ExposedPorts: portBindings.reduce(
+      (acc, binding) => {
+        acc[containerPortDef(binding)] = {};
+
+        return acc;
+      },
+      {} as { [key: string]: {} },
+    ),*/
     AttachStdin: true,
     OpenStdin: true,
     Tty: true,
   });
-  if (net != null) {
-    await net.connect({ Container: container.id }); // Implement EndpointConfig?? TODO: Test
-  }
-  return container;
 }
 
 const createState = (
@@ -124,18 +103,12 @@ export default function run(
   return async (imageId, volumeId, options, meta, listener) => {
     let container: DockerClient.Container;
     // Prepare volume
+    await prepareVolume(client, volumeId);
 
-    let creating = await prepareVolume(client, volumeId);
-
-    await listener.onStateChange?.(
-      createState("preparing_network", "Preparing network"),
-    );
-    const net = await prepareNetwork(client, options.network, meta, creating);
-    // Port decorator that takes port and according to network changes it to <net>:<port> or keeps the same.
     await listener.onStateChange?.(
       createState("preparing_container", "Preparing container"),
     );
-    container = await prepareContainer(client, imageId, volumeId, options, net);
+    container = await prepareContainer(client, imageId, volumeId, options);
     await listener.onStateChange?.(
       createState("starting_container", "Starting container"),
     );

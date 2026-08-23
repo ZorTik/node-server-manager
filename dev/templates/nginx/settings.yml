@@ -8,6 +8,7 @@ meta: {}
 args: {}
 container:
   env: {}
+  ports: []
   resources:
     limits:
       ram: 512000000

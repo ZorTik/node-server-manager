@@ -62,7 +62,7 @@ export class ServiceEngineError extends InternalError {
   constructor(
     public readonly cause: Error
   ) {
-    super("An error occurred in the service engine. Cause: " + cause.message);
+    super("An error occurred in the service engine. Cause: " + cause.message + (cause.stack ? `\nStack trace: ${cause.stack}` : ""));
   }
 }
 

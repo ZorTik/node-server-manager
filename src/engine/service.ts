@@ -37,12 +37,6 @@ export type Options = {
    */
   disk?: number;
   /**
-   * The additional ports to expose. (optional)
-   * Main port will be chosen automatically.
-   * (optional)
-   */
-  ports?: number[]; // Optional ports to expose
-  /**
    * The optional meta attributes to set for the service.
    */
   meta?: { [key: string]: any };
@@ -58,25 +52,6 @@ export type Options = {
    * (optional)
    */
   args?: { [key: string]: string }; // Optional ARGS, see example_settings.yml
-  /**
-   * The (optional) network settings for the service.
-   * This specifies fi the service will be bind to custom network interface
-   * in the future and how.
-   */
-  network?: {
-    /**
-     * Bind address.
-     */
-    address: string;
-    /**
-     * If whole service interface (all ports) should be exposed to the
-     * interface (false), or only defined ports (true).
-     *
-     * Defined ports are those specified in ports?: number[], and main
-     * service port.
-     */
-    portsOnly: boolean;
-  };
 };
 
 export type UpdateServiceOptions = {
@@ -187,7 +162,7 @@ export const init = async (
 }
 
 export const createService: ServiceManager["createService"] = async (template, options) => {
-  const { ram, cpu, disk, ports, args, network } = options;
+  const { ram, cpu, disk, args } = options;
 
   const foundTemplate = await templateManager.getTemplate(template);
   if (!foundTemplate) {
@@ -222,12 +197,10 @@ export const createService: ServiceManager["createService"] = async (template, o
     options: {
       ram,
       cpu,
-      disk,
-      ports
+      disk
     },
     meta,
     args: args ?? {},
-    network,
   };
   // Save permanent info
   const saved = await db.permaRepository.savePerma(perma);

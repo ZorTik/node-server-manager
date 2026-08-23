@@ -12,8 +12,10 @@ args:
 container:
   env:
     EULA: "${args.eula}"
-    SERVER_PORT: "${service.port}"
+    SERVER_PORT: "${ports.port}"
     VERSION: "${args.version}"
+  ports:
+    - "${ports.port}:${ports.port}"
   resources:
     limits:
       ram: 4096000000
